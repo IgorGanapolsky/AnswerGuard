@@ -1,0 +1,50 @@
+# Gitleaks configuration for Random Timer
+# https://github.com/gitleaks/gitleaks
+
+title = "Random Timer Secret Detection"
+
+[extend]
+# Use default rules
+useDefault = true
+
+# Additional rules specific to this project
+[[rules]]
+id = "sentry-auth-token"
+description = "Sentry Auth Token"
+regex = '''sntrys_[A-Za-z0-9=_+/]{50,}'''
+keywords = ["sntrys_"]
+
+[[rules]]
+id = "sentry-dsn"
+description = "Sentry DSN"
+regex = '''https://[a-f0-9]+@[a-z0-9.]+\.sentry\.io/[0-9]+'''
+keywords = ["sentry.io"]
+
+[[rules]]
+id = "expo-token"
+description = "Expo Access Token"
+regex = '''expo_[A-Za-z0-9]{40,}'''
+keywords = ["expo_"]
+
+[[rules]]
+id = "firebase-api-key"
+description = "Firebase API Key"
+regex = '''AIza[0-9A-Za-z_-]{35}'''
+keywords = ["AIza"]
+
+# Paths to ignore
+[allowlist]
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''node_modules/''',
+  '''\.git/''',
+  '''ios/Pods/''',
+  '''android/build/''',
+  '''\.claude/skills/''',
+]
+commits = [
+  "f9f5b3c75532bd1bb5b7af1a05aacd48245a648e",
+  "8ea0f886c8a78a0d7fc19d4cb3dfd132904be654",
+  "d23d7a21c4c50f816a8208ad57f2b40a3b15b264",
+  "48ce122b473739e18352fdf5ce3e42b4a953c247",
+]

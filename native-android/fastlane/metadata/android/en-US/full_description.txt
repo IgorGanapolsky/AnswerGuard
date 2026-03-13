@@ -1,0 +1,3 @@
+AnswerGuard is a privacy-first mobile app in development for screening unknown callers and reducing spam and scam call interruptions.
+
+This repository currently contains the native Android and iOS scaffold, release automation, and store delivery setup for the product. Replace this draft metadata before Play Store submission.

@@ -1,0 +1,10 @@
+package com.igorganapolsky.answerguard.domain
+
+import com.igorganapolsky.answerguard.domain.model.SoundType
+
+interface SoundPreviewManager {
+    fun previewSound(soundType: SoundType, volume: Float)
+    fun previewVolume(soundType: SoundType, volume: Float)
+    fun previewCommandCue()
+    fun stop()
+}
