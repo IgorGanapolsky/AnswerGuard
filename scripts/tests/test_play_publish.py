@@ -5,6 +5,7 @@ from pathlib import Path
 
 from scripts.play_publish import (
     _build_app_details,
+    _extract_used_version_code,
     _is_draft_app_status_error,
     _is_edit_expired,
     _is_failed_precondition,
@@ -80,6 +81,15 @@ class PlayPublishTests(unittest.TestCase):
                 '{"error":{"message":"This edit has expired, please create a new Edit."}}',
                 400,
             )
+        )
+
+    def test_extracts_reused_play_version_code(self):
+        self.assertEqual(
+            _extract_used_version_code(
+                "HttpError 403",
+                '{"error":{"message":"Version code 1773360000 has already been used."}}',
+            ),
+            "1773360000",
         )
 
     def test_build_app_details_includes_required_contact_email(self):
