@@ -43,7 +43,7 @@ struct AnswerGuardApp: App {
 struct ContentView: View {
     var body: some View {
         NavigationStack {
-            CallGuardHomeScreen()
+            AnswerGuardHomeScreen()
         }
     }
 }

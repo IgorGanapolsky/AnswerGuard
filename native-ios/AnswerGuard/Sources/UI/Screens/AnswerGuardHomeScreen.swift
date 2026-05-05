@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct CallGuardHomeScreen: View {
+struct AnswerGuardHomeScreen: View {
 
     @StateObject private var cdManager = CallDirectoryManager.shared
     @State private var showOnboarding = false
@@ -178,6 +178,6 @@ struct CallDirectoryOnboardingView: View {
 
 #Preview {
     NavigationStack {
-        CallGuardHomeScreen()
+        AnswerGuardHomeScreen()
     }
 }
