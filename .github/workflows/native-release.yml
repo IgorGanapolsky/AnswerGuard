@@ -265,6 +265,7 @@ jobs:
           PLAY_TRACK: ${{ inputs.android_track }}
           PLAY_FALLBACK_TRACK: alpha
           PLAY_RELEASE_STATUS: completed
+          APP_REVIEW_CONTACT_EMAIL: ${{ secrets.APP_REVIEW_CONTACT_EMAIL }}
           PLAY_UPLOAD_RETRY_WINDOW_SECONDS: "10800"
           PLAY_UPLOAD_RETRY_INTERVAL_SECONDS: "300"
         run: |

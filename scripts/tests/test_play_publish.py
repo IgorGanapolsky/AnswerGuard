@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from scripts.play_publish import (
+    _build_app_details,
     _is_draft_app_status_error,
     _is_failed_precondition,
     _release_payload,
@@ -70,6 +71,17 @@ class PlayPublishTests(unittest.TestCase):
                 403,
             )
         )
+
+    def test_build_app_details_includes_required_contact_email(self):
+        details = _build_app_details(
+            "en-US",
+            "https://example.com/support",
+            "support@example.com",
+        )
+
+        self.assertEqual(details["defaultLanguage"], "en-US")
+        self.assertEqual(details["contactWebsite"], "https://example.com/support")
+        self.assertEqual(details["contactEmail"], "support@example.com")
 
     def test_release_payload_in_progress_clamps_invalid_fraction(self):
         payload = _release_payload(

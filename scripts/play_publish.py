@@ -157,12 +157,22 @@ def _upload_images(service: Any, package: str, edit_id: str, language: str, imag
         ).execute()
 
 
+def _build_app_details(language: str, support_url: str, contact_email: str) -> dict[str, str]:
+    details = {"defaultLanguage": language}
+    if support_url:
+        details["contactWebsite"] = support_url
+    if contact_email:
+        details["contactEmail"] = contact_email
+    return details
+
+
 def _update_listing_and_assets(
     service: Any,
     package: str,
     edit_id: str,
     metadata_dir: Path,
     ios_support_url_path: Path,
+    contact_email: str,
 ) -> None:
     language = "en-US"
     listing = {}
@@ -188,18 +198,13 @@ def _update_listing_and_assets(
             body=listing,
         ).execute()
 
-    details = {"defaultLanguage": language}
     support_url = _read_text(ios_support_url_path)
-    if support_url:
-        details["contactWebsite"] = support_url
-    try:
-        service.edits().details().patch(
-            packageName=package,
-            editId=edit_id,
-            body=details,
-        ).execute()
-    except Exception:
-        pass
+    details = _build_app_details(language, support_url, contact_email)
+    service.edits().details().patch(
+        packageName=package,
+        editId=edit_id,
+        body=details,
+    ).execute()
 
     _upload_images(
         service,
@@ -264,6 +269,7 @@ def _publish_to_track(
     retry_interval_seconds: int,
     metadata_dir: Path,
     ios_support_url_path: Path,
+    contact_email: str,
     changelog_dir: Path,
     credentials_path: Path,
     user_fraction_raw: str,
@@ -294,6 +300,7 @@ def _publish_to_track(
                 edit_id=edit_id,
                 metadata_dir=metadata_dir,
                 ios_support_url_path=ios_support_url_path,
+                contact_email=contact_email,
             )
 
             notes_path = changelog_dir / f"{version_code}.txt"
@@ -374,6 +381,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--result-json", default="/tmp/play-upload-result.json")
     parser.add_argument("--error-json", default="/tmp/play-upload-error.json")
     parser.add_argument("--user-fraction", default=os.getenv("PLAY_USER_FRACTION", "0.1"))
+    parser.add_argument(
+        "--contact-email",
+        default=os.getenv("PLAY_CONTACT_EMAIL", os.getenv("APP_REVIEW_CONTACT_EMAIL", "")),
+        help="Public Google Play support email; defaults to PLAY_CONTACT_EMAIL or APP_REVIEW_CONTACT_EMAIL.",
+    )
     return parser.parse_args()
 
 
@@ -402,6 +414,15 @@ def main() -> int:
     result_json_path = Path(args.result_json)
     error_json_path = Path(args.error_json)
     release_status = (args.release_status or "completed").strip() or "completed"
+    contact_email = (args.contact_email or "").strip()
+
+    if not contact_email:
+        print(
+            "❌ Google Play contact email is required. Set PLAY_CONTACT_EMAIL "
+            "or APP_REVIEW_CONTACT_EMAIL.",
+            file=sys.stderr,
+        )
+        return 2
 
     image_dimension_errors = _validate_play_image_dimensions(metadata_dir)
     if image_dimension_errors:
@@ -425,6 +446,7 @@ def main() -> int:
                     retry_interval_seconds=args.retry_interval_seconds,
                     metadata_dir=metadata_dir,
                     ios_support_url_path=ios_support_url_path,
+                    contact_email=contact_email,
                     changelog_dir=changelog_dir,
                     credentials_path=service_account_json,
                     user_fraction_raw=args.user_fraction,
