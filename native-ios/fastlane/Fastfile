@@ -113,6 +113,8 @@ platform :ios do
       build_opts = {
         scheme: "AnswerGuard",
         export_method: "app-store",
+        output_directory: ".",
+        output_name: "AnswerGuard",
         export_options: {
           signingStyle: "manual",
           provisioningProfiles: {
@@ -129,6 +131,8 @@ platform :ios do
       build_app(
         scheme: "AnswerGuard",
         export_method: "app-store",
+        output_directory: ".",
+        output_name: "AnswerGuard",
         xcargs: posthog_xcargs
       )
     end
@@ -159,6 +163,8 @@ platform :ios do
         build_opts = {
           scheme: "AnswerGuard",
           export_method: "app-store",
+          output_directory: ".",
+          output_name: "AnswerGuard",
           export_options: {
             signingStyle: "manual",
             provisioningProfiles: {
@@ -174,6 +180,8 @@ platform :ios do
         build_app(
           scheme: "AnswerGuard",
           export_method: "app-store",
+          output_directory: ".",
+          output_name: "AnswerGuard",
           xcargs: posthog_xcargs
         )
       end

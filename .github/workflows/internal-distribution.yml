@@ -361,7 +361,9 @@ jobs:
         if: always() && steps.ios_lineage.outputs.uploadable == 'true'
         with:
           name: ios-ipa-internal
-          path: native-ios/AnswerGuard.ipa
+          path: |
+            native-ios/AnswerGuard.ipa
+            native-ios/*.ipa
           if-no-files-found: warn
 
   ios-testflight-signoff:
