@@ -33,6 +33,7 @@ FAILED_PRECONDITION_MARKERS = (
 DRAFT_APP_STATUS_MARKERS = (
     "only releases with status draft may be created on draft app",
 )
+EDIT_EXPIRED_FRAGMENT = "this edit has expired"
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 PLAY_IMAGE_DIMENSIONS = {
     ("images", "icon.png"): (512, 512),
@@ -114,6 +115,11 @@ def _is_draft_app_status_error(message: str, response_text: str, http_status: in
     return http_status == 400 and any(marker in combined for marker in DRAFT_APP_STATUS_MARKERS)
 
 
+def _is_edit_expired(message: str, response_text: str, http_status: int | None) -> bool:
+    combined = f"{message}\n{response_text}".lower()
+    return http_status == 400 and EDIT_EXPIRED_FRAGMENT in combined
+
+
 def _is_transient_http(http_status: int | None, message: str) -> bool:
     if http_status in (429, 500, 502, 503, 504):
         return True
@@ -129,6 +135,15 @@ def _load_google_clients(credentials_path: Path):
         str(credentials_path), scopes=["https://www.googleapis.com/auth/androidpublisher"]
     )
     return build("androidpublisher", "v3", credentials=credentials)
+
+
+def _discard_edit(service: Any, package: str, edit_id: str | None) -> None:
+    if not edit_id:
+        return
+    try:
+        service.edits().delete(packageName=package, editId=edit_id).execute()
+    except Exception:
+        pass
 
 
 def _upload_images(service: Any, package: str, edit_id: str, language: str, image_type: str, pattern: str) -> None:
@@ -283,6 +298,7 @@ def _publish_to_track(
 
     while True:
         attempt += 1
+        edit_id: str | None = None
         try:
             edit = service.edits().insert(body={}, packageName=package).execute()
             edit_id = edit["id"]
@@ -328,11 +344,21 @@ def _publish_to_track(
             message = str(error)
             response_text = _extract_response_text(error)
             status = getattr(getattr(error, "resp", None), "status", None)
+            _discard_edit(service, package, edit_id)
             is_recent_reset = RESET_ERROR_FRAGMENT in f"{message}\n{response_text}".lower()
-            if (is_recent_reset or _is_transient_http(status, message)) and int(deadline - time.time()) > 0:
+            is_edit_expired = _is_edit_expired(message, response_text, status)
+            if (
+                (is_recent_reset or is_edit_expired or _is_transient_http(status, message))
+                and int(deadline - time.time()) > 0
+            ):
                 remaining = int(deadline - time.time())
-                sleep_for = min(retry_interval_seconds, remaining)
-                reason = "key reset propagation" if is_recent_reset else f"transient HTTP {status}"
+                sleep_for = min(15 if is_edit_expired else retry_interval_seconds, remaining)
+                if is_recent_reset:
+                    reason = "key reset propagation"
+                elif is_edit_expired:
+                    reason = "expired Play edit"
+                else:
+                    reason = f"transient HTTP {status}"
                 print(
                     f"⚠️ Play upload retry due to {reason} (track={track}, attempt={attempt}). "
                     f"Retrying in {sleep_for}s (remaining window: {remaining}s)...",
@@ -343,6 +369,7 @@ def _publish_to_track(
             raise PublishError(message=message, http_status=status, response_text=response_text, attempt=attempt)
         except Exception as error:
             message = str(error)
+            _discard_edit(service, package, edit_id)
             if _is_transient_http(None, message) and int(deadline - time.time()) > 0:
                 remaining = int(deadline - time.time())
                 sleep_for = min(retry_interval_seconds, remaining)
