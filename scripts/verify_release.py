@@ -115,7 +115,8 @@ class GooglePlayVerifier:
                 "Set one of:\n"
                 "  - GOOGLE_PLAY_JSON_KEY (path or raw JSON)\n"
                 "  - GOOGLE_PLAY_JSON_KEY_PATH (path)\n"
-                "Or ensure /tmp/play-service-account.json exists.",
+                "Or ensure the repo temp fallback exists "
+                f"({os.path.join(tempfile.gettempdir(), 'play-service-account.json')}).",
                   file=sys.stderr)
             sys.exit(2)
 
@@ -259,9 +260,17 @@ class AppStoreVerifier:
             sys.exit(2)
 
         # Support both raw key content and file path
-        if os.path.isfile(private_key):
-            with open(private_key) as f:
-                private_key = f.read()
+        def _normalize_pem(raw: str) -> str:
+            raw = raw.replace("\r\n", "\n").replace("\r", "\n")
+            if raw.startswith("\ufeff"):
+                raw = raw[1:]
+            return raw.replace("\\n", "\n").strip()
+
+        if os.path.isfile(os.path.expanduser(str(private_key))):
+            with open(os.path.expanduser(private_key), encoding="utf-8") as f:
+                private_key = _normalize_pem(f.read())
+        else:
+            private_key = _normalize_pem(str(private_key))
 
         exp = int(now) + 1200  # 20 minutes
         payload = {
@@ -452,7 +461,7 @@ def print_results(results: list[dict]):
 # Polling
 # ---------------------------------------------------------------------------
 
-def poll_until_done(verify_fn, poll_interval: int, timeout: int, terminal_statuses: set[str] | None = None) -> dict:
+def poll_until_done(verify_fn, poll_interval: int, timeout: int, terminal_statuses: Optional[set[str]] = None) -> dict:
     """Call verify_fn repeatedly until it passes or times out."""
     deadline = time.time() + timeout
     attempt = 0
@@ -532,6 +541,12 @@ def parse_args() -> argparse.Namespace:
             "Use this after a submit-for-review automation step."
         ),
     )
+    parser.add_argument(
+        "--ios-scope",
+        choices=["testflight", "both"],
+        default="both",
+        help="For iOS verification, check only TestFlight or both TestFlight and App Store state.",
+    )
     return parser.parse_args()
 
 
@@ -579,13 +594,18 @@ def main():
         asc = AppStoreVerifier()
 
         if args.wait:
+            # Apple needs time to process uploaded builds before they appear
+            # in the API. Wait before the first read-back attempt.
+            initial_delay = min(60, args.timeout // 4)
+            print(f"  ⏳ Waiting {initial_delay}s for Apple to process the build...")
+            time.sleep(initial_delay)
+
             result = poll_until_done(
                 lambda: asc.verify(args.version),
                 args.poll_interval,
-                args.timeout,
-                # For iOS, NOT_FOUND usually means the version is wrong or the build
-                # was never uploaded; fail fast instead of waiting out the timeout.
-                terminal_statuses={"ERROR", "NOT_FOUND"},
+                args.timeout - initial_delay,
+                # NOT_FOUND is NOT terminal — Apple may still be ingesting the build.
+                terminal_statuses={"ERROR"},
             )
         else:
             result = asc.verify(args.version)
@@ -597,23 +617,23 @@ def main():
             **result,
         })
 
-        # Also check App Store version state
-        asv = asc.verify_app_store_version(args.version)
-        if args.require_appstore_submission and asv.get("status") == "NOT_SUBMITTED":
-            asv = {
-                "passed": False,
-                "status": "NOT_SUBMITTED",
-                "details": (
-                    f"App Store version '{args.version}' is still NOT_SUBMITTED "
-                    "(expected a submitted state like WAITING_FOR_REVIEW)"
-                ),
-            }
-        results.append({
-            "platform": "iOS",
-            "track": "App Store",
-            "version": args.version,
-            **asv,
-        })
+        if args.ios_scope == "both":
+            asv = asc.verify_app_store_version(args.version)
+            if args.require_appstore_submission and asv.get("status") == "NOT_SUBMITTED":
+                asv = {
+                    "passed": False,
+                    "status": "NOT_SUBMITTED",
+                    "details": (
+                        f"App Store version '{args.version}' is still NOT_SUBMITTED "
+                        "(expected a submitted state like WAITING_FOR_REVIEW)"
+                    ),
+                }
+            results.append({
+                "platform": "iOS",
+                "track": "App Store",
+                "version": args.version,
+                **asv,
+            })
 
     # --- Results ---
     all_passed = print_results(results)

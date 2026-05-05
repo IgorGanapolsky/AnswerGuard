@@ -19,6 +19,11 @@ The GitHub Actions workflow `.github/workflows/internal-distribution.yml` can de
 - TestFlight, Firebase App Distribution, and Google Play internal: `target=all`
 - TestFlight plus Google Play internal, skipping Firebase: `target=all_safe`
 
+The workflow mirrors the Random Timer internal-distribution shape: push-triggered
+distribution on `develop`/`main`, manual `workflow_dispatch`, ref-to-SHA
+resolution, iOS version-lineage guardrails, TestFlight read-back, Firebase
+read-back, and signoff statuses for distributed SHAs.
+
 Local shortcuts:
 
 - `make distribute-internal`
@@ -49,8 +54,46 @@ Optional GitHub variables for Firebase delivery:
 
 - `FIREBASE_INTERNAL_GROUPS`
 - `FIREBASE_INTERNAL_TESTERS`
+- `TESTFLIGHT_INTERNAL_TESTERS`
 
-Current blocker observed locally: the GitHub repo only has `TRUNK_API_TOKEN` configured, so distribution jobs will fail fast until these release secrets are added.
+Configured from local `.env` / GitHub variable read-back on 2026-05-05:
+
+- `APPSTORE_PRIVATE_KEY`
+- `APPSTORE_KEY_ID`
+- `APPSTORE_ISSUER_ID`
+- `APPSTORE_VENDOR_NUMBER`
+- `POSTHOG_API_KEY`
+- `ADMIN_TOKEN`
+- `FIREBASE_REQUIRED_TESTER_EMAIL`
+- `ANDROID_KEYSTORE_BASE64`
+- `KEYSTORE_PASSWORD`
+- `KEY_ALIAS`
+- `KEY_PASSWORD`
+- `FIREBASE_INTERNAL_GROUPS`
+- `FIREBASE_INTERNAL_TESTERS`
+- `TESTFLIGHT_INTERNAL_TESTERS`
+
+Also completed on 2026-05-05:
+
+- Created Apple Developer Portal bundle IDs for `com.igorganapolsky.answerguard` and `com.igorganapolsky.answerguard.widget`.
+- Generated an AnswerGuard Android release keystore locally at `~/.config/answerguard/release.keystore`.
+- Built and verified a signed Android release APK locally.
+
+Current blockers observed locally: GitHub Actions secrets are not readable after
+they are stored, so Random Timer secrets that exist only in GitHub could not be
+copied into AnswerGuard. The remaining missing secrets are:
+
+- `MATCH_GIT_URL`
+- `MATCH_PASSWORD`
+- `MATCH_GIT_BASIC_AUTHORIZATION`
+- `GOOGLE_SERVICES_JSON`
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `FIREBASE_ANDROID_APP_ID`
+
+Additional Apple blocker: the App Store Connect API key can create Developer
+Portal bundle IDs, but `/apps` creation is not allowed through that API key. The
+AnswerGuard app record still needs to be created in App Store Connect before
+TestFlight upload can succeed.
 
 ## Platform Requirements
 
