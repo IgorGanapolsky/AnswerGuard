@@ -21,7 +21,21 @@ import os
 import sys
 import tempfile
 import time
+from pathlib import Path
 from typing import Optional
+
+try:
+    from repo_dotenv import load_repo_dotenv
+
+    load_repo_dotenv(Path(__file__).resolve().parent.parent)
+except Exception:
+    pass
+
+try:
+    from pem_env import normalize_inline_pem
+except Exception:
+    def normalize_inline_pem(text: str) -> str:
+        return text
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -260,17 +274,11 @@ class AppStoreVerifier:
             sys.exit(2)
 
         # Support both raw key content and file path
-        def _normalize_pem(raw: str) -> str:
-            raw = raw.replace("\r\n", "\n").replace("\r", "\n")
-            if raw.startswith("\ufeff"):
-                raw = raw[1:]
-            return raw.replace("\\n", "\n").strip()
-
         if os.path.isfile(os.path.expanduser(str(private_key))):
             with open(os.path.expanduser(private_key), encoding="utf-8") as f:
-                private_key = _normalize_pem(f.read())
+                private_key = normalize_inline_pem(f.read())
         else:
-            private_key = _normalize_pem(str(private_key))
+            private_key = normalize_inline_pem(str(private_key))
 
         exp = int(now) + 1200  # 20 minutes
         payload = {

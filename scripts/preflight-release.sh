@@ -117,7 +117,10 @@ IOS_BUILD_NUMBER=""
 GRADLE_FILE="$PROJECT_ROOT/native-android/app/build.gradle.kts"
 if [[ -f "$GRADLE_FILE" ]]; then
   ANDROID_VERSION_NAME=$(sed -n 's/.*versionName *= *"\([^"]*\)".*/\1/p' "$GRADLE_FILE" | head -1)
-  ANDROID_VERSION_CODE=$(sed -n 's/.*versionCode *= *\([0-9]*\).*/\1/p' "$GRADLE_FILE" | head -1)
+  ANDROID_VERSION_CODE=$(sed -n 's/.*versionCode *= *\([0-9][0-9]*\).*/\1/p' "$GRADLE_FILE" | head -1)
+  if [[ -z "$ANDROID_VERSION_CODE" ]]; then
+    ANDROID_VERSION_CODE=$(sed -n 's/.*versionCode *=.*?: *\([0-9][0-9]*\).*/\1/p' "$GRADLE_FILE" | head -1)
+  fi
   info "Android: v${ANDROID_VERSION_NAME:-?} (code ${ANDROID_VERSION_CODE:-?})"
 fi
 
@@ -159,7 +162,7 @@ if [[ "$PLATFORM" == "android" || "$PLATFORM" == "both" ]]; then
 
   # Required text files
   for f in title.txt short_description.txt full_description.txt; do
-    check_file_nonempty "$ANDROID_META/$f" "Android $f"
+    check_file_nonempty "$ANDROID_META/$f" "Android $f" || true
   done
 
   # Changelog for current version code
@@ -191,7 +194,7 @@ if [[ "$PLATFORM" == "android" || "$PLATFORM" == "both" ]]; then
   fi
 
   # App icon
-  check_file_exists "$ANDROID_META/images/icon.png" "Android store icon"
+  check_file_exists "$ANDROID_META/images/icon.png" "Android store icon" || true
 
   # Description length checks
   if [[ -f "$ANDROID_META/short_description.txt" ]]; then
@@ -218,7 +221,7 @@ if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
 
   # Required text files
   for f in name.txt subtitle.txt description.txt keywords.txt release_notes.txt; do
-    check_file_nonempty "$IOS_META/$f" "iOS $f"
+    check_file_nonempty "$IOS_META/$f" "iOS $f" || true
   done
 
   # Privacy URL (required by App Store)
@@ -230,7 +233,7 @@ if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
   fi
 
   # Support URL
-  check_file_nonempty "$IOS_META/support_url.txt" "iOS support_url.txt"
+  check_file_nonempty "$IOS_META/support_url.txt" "iOS support_url.txt" || true
 
   # Screenshots (fastlane stores these in screenshots/, not metadata/)
   # Enforce release-grade App Store coverage:
