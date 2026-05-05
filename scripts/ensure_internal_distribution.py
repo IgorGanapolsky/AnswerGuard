@@ -100,6 +100,27 @@ class TestFlightInternalDistributor:
             if tester.get("attributes", {}).get("email")
         }
 
+    def _tester_ids_by_email(self, emails: list[str]) -> dict[str, str]:
+        found: dict[str, str] = {}
+        for email in emails:
+            normalized = email.strip().lower()
+            if not normalized:
+                continue
+            testers = self.client.get_all(
+                "/betaTesters",
+                params={"filter[email]": normalized, "limit": "200"},
+            )
+            for tester in testers:
+                tester_email = (tester.get("attributes", {}).get("email") or "").strip().lower()
+                if tester_email == normalized:
+                    found[normalized] = tester["id"]
+                    break
+        return found
+
+    def _tester_group_ids(self, tester_id: str) -> set[str]:
+        groups = self.client.get_all(f"/betaTesters/{tester_id}/betaGroups", params={"limit": "200"})
+        return {group["id"] for group in groups}
+
     def ensure(self, *, marketing_version: str, groups: list[str], required_testers: list[str]) -> dict[str, Any]:
         try:
             app_id = self._get_app_id()
@@ -109,6 +130,7 @@ class TestFlightInternalDistributor:
             build_number = str(attrs.get("version", "?"))
             processing_state = attrs.get("processingState", "UNKNOWN")
             app_groups = self._groups_for_app(app_id)
+            tester_ids_by_email = self._tester_ids_by_email(required_testers)
 
             missing_groups: list[str] = []
             missing_tester_details: list[str] = []
@@ -120,15 +142,25 @@ class TestFlightInternalDistributor:
                     missing_groups.append(group_name)
                     continue
                 group_id = group["id"]
-                is_internal_group = bool(group.get("attributes", {}).get("isInternalGroup"))
-                if not is_internal_group:
+                group_attrs = group.get("attributes", {})
+                is_internal_group = bool(group_attrs.get("isInternalGroup"))
+                has_access_to_all_builds = bool(group_attrs.get("hasAccessToAllBuilds"))
+                if not is_internal_group and not has_access_to_all_builds:
                     self._ensure_build_in_group(group_id, build_id)
-                if build_id not in self._group_build_ids(group_id):
+                if not has_access_to_all_builds and build_id not in self._group_build_ids(group_id):
                     return _error(
                         f"Build {build_number} for {marketing_version} is missing from TestFlight group '{group_name}'"
                     )
                 testers = self._group_tester_emails(group_id)
-                missing = [email for email in required_testers if email.lower() not in testers]
+                missing: list[str] = []
+                for email in required_testers:
+                    normalized_email = email.lower()
+                    if normalized_email in testers:
+                        continue
+                    tester_id = tester_ids_by_email.get(normalized_email)
+                    if tester_id and group_id in self._tester_group_ids(tester_id):
+                        continue
+                    missing.append(email)
                 if missing:
                     missing_tester_details.append(f"{group_name}: {', '.join(missing)}")
                 verified_groups.append(group_name)
