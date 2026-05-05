@@ -30,6 +30,9 @@
     <!-- In-App Billing for Pro upgrade -->
     <uses-permission android:name="com.android.vending.BILLING" />
 
+    <!-- Call screening -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
     <!-- Remove AD_ID permission added by dependencies (Firebase/PostHog) — app does not use advertising ID -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
 
@@ -110,6 +113,22 @@
         <!-- Re-engagement notification receiver -->
         <receiver
             android:name=".notifications.ReengagementReceiver"
+            android:exported="false" />
+
+        <!-- Call Screening Service -->
+        <service
+            android:name=".screening.AnswerGuardScreeningService"
+            android:permission="android.permission.BIND_SCREENING_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.telecom.CallScreeningService" />
+            </intent-filter>
+        </service>
+
+        <!-- Role onboarding transparent activity -->
+        <activity
+            android:name=".screening.RoleOnboardingActivity"
+            android:theme="@style/Theme.Transparent"
             android:exported="false" />
 
     </application>
