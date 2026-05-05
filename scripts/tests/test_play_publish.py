@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from scripts.play_publish import (
+    _is_draft_app_status_error,
     _is_failed_precondition,
     _release_payload,
     _validate_play_image_dimensions,
@@ -48,6 +49,24 @@ class PlayPublishTests(unittest.TestCase):
             _is_failed_precondition(
                 "HttpError 403",
                 '{"error":{"status":"PERMISSION_DENIED","message":"No permission"}}',
+                403,
+            )
+        )
+
+    def test_detects_draft_app_release_status_error(self):
+        self.assertTrue(
+            _is_draft_app_status_error(
+                "HttpError 400",
+                '{"error":{"message":"Only releases with status draft may be created on draft app."}}',
+                400,
+            )
+        )
+
+    def test_draft_app_release_status_error_requires_bad_request(self):
+        self.assertFalse(
+            _is_draft_app_status_error(
+                "HttpError 403",
+                "Only releases with status draft may be created on draft app.",
                 403,
             )
         )

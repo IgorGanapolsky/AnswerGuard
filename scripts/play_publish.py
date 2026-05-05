@@ -30,6 +30,9 @@ FAILED_PRECONDITION_MARKERS = (
     "failed_precondition",
     "precondition check failed",
 )
+DRAFT_APP_STATUS_MARKERS = (
+    "only releases with status draft may be created on draft app",
+)
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 PLAY_IMAGE_DIMENSIONS = {
     ("images", "icon.png"): (512, 512),
@@ -104,6 +107,11 @@ def _is_failed_precondition(message: str, response_text: str, http_status: int |
     if any(marker in combined for marker in FAILED_PRECONDITION_MARKERS):
         return True
     return http_status == 400 and "precondition" in combined
+
+
+def _is_draft_app_status_error(message: str, response_text: str, http_status: int | None) -> bool:
+    combined = f"{message}\n{response_text}".lower()
+    return http_status == 400 and any(marker in combined for marker in DRAFT_APP_STATUS_MARKERS)
 
 
 def _is_transient_http(http_status: int | None, message: str) -> bool:
@@ -404,73 +412,96 @@ def main() -> int:
 
     precondition_error_payload: dict[str, Any] | None = None
     for idx, track in enumerate(tracks):
-        try:
-            outcome = _publish_to_track(
-                package=package,
-                aab_path=aab_path,
-                track=track,
-                release_status=release_status,
-                retry_window_seconds=args.retry_window_seconds,
-                retry_interval_seconds=args.retry_interval_seconds,
-                metadata_dir=metadata_dir,
-                ios_support_url_path=ios_support_url_path,
-                changelog_dir=changelog_dir,
-                credentials_path=service_account_json,
-                user_fraction_raw=args.user_fraction,
-            )
-            fallback_used = track != requested_track
-            result_payload = {
-                "requested_track": requested_track,
-                "effective_track": track,
-                "fallback_used": fallback_used,
-                "precondition_blocked": bool(precondition_error_payload),
-                "release_status": release_status,
-                "version_code": outcome["version_code"],
-                "attempt": outcome["attempt"],
-                "fallback_reason": "FAILED_PRECONDITION" if fallback_used else "",
-            }
-            if precondition_error_payload:
-                result_payload["production_precondition_error"] = precondition_error_payload
-            _write_json(result_json_path, result_payload)
-            print(
-                f"✅ Uploaded version code {outcome['version_code']} to '{track}' track "
-                f"(requested={requested_track}, status={release_status}, fallback_used={fallback_used})"
-            )
-            return 0
-        except PublishError as error:
-            payload = {
-                "package": package,
-                "requested_track": requested_track,
-                "track": track,
-                "release_status": release_status,
-                "attempt": error.attempt,
-                "http_status": error.http_status,
-                "error": error.message,
-                "response": error.response_text,
-            }
-            _write_json(error_json_path, payload)
-            is_production_precondition = (
-                idx == 0
-                and track == "production"
-                and _is_failed_precondition(error.message, error.response_text, error.http_status)
-            )
-            if is_production_precondition and len(tracks) > 1:
-                precondition_error_payload = payload
-                print(
-                    "⚠️ Production publish blocked by FAILED_PRECONDITION. "
-                    f"Falling back to '{tracks[1]}' for continuity.",
-                    file=sys.stderr,
+        effective_release_status = release_status
+        draft_status_error_payload: dict[str, Any] | None = None
+        while True:
+            try:
+                outcome = _publish_to_track(
+                    package=package,
+                    aab_path=aab_path,
+                    track=track,
+                    release_status=effective_release_status,
+                    retry_window_seconds=args.retry_window_seconds,
+                    retry_interval_seconds=args.retry_interval_seconds,
+                    metadata_dir=metadata_dir,
+                    ios_support_url_path=ios_support_url_path,
+                    changelog_dir=changelog_dir,
+                    credentials_path=service_account_json,
+                    user_fraction_raw=args.user_fraction,
                 )
-                continue
-            if error.response_text:
+                fallback_used = track != requested_track
+                draft_release_used = effective_release_status != release_status
+                result_payload = {
+                    "requested_track": requested_track,
+                    "effective_track": track,
+                    "fallback_used": fallback_used,
+                    "precondition_blocked": bool(precondition_error_payload),
+                    "requested_release_status": release_status,
+                    "release_status": effective_release_status,
+                    "draft_release_used": draft_release_used,
+                    "version_code": outcome["version_code"],
+                    "attempt": outcome["attempt"],
+                    "fallback_reason": "FAILED_PRECONDITION" if fallback_used else "",
+                }
+                if precondition_error_payload:
+                    result_payload["production_precondition_error"] = precondition_error_payload
+                if draft_status_error_payload:
+                    result_payload["draft_app_status_error"] = draft_status_error_payload
+                _write_json(result_json_path, result_payload)
                 print(
-                    f"❌ Google Play upload failed on track '{track}': {error.message}\n\n"
-                    f"Response:\n{error.response_text}",
-                    file=sys.stderr,
+                    f"✅ Uploaded version code {outcome['version_code']} to '{track}' track "
+                    f"(requested={requested_track}, status={effective_release_status}, "
+                    f"fallback_used={fallback_used}, draft_release_used={draft_release_used})"
                 )
-            else:
-                print(f"❌ Google Play upload failed on track '{track}': {error.message}", file=sys.stderr)
-            return 1
+                return 0
+            except PublishError as error:
+                payload = {
+                    "package": package,
+                    "requested_track": requested_track,
+                    "track": track,
+                    "release_status": effective_release_status,
+                    "attempt": error.attempt,
+                    "http_status": error.http_status,
+                    "error": error.message,
+                    "response": error.response_text,
+                }
+                _write_json(error_json_path, payload)
+
+                if effective_release_status != "draft" and _is_draft_app_status_error(
+                    error.message,
+                    error.response_text,
+                    error.http_status,
+                ):
+                    draft_status_error_payload = payload
+                    effective_release_status = "draft"
+                    print(
+                        "⚠️ Play app is still draft-only. Retrying upload with release status 'draft'.",
+                        file=sys.stderr,
+                    )
+                    continue
+
+                is_production_precondition = (
+                    idx == 0
+                    and track == "production"
+                    and _is_failed_precondition(error.message, error.response_text, error.http_status)
+                )
+                if is_production_precondition and len(tracks) > 1:
+                    precondition_error_payload = payload
+                    print(
+                        "⚠️ Production publish blocked by FAILED_PRECONDITION. "
+                        f"Falling back to '{tracks[1]}' for continuity.",
+                        file=sys.stderr,
+                    )
+                    break
+                if error.response_text:
+                    print(
+                        f"❌ Google Play upload failed on track '{track}': {error.message}\n\n"
+                        f"Response:\n{error.response_text}",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(f"❌ Google Play upload failed on track '{track}': {error.message}", file=sys.stderr)
+                return 1
 
     print("❌ No publish tracks attempted.", file=sys.stderr)
     return 1
