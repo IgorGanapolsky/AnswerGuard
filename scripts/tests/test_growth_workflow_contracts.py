@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
 INTERNAL_DISTRIBUTION_WORKFLOW = ROOT / ".github/workflows/internal-distribution.yml"
@@ -54,6 +53,19 @@ def test_north_star_guardrail_workflow_runs_daily_ops_pipeline():
     assert "scripts/north_star_ops.py" in source
     assert "marketing/data/north_star_ops.json" in source
     assert "marketing/data/north_star_ops.md" in source
+
+
+def test_ci_north_star_guardrail_warns_without_breaking_release_ci():
+    source = CI_WORKFLOW.read_text(encoding="utf-8")
+
+    required_fragments = [
+        "name: Evaluate paid attribution guardrail",
+        "continue-on-error: true",
+        "name: Warn if paid attribution guardrail is violated",
+    ]
+    missing = [fragment for fragment in required_fragments if fragment not in source]
+    if missing:
+        raise AssertionError(f"CI north star advisory contract missing: {missing}")
 
 
 def test_north_star_ops_workflow_exists_and_runs_report_script():
