@@ -1,0 +1,27 @@
+name: enforce-release-branch-to-main
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  enforce:
+    name: require release branch source
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate release branch and app versions
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          python3 scripts/validate_release_branch.py --repo-root . --head-ref "$HEAD_REF"

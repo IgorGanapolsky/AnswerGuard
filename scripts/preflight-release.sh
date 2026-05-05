@@ -4,7 +4,7 @@
 # integrity are all present and correct before publishing.
 #
 # Usage:
-#   ./scripts/preflight-release.sh --platform android|ios|both [--layer 1|2]
+#   ./scripts/preflight-release.sh --platform android|ios|both [--layer 1|2] [--skip-store-assets]
 #
 # Layers:
 #   1 (default) — Metadata & file checks only (fast, no build)
@@ -18,6 +18,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 PLATFORM="both"
 LAYER=1
+SKIP_STORE_ASSETS=false
 ERRORS=()
 WARNINGS=()
 
@@ -35,9 +36,10 @@ usage() {
 Usage: $(basename "$0") --platform android|ios|both [--layer 1|2]
 
 Options:
-  --platform   Target platform (required)
-  --layer      Validation depth: 1=metadata only, 2=metadata+build (default: 1)
-  -h, --help   Show this help
+  --platform           Target platform (required)
+  --layer              Validation depth: 1=metadata only, 2=metadata+build (default: 1)
+  --skip-store-assets  Skip App Store / Play Store screenshots and media checks
+  -h, --help           Show this help
 EOF
   exit 0
 }
@@ -84,9 +86,10 @@ check_dir_has_files() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --platform) PLATFORM="$2"; shift 2 ;;
-    --layer)    LAYER="$2";    shift 2 ;;
-    -h|--help)  usage ;;
+    --platform)          PLATFORM="$2"; shift 2 ;;
+    --layer)             LAYER="$2";    shift 2 ;;
+    --skip-store-assets) SKIP_STORE_ASSETS=true; shift ;;
+    -h|--help)           usage ;;
     *) echo "Unknown option: $1"; usage ;;
   esac
 done
@@ -104,6 +107,9 @@ fi
 echo -e "${BOLD}AnswerGuard — Preflight Release Check${RESET}"
 echo "Platform: $PLATFORM | Layer: $LAYER"
 echo "Project:  $PROJECT_ROOT"
+if [[ "$SKIP_STORE_ASSETS" == "true" ]]; then
+  info "Store screenshot/media checks skipped for internal distribution"
+fi
 
 # ── Extract versions ─────────────────────────────────────────────────────────
 
@@ -117,7 +123,10 @@ IOS_BUILD_NUMBER=""
 GRADLE_FILE="$PROJECT_ROOT/native-android/app/build.gradle.kts"
 if [[ -f "$GRADLE_FILE" ]]; then
   ANDROID_VERSION_NAME=$(sed -n 's/.*versionName *= *"\([^"]*\)".*/\1/p' "$GRADLE_FILE" | head -1)
-  ANDROID_VERSION_CODE=$(sed -n 's/.*versionCode *= *\([0-9]*\).*/\1/p' "$GRADLE_FILE" | head -1)
+  ANDROID_VERSION_CODE=$(sed -n 's/.*versionCode *= *\([0-9][0-9]*\).*/\1/p' "$GRADLE_FILE" | head -1)
+  if [[ -z "$ANDROID_VERSION_CODE" ]]; then
+    ANDROID_VERSION_CODE=$(sed -n 's/.*versionCode *=.*?: *\([0-9][0-9]*\).*/\1/p' "$GRADLE_FILE" | head -1)
+  fi
   info "Android: v${ANDROID_VERSION_NAME:-?} (code ${ANDROID_VERSION_CODE:-?})"
 fi
 
@@ -159,39 +168,53 @@ if [[ "$PLATFORM" == "android" || "$PLATFORM" == "both" ]]; then
 
   # Required text files
   for f in title.txt short_description.txt full_description.txt; do
-    check_file_nonempty "$ANDROID_META/$f" "Android $f"
+    check_file_nonempty "$ANDROID_META/$f" "Android $f" || true
   done
 
-  # Changelog for current version code
-  if [[ -n "$ANDROID_VERSION_CODE" ]]; then
-    CHANGELOG="$ANDROID_META/changelogs/${ANDROID_VERSION_CODE}.txt"
-    if check_file_nonempty "$CHANGELOG" "Android changelog (versionCode $ANDROID_VERSION_CODE)"; then
-      info "Changelog $ANDROID_VERSION_CODE.txt present"
+  if [[ "$SKIP_STORE_ASSETS" != "true" ]]; then
+    # Changelog for current version code
+    if [[ -n "$ANDROID_VERSION_CODE" ]]; then
+      CHANGELOG="$ANDROID_META/changelogs/${ANDROID_VERSION_CODE}.txt"
+      if check_file_nonempty "$CHANGELOG" "Android changelog (versionCode $ANDROID_VERSION_CODE)"; then
+        info "Changelog $ANDROID_VERSION_CODE.txt present"
+      fi
+    else
+      warn "Could not detect Android versionCode — skipping changelog check"
     fi
-  else
-    warn "Could not detect Android versionCode — skipping changelog check"
-  fi
 
-  # Screenshots
-  SCREENSHOTS_DIR="$ANDROID_META/images/phoneScreenshots"
-  if [[ -d "$SCREENSHOTS_DIR" ]]; then
-    check_dir_has_files "$SCREENSHOTS_DIR" "*.png" "Android phone screenshots" 3
-    SHOT_COUNT=$(find "$SCREENSHOTS_DIR" -name "*.png" -type f | wc -l | tr -d ' ')
-    info "Phone screenshots: $SHOT_COUNT found"
-  else
-    err "Android phoneScreenshots directory missing: $SCREENSHOTS_DIR"
-  fi
+    # Screenshots
+    SCREENSHOTS_DIR="$ANDROID_META/images/phoneScreenshots"
+    if [[ -d "$SCREENSHOTS_DIR" ]]; then
+      check_dir_has_files "$SCREENSHOTS_DIR" "*.png" "Android phone screenshots" 3
+      SHOT_COUNT=$(find "$SCREENSHOTS_DIR" -name "*.png" -type f | wc -l | tr -d ' ')
+      info "Phone screenshots: $SHOT_COUNT found"
+    else
+      err "Android phoneScreenshots directory missing: $SCREENSHOTS_DIR"
+    fi
 
-  # Feature graphic
-  FG_DIR="$ANDROID_META/images/featureGraphic"
-  if [[ -d "$FG_DIR" ]]; then
-    check_dir_has_files "$FG_DIR" "*.png" "Android feature graphic" 1
-  else
-    warn "Android featureGraphic directory missing (recommended but not required)"
-  fi
+    # Feature graphic
+    FG_DIR="$ANDROID_META/images/featureGraphic"
+    if [[ -d "$FG_DIR" ]]; then
+      check_dir_has_files "$FG_DIR" "*.png" "Android feature graphic" 1
+      FEATURE_GRAPHIC="$FG_DIR/feature.png"
+      if [[ -f "$FEATURE_GRAPHIC" ]]; then
+        FEATURE_SIZE=$(python3 "$PROJECT_ROOT/scripts/png_dimensions.py" "$FEATURE_GRAPHIC" 2>/dev/null || echo "")
+        if [[ "$FEATURE_SIZE" != "1024x500" ]]; then
+          err "Android feature graphic must be 1024x500 for Google Play (got ${FEATURE_SIZE:-unreadable})"
+        fi
+      fi
+    else
+      warn "Android featureGraphic directory missing (recommended but not required)"
+    fi
 
-  # App icon
-  check_file_exists "$ANDROID_META/images/icon.png" "Android store icon"
+    # App icon
+    if check_file_exists "$ANDROID_META/images/icon.png" "Android store icon"; then
+      ICON_SIZE=$(python3 "$PROJECT_ROOT/scripts/png_dimensions.py" "$ANDROID_META/images/icon.png" 2>/dev/null || echo "")
+      if [[ "$ICON_SIZE" != "512x512" ]]; then
+        err "Android store icon must be 512x512 for Google Play (got ${ICON_SIZE:-unreadable})"
+      fi
+    fi
+  fi
 
   # Description length checks
   if [[ -f "$ANDROID_META/short_description.txt" ]]; then
@@ -218,7 +241,7 @@ if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
 
   # Required text files
   for f in name.txt subtitle.txt description.txt keywords.txt release_notes.txt; do
-    check_file_nonempty "$IOS_META/$f" "iOS $f"
+    check_file_nonempty "$IOS_META/$f" "iOS $f" || true
   done
 
   # Privacy URL (required by App Store)
@@ -230,76 +253,78 @@ if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
   fi
 
   # Support URL
-  check_file_nonempty "$IOS_META/support_url.txt" "iOS support_url.txt"
+  check_file_nonempty "$IOS_META/support_url.txt" "iOS support_url.txt" || true
 
-  # Screenshots (fastlane stores these in screenshots/, not metadata/)
-  # Enforce release-grade App Store coverage:
-  # - at least 3 iPhone 6.9"/6.5" screenshots
-  # - at least 3 iPad 13" screenshots
-  IOS_SCREENSHOTS_DIR="$PROJECT_ROOT/native-ios/fastlane/screenshots/en-US"
-  if [[ -d "$IOS_SCREENSHOTS_DIR" ]]; then
-    IOS_SCREENSHOTS=()
-    while IFS= read -r -d '' _f; do
-      IOS_SCREENSHOTS+=("$_f")
-    done < <(find "$IOS_SCREENSHOTS_DIR" -maxdepth 1 -name "*.png" -type f -print0 2>/dev/null | sort -z)
-    IOS_SHOTS="${#IOS_SCREENSHOTS[@]}"
-    if (( IOS_SHOTS < 6 )); then
-      err "iOS screenshots: expected at least 6 PNG files in $IOS_SCREENSHOTS_DIR, found $IOS_SHOTS"
-    fi
-
-    IPHONE_CLASS=0
-    IPAD_CLASS=0
-    OTHER_CLASS=0
-
-    for shot in "${IOS_SCREENSHOTS[@]}"; do
-      SIZE=$(python3 "$PROJECT_ROOT/scripts/png_dimensions.py" "$shot" 2>/dev/null || echo "")
-      if [[ -z "$SIZE" ]]; then
-        err "iOS screenshots: could not read dimensions for $shot"
-        continue
+  if [[ "$SKIP_STORE_ASSETS" != "true" ]]; then
+    # Screenshots (fastlane stores these in screenshots/, not metadata/)
+    # Enforce release-grade App Store coverage:
+    # - at least 3 iPhone 6.9"/6.5" screenshots
+    # - at least 3 iPad 13" screenshots
+    IOS_SCREENSHOTS_DIR="$PROJECT_ROOT/native-ios/fastlane/screenshots/en-US"
+    if [[ -d "$IOS_SCREENSHOTS_DIR" ]]; then
+      IOS_SCREENSHOTS=()
+      while IFS= read -r -d '' _f; do
+        IOS_SCREENSHOTS+=("$_f")
+      done < <(find "$IOS_SCREENSHOTS_DIR" -maxdepth 1 -name "*.png" -type f -print0 2>/dev/null | sort -z)
+      IOS_SHOTS="${#IOS_SCREENSHOTS[@]}"
+      if (( IOS_SHOTS < 6 )); then
+        err "iOS screenshots: expected at least 6 PNG files in $IOS_SCREENSHOTS_DIR, found $IOS_SHOTS"
       fi
-      case "$SIZE" in
-        1320x2868|2868x1320|1290x2796|2796x1290|1284x2778|2778x1284|1242x2688|2688x1242)
-          IPHONE_CLASS=$((IPHONE_CLASS + 1))
-          ;;
-        2064x2752|2752x2064|2048x2732|2732x2048)
-          IPAD_CLASS=$((IPAD_CLASS + 1))
-          ;;
-        *)
-          OTHER_CLASS=$((OTHER_CLASS + 1))
-          ;;
-      esac
-    done
 
-    info "iOS screenshots: $IOS_SHOTS total (iPhone 6.9/6.5: $IPHONE_CLASS, iPad 13\": $IPAD_CLASS, other: $OTHER_CLASS)"
+      IPHONE_CLASS=0
+      IPAD_CLASS=0
+      OTHER_CLASS=0
 
-    if (( IPHONE_CLASS < 3 )); then
-      err "iOS screenshots: need >=3 iPhone 6.9\"/6.5\" screenshots (found $IPHONE_CLASS)"
-    fi
-    if (( IPAD_CLASS < 3 )); then
-      err "iOS screenshots: need >=3 iPad 13\" screenshots (found $IPAD_CLASS)"
-    fi
+      for shot in "${IOS_SCREENSHOTS[@]}"; do
+        SIZE=$(python3 "$PROJECT_ROOT/scripts/png_dimensions.py" "$shot" 2>/dev/null || echo "")
+        if [[ -z "$SIZE" ]]; then
+          err "iOS screenshots: could not read dimensions for $shot"
+          continue
+        fi
+        case "$SIZE" in
+          1320x2868|2868x1320|1290x2796|2796x1290|1284x2778|2778x1284|1242x2688|2688x1242)
+            IPHONE_CLASS=$((IPHONE_CLASS + 1))
+            ;;
+          2064x2752|2752x2064|2048x2732|2732x2048)
+            IPAD_CLASS=$((IPAD_CLASS + 1))
+            ;;
+          *)
+            OTHER_CLASS=$((OTHER_CLASS + 1))
+            ;;
+        esac
+      done
 
-    # Guard against accidental duplicate uploads (same image bytes under different names).
-    if command -v shasum >/dev/null 2>&1; then
-      DUP_HASHES=$(shasum -a 256 "${IOS_SCREENSHOTS[@]}" | awk '{print $1}' | sort | uniq -d)
-      if [[ -n "$DUP_HASHES" ]]; then
-        while IFS= read -r dup_hash; do
-          [[ -z "$dup_hash" ]] && continue
-          DUP_FILES=$(shasum -a 256 "${IOS_SCREENSHOTS[@]}" | awk -v h="$dup_hash" '$1==h {print $2}' | xargs -n1 basename | paste -sd ', ' -)
-          err "iOS screenshots: duplicate image bytes detected ($DUP_FILES)"
-        done <<< "$DUP_HASHES"
+      info "iOS screenshots: $IOS_SHOTS total (iPhone 6.9/6.5: $IPHONE_CLASS, iPad 13\": $IPAD_CLASS, other: $OTHER_CLASS)"
+
+      if (( IPHONE_CLASS < 3 )); then
+        err "iOS screenshots: need >=3 iPhone 6.9\"/6.5\" screenshots (found $IPHONE_CLASS)"
       fi
+      if (( IPAD_CLASS < 3 )); then
+        err "iOS screenshots: need >=3 iPad 13\" screenshots (found $IPAD_CLASS)"
+      fi
+
+      # Guard against accidental duplicate uploads (same image bytes under different names).
+      if command -v shasum >/dev/null 2>&1; then
+        DUP_HASHES=$(shasum -a 256 "${IOS_SCREENSHOTS[@]}" | awk '{print $1}' | sort | uniq -d)
+        if [[ -n "$DUP_HASHES" ]]; then
+          while IFS= read -r dup_hash; do
+            [[ -z "$dup_hash" ]] && continue
+            DUP_FILES=$(shasum -a 256 "${IOS_SCREENSHOTS[@]}" | awk -v h="$dup_hash" '$1==h {print $2}' | xargs -n1 basename | paste -sd ', ' -)
+            err "iOS screenshots: duplicate image bytes detected ($DUP_FILES)"
+          done <<< "$DUP_HASHES"
+        fi
+      else
+        err "shasum is required to detect duplicate iOS screenshots"
+      fi
+
+      for required_ipad in 5_ipad_setup.png 6_ipad_running.png 7_ipad_stopped.png; do
+        if [[ ! -f "$IOS_SCREENSHOTS_DIR/$required_ipad" ]]; then
+          err "iOS screenshots: missing required iPad capture $required_ipad"
+        fi
+      done
     else
-      err "shasum is required to detect duplicate iOS screenshots"
+      err "iOS screenshots directory missing: $IOS_SCREENSHOTS_DIR"
     fi
-
-    for required_ipad in 5_ipad_setup.png 6_ipad_running.png 7_ipad_stopped.png; do
-      if [[ ! -f "$IOS_SCREENSHOTS_DIR/$required_ipad" ]]; then
-        err "iOS screenshots: missing required iPad capture $required_ipad"
-      fi
-    done
-  else
-    err "iOS screenshots directory missing: $IOS_SCREENSHOTS_DIR"
   fi
 
   # Field length checks

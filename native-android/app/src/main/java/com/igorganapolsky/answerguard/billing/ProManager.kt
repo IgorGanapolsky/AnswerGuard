@@ -15,12 +15,10 @@ import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.acknowledgePurchase
 import com.android.billingclient.api.queryProductDetails
 import com.android.billingclient.api.queryPurchasesAsync
+import com.igorganapolsky.answerguard.BuildConfig
 import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
 import com.igorganapolsky.answerguard.analytics.AnalyticsProperties
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
-import com.igorganapolsky.answerguard.domain.model.EntitlementLevel
-import com.igorganapolsky.answerguard.domain.model.SoundType
-import com.igorganapolsky.answerguard.domain.model.TimerConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,12 +42,12 @@ class ProManager
         private val externalScope: CoroutineScope,
     ) : PurchasesUpdatedListener {
         companion object {
-            const val BASE_PRODUCT_ID = "pro_base"
-            const val ELITE_PRODUCT_ID = "elite_tactical"
+            const val BASE_PRODUCT_ID = "answerguard_pro"
+            const val ELITE_PRODUCT_ID = "answerguard_family"
 
             internal fun canUseDebugUnlock(
-                @Suppress("UNUSED_PARAMETER") isDebugBuild: Boolean = true,
-            ): Boolean = true
+                isDebugBuild: Boolean = BuildConfig.DEBUG,
+            ): Boolean = isDebugBuild
         }
 
         private val _entitlementLevel = MutableStateFlow(EntitlementLevel.NONE)
@@ -62,8 +60,8 @@ class ProManager
 
         val isElite: StateFlow<Boolean> =
             _entitlementLevel
-                .map { it == EntitlementLevel.ELITE }
-                .stateIn(externalScope, SharingStarted.Eagerly, _entitlementLevel.value == EntitlementLevel.ELITE)
+                .map { it == EntitlementLevel.FAMILY }
+                .stateIn(externalScope, SharingStarted.Eagerly, _entitlementLevel.value == EntitlementLevel.FAMILY)
 
         private var billingClient: BillingClient =
             BillingClient
@@ -155,8 +153,8 @@ class ProManager
 
             val level =
                 when {
-                    hasElite -> EntitlementLevel.ELITE
-                    hasBase -> EntitlementLevel.BASE
+                    hasElite -> EntitlementLevel.FAMILY
+                    hasBase -> EntitlementLevel.PRO
                     else -> EntitlementLevel.NONE
                 }
 
@@ -330,10 +328,10 @@ class ProManager
 
         private fun updateEntitlementFromPurchase(purchase: Purchase) {
             if (purchase.products.contains(ELITE_PRODUCT_ID)) {
-                _entitlementLevel.value = EntitlementLevel.ELITE
+                _entitlementLevel.value = EntitlementLevel.FAMILY
             } else if (purchase.products.contains(BASE_PRODUCT_ID)) {
                 if (_entitlementLevel.value == EntitlementLevel.NONE) {
-                    _entitlementLevel.value = EntitlementLevel.BASE
+                    _entitlementLevel.value = EntitlementLevel.PRO
                 }
             }
         }
@@ -409,12 +407,12 @@ class ProManager
         private fun restoreResultValue(success: Boolean): String = if (success) "restored" else "failed"
 
         fun forcePro() {
-            // Cycle: NONE → BASE → ELITE → NONE
+            // Cycle: NONE -> PRO -> FAMILY -> NONE
             val next =
                 when (_entitlementLevel.value) {
-                    EntitlementLevel.NONE -> EntitlementLevel.BASE
-                    EntitlementLevel.BASE -> EntitlementLevel.ELITE
-                    EntitlementLevel.ELITE -> EntitlementLevel.NONE
+                    EntitlementLevel.NONE -> EntitlementLevel.PRO
+                    EntitlementLevel.PRO -> EntitlementLevel.FAMILY
+                    EntitlementLevel.FAMILY -> EntitlementLevel.NONE
                 }
             _entitlementLevel.value = next
             context
@@ -426,18 +424,15 @@ class ProManager
             analyticsService.track("dev_force_pro", mapOf("level" to next.name))
         }
 
-        // Feature gates
-        fun maxSecondsLimit(level: EntitlementLevel = _entitlementLevel.value): Int =
-            if (level.isPro) TimerConfig.MAX_SECONDS_PRO else TimerConfig.MAX_SECONDS_FREE
+        fun canUseAdvancedRules(level: EntitlementLevel = _entitlementLevel.value): Boolean = level.isPro
 
-        fun availableSounds(level: EntitlementLevel = _entitlementLevel.value): List<SoundType> =
-            if (level.isPro) SoundType.entries.toList() else SoundType.FREE
+        fun canUseFamilyProtection(level: EntitlementLevel = _entitlementLevel.value): Boolean = level == EntitlementLevel.FAMILY
 
         fun unlockProForDebug(entryPoint: String): Boolean {
             if (!canUseDebugUnlock()) {
                 return false
             }
-            _entitlementLevel.value = EntitlementLevel.ELITE
+            _entitlementLevel.value = EntitlementLevel.FAMILY
             trackPurchaseResult(
                 success = true,
                 source = MonetizationSources.PAYWALL,

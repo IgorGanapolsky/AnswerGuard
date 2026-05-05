@@ -9,6 +9,7 @@ final class AnswerGuardUITests: XCTestCase {
 
     private func launchApp(withState state: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments += ["-ui-test-reset-state"]
         if let state {
             app.launchArguments += ["-ui-test-state", state]
         }
@@ -90,7 +91,7 @@ final class AnswerGuardUITests: XCTestCase {
 
     func testTappingTimerCircleSilencesAlarmAndStaysOnScreen() {
         let app = XCUIApplication()
-        app.launchArguments += ["-ui-test-state", "alarm"]
+        app.launchArguments += ["-ui-test-reset-state", "-ui-test-state", "alarm"]
         app.launch()
 
         let stopButton = app.buttons["Stop"]
@@ -111,6 +112,7 @@ final class AnswerGuardUITests: XCTestCase {
     func testCaptureScreenshots() {
         let app = XCUIApplication()
         let outputDir = "/tmp/appstore_screenshots"
+        app.launchArguments += ["-ui-test-reset-state"]
 
         // Helper to dismiss system alerts (notification permission)
         addUIInterruptionMonitor(withDescription: "Notification Permission") { alert in
@@ -163,7 +165,7 @@ final class AnswerGuardUITests: XCTestCase {
 
         // 3. Alarm state (timer just went off — shows Silence button)
         app.terminate()
-        app.launchArguments = ["-ui-test-state", "alarm"]
+        app.launchArguments = ["-ui-test-reset-state", "-ui-test-state", "alarm"]
         app.launch()
         sleep(2)
         let alarmScreenshot = app.windows.firstMatch.screenshot()
@@ -172,7 +174,7 @@ final class AnswerGuardUITests: XCTestCase {
 
         // 4. Paused state
         app.terminate()
-        app.launchArguments = ["-ui-test-state", "paused"]
+        app.launchArguments = ["-ui-test-reset-state", "-ui-test-state", "paused"]
         app.launch()
         sleep(2)
         let pausedScreenshot = app.windows.firstMatch.screenshot()
@@ -182,7 +184,7 @@ final class AnswerGuardUITests: XCTestCase {
 
     func testLandscapeShowsActionButtons() {
         let app = XCUIApplication()
-        app.launchArguments += ["-ui-test-state", "alarm"]
+        app.launchArguments += ["-ui-test-reset-state", "-ui-test-state", "alarm"]
         app.launch()
 
         let originalOrientation = XCUIDevice.shared.orientation

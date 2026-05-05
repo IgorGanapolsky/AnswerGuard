@@ -137,6 +137,23 @@ jobs:
             --wait \
             --timeout 1200
 
+      - name: Ensure App Review contact details
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: /tmp/appstore_key.p8
+          APP_REVIEW_CONTACT_FIRST_NAME: ${{ secrets.APP_REVIEW_CONTACT_FIRST_NAME }}
+          APP_REVIEW_CONTACT_LAST_NAME: ${{ secrets.APP_REVIEW_CONTACT_LAST_NAME }}
+          APP_REVIEW_CONTACT_EMAIL: ${{ secrets.APP_REVIEW_CONTACT_EMAIL }}
+          APP_REVIEW_CONTACT_PHONE: ${{ secrets.APP_REVIEW_CONTACT_PHONE }}
+          APP_REVIEW_DEMO_ACCOUNT_REQUIRED: ${{ secrets.APP_REVIEW_DEMO_ACCOUNT_REQUIRED }}
+          APP_REVIEW_DEMO_ACCOUNT_NAME: ${{ secrets.APP_REVIEW_DEMO_ACCOUNT_NAME }}
+          APP_REVIEW_DEMO_ACCOUNT_PASSWORD: ${{ secrets.APP_REVIEW_DEMO_ACCOUNT_PASSWORD }}
+          APP_REVIEW_NOTES: ${{ secrets.APP_REVIEW_NOTES }}
+          IOS_VERSION: ${{ steps.asc_version.outputs.selected_version }}
+        run: |
+          python scripts/asc_ensure_review_detail.py --version "$IOS_VERSION"
+
       - name: Upload App Store metadata + screenshots
         env:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}

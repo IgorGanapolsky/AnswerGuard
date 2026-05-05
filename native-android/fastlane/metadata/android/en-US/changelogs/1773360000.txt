@@ -1,0 +1,1 @@
+AnswerGuard now includes privacy-first call screening, Android role onboarding, local spam verdicts, and a Pro purchase surface for advanced protection.

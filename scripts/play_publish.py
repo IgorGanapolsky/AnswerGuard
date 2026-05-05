@@ -8,6 +8,8 @@ import glob
 import json
 import mimetypes
 import os
+import re
+import struct
 import sys
 import time
 from dataclasses import dataclass
@@ -29,6 +31,16 @@ FAILED_PRECONDITION_MARKERS = (
     "failed_precondition",
     "precondition check failed",
 )
+DRAFT_APP_STATUS_MARKERS = (
+    "only releases with status draft may be created on draft app",
+)
+EDIT_EXPIRED_FRAGMENT = "this edit has expired"
+VERSION_CODE_USED_RE = re.compile(r"version code (?P<version_code>\d+) has already been used", re.IGNORECASE)
+PNG_SIG = b"\x89PNG\r\n\x1a\n"
+PLAY_IMAGE_DIMENSIONS = {
+    ("images", "icon.png"): (512, 512),
+    ("images", "featureGraphic", "feature.png"): (1024, 500),
+}
 
 
 @dataclass
@@ -60,6 +72,32 @@ def _mime_for(path: str) -> str:
     return mime or "application/octet-stream"
 
 
+def _png_dimensions(path: Path) -> tuple[int, int]:
+    with path.open("rb") as f:
+        header = f.read(24)
+    if len(header) < 24 or header[:8] != PNG_SIG:
+        raise ValueError("not a PNG")
+    return struct.unpack(">II", header[16:24])
+
+
+def _validate_play_image_dimensions(metadata_dir: Path) -> list[str]:
+    errors = []
+    for relative_parts, expected in PLAY_IMAGE_DIMENSIONS.items():
+        path = metadata_dir.joinpath(*relative_parts)
+        if not path.exists():
+            continue
+        try:
+            actual = _png_dimensions(path)
+        except Exception as exc:
+            errors.append(f"{path}: could not read PNG dimensions: {exc}")
+            continue
+        if actual != expected:
+            errors.append(
+                f"{path}: expected {expected[0]}x{expected[1]}, got {actual[0]}x{actual[1]}"
+            )
+    return errors
+
+
 def _extract_response_text(error: Exception) -> str:
     raw = getattr(error, "content", b"") or b""
     if isinstance(raw, (bytes, bytearray)):
@@ -72,6 +110,21 @@ def _is_failed_precondition(message: str, response_text: str, http_status: int |
     if any(marker in combined for marker in FAILED_PRECONDITION_MARKERS):
         return True
     return http_status == 400 and "precondition" in combined
+
+
+def _is_draft_app_status_error(message: str, response_text: str, http_status: int | None) -> bool:
+    combined = f"{message}\n{response_text}".lower()
+    return http_status == 400 and any(marker in combined for marker in DRAFT_APP_STATUS_MARKERS)
+
+
+def _is_edit_expired(message: str, response_text: str, http_status: int | None) -> bool:
+    combined = f"{message}\n{response_text}".lower()
+    return http_status == 400 and EDIT_EXPIRED_FRAGMENT in combined
+
+
+def _extract_used_version_code(message: str, response_text: str) -> str:
+    match = VERSION_CODE_USED_RE.search(f"{message}\n{response_text}")
+    return match.group("version_code") if match else ""
 
 
 def _is_transient_http(http_status: int | None, message: str) -> bool:
@@ -89,6 +142,15 @@ def _load_google_clients(credentials_path: Path):
         str(credentials_path), scopes=["https://www.googleapis.com/auth/androidpublisher"]
     )
     return build("androidpublisher", "v3", credentials=credentials)
+
+
+def _discard_edit(service: Any, package: str, edit_id: str | None) -> None:
+    if not edit_id:
+        return
+    try:
+        service.edits().delete(packageName=package, editId=edit_id).execute()
+    except Exception:
+        pass
 
 
 def _upload_images(service: Any, package: str, edit_id: str, language: str, image_type: str, pattern: str) -> None:
@@ -117,12 +179,22 @@ def _upload_images(service: Any, package: str, edit_id: str, language: str, imag
         ).execute()
 
 
+def _build_app_details(language: str, support_url: str, contact_email: str) -> dict[str, str]:
+    details = {"defaultLanguage": language}
+    if support_url:
+        details["contactWebsite"] = support_url
+    if contact_email:
+        details["contactEmail"] = contact_email
+    return details
+
+
 def _update_listing_and_assets(
     service: Any,
     package: str,
     edit_id: str,
     metadata_dir: Path,
     ios_support_url_path: Path,
+    contact_email: str,
 ) -> None:
     language = "en-US"
     listing = {}
@@ -148,18 +220,13 @@ def _update_listing_and_assets(
             body=listing,
         ).execute()
 
-    details = {"defaultLanguage": language}
     support_url = _read_text(ios_support_url_path)
-    if support_url:
-        details["contactWebsite"] = support_url
-    try:
-        service.edits().details().patch(
-            packageName=package,
-            editId=edit_id,
-            body=details,
-        ).execute()
-    except Exception:
-        pass
+    details = _build_app_details(language, support_url, contact_email)
+    service.edits().details().patch(
+        packageName=package,
+        editId=edit_id,
+        body=details,
+    ).execute()
 
     _upload_images(
         service,
@@ -224,6 +291,7 @@ def _publish_to_track(
     retry_interval_seconds: int,
     metadata_dir: Path,
     ios_support_url_path: Path,
+    contact_email: str,
     changelog_dir: Path,
     credentials_path: Path,
     user_fraction_raw: str,
@@ -237,16 +305,29 @@ def _publish_to_track(
 
     while True:
         attempt += 1
+        edit_id: str | None = None
         try:
             edit = service.edits().insert(body={}, packageName=package).execute()
             edit_id = edit["id"]
 
-            bundle = service.edits().bundles().upload(
-                packageName=package,
-                editId=edit_id,
-                media_body=MediaFileUpload(str(aab_path), mimetype="application/octet-stream"),
-            ).execute()
-            version_code = bundle["versionCode"]
+            try:
+                bundle = service.edits().bundles().upload(
+                    packageName=package,
+                    editId=edit_id,
+                    media_body=MediaFileUpload(str(aab_path), mimetype="application/octet-stream"),
+                ).execute()
+                version_code = bundle["versionCode"]
+            except HttpError as error:
+                message = str(error)
+                response_text = _extract_response_text(error)
+                version_code = _extract_used_version_code(message, response_text)
+                if not version_code:
+                    raise
+                print(
+                    f"⚠️ Version code {version_code} already exists in Play. "
+                    "Reusing it for track update.",
+                    file=sys.stderr,
+                )
 
             _update_listing_and_assets(
                 service=service,
@@ -254,6 +335,7 @@ def _publish_to_track(
                 edit_id=edit_id,
                 metadata_dir=metadata_dir,
                 ios_support_url_path=ios_support_url_path,
+                contact_email=contact_email,
             )
 
             notes_path = changelog_dir / f"{version_code}.txt"
@@ -281,11 +363,21 @@ def _publish_to_track(
             message = str(error)
             response_text = _extract_response_text(error)
             status = getattr(getattr(error, "resp", None), "status", None)
+            _discard_edit(service, package, edit_id)
             is_recent_reset = RESET_ERROR_FRAGMENT in f"{message}\n{response_text}".lower()
-            if (is_recent_reset or _is_transient_http(status, message)) and int(deadline - time.time()) > 0:
+            is_edit_expired = _is_edit_expired(message, response_text, status)
+            if (
+                (is_recent_reset or is_edit_expired or _is_transient_http(status, message))
+                and int(deadline - time.time()) > 0
+            ):
                 remaining = int(deadline - time.time())
-                sleep_for = min(retry_interval_seconds, remaining)
-                reason = "key reset propagation" if is_recent_reset else f"transient HTTP {status}"
+                sleep_for = min(15 if is_edit_expired else retry_interval_seconds, remaining)
+                if is_recent_reset:
+                    reason = "key reset propagation"
+                elif is_edit_expired:
+                    reason = "expired Play edit"
+                else:
+                    reason = f"transient HTTP {status}"
                 print(
                     f"⚠️ Play upload retry due to {reason} (track={track}, attempt={attempt}). "
                     f"Retrying in {sleep_for}s (remaining window: {remaining}s)...",
@@ -296,6 +388,7 @@ def _publish_to_track(
             raise PublishError(message=message, http_status=status, response_text=response_text, attempt=attempt)
         except Exception as error:
             message = str(error)
+            _discard_edit(service, package, edit_id)
             if _is_transient_http(None, message) and int(deadline - time.time()) > 0:
                 remaining = int(deadline - time.time())
                 sleep_for = min(retry_interval_seconds, remaining)
@@ -334,6 +427,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--result-json", default="/tmp/play-upload-result.json")
     parser.add_argument("--error-json", default="/tmp/play-upload-error.json")
     parser.add_argument("--user-fraction", default=os.getenv("PLAY_USER_FRACTION", "0.1"))
+    parser.add_argument(
+        "--contact-email",
+        default=os.getenv("PLAY_CONTACT_EMAIL", os.getenv("APP_REVIEW_CONTACT_EMAIL", "")),
+        help="Public Google Play support email; defaults to PLAY_CONTACT_EMAIL or APP_REVIEW_CONTACT_EMAIL.",
+    )
     return parser.parse_args()
 
 
@@ -362,76 +460,116 @@ def main() -> int:
     result_json_path = Path(args.result_json)
     error_json_path = Path(args.error_json)
     release_status = (args.release_status or "completed").strip() or "completed"
+    contact_email = (args.contact_email or "").strip()
+
+    if not contact_email:
+        print(
+            "❌ Google Play contact email is required. Set PLAY_CONTACT_EMAIL "
+            "or APP_REVIEW_CONTACT_EMAIL.",
+            file=sys.stderr,
+        )
+        return 2
+
+    image_dimension_errors = _validate_play_image_dimensions(metadata_dir)
+    if image_dimension_errors:
+        print("❌ Google Play image dimension preflight failed:", file=sys.stderr)
+        for error in image_dimension_errors:
+            print(f"  - {error}", file=sys.stderr)
+        return 2
 
     precondition_error_payload: dict[str, Any] | None = None
     for idx, track in enumerate(tracks):
-        try:
-            outcome = _publish_to_track(
-                package=package,
-                aab_path=aab_path,
-                track=track,
-                release_status=release_status,
-                retry_window_seconds=args.retry_window_seconds,
-                retry_interval_seconds=args.retry_interval_seconds,
-                metadata_dir=metadata_dir,
-                ios_support_url_path=ios_support_url_path,
-                changelog_dir=changelog_dir,
-                credentials_path=service_account_json,
-                user_fraction_raw=args.user_fraction,
-            )
-            fallback_used = track != requested_track
-            result_payload = {
-                "requested_track": requested_track,
-                "effective_track": track,
-                "fallback_used": fallback_used,
-                "precondition_blocked": bool(precondition_error_payload),
-                "release_status": release_status,
-                "version_code": outcome["version_code"],
-                "attempt": outcome["attempt"],
-                "fallback_reason": "FAILED_PRECONDITION" if fallback_used else "",
-            }
-            if precondition_error_payload:
-                result_payload["production_precondition_error"] = precondition_error_payload
-            _write_json(result_json_path, result_payload)
-            print(
-                f"✅ Uploaded version code {outcome['version_code']} to '{track}' track "
-                f"(requested={requested_track}, status={release_status}, fallback_used={fallback_used})"
-            )
-            return 0
-        except PublishError as error:
-            payload = {
-                "package": package,
-                "requested_track": requested_track,
-                "track": track,
-                "release_status": release_status,
-                "attempt": error.attempt,
-                "http_status": error.http_status,
-                "error": error.message,
-                "response": error.response_text,
-            }
-            _write_json(error_json_path, payload)
-            is_production_precondition = (
-                idx == 0
-                and track == "production"
-                and _is_failed_precondition(error.message, error.response_text, error.http_status)
-            )
-            if is_production_precondition and len(tracks) > 1:
-                precondition_error_payload = payload
-                print(
-                    "⚠️ Production publish blocked by FAILED_PRECONDITION. "
-                    f"Falling back to '{tracks[1]}' for continuity.",
-                    file=sys.stderr,
+        effective_release_status = release_status
+        draft_status_error_payload: dict[str, Any] | None = None
+        while True:
+            try:
+                outcome = _publish_to_track(
+                    package=package,
+                    aab_path=aab_path,
+                    track=track,
+                    release_status=effective_release_status,
+                    retry_window_seconds=args.retry_window_seconds,
+                    retry_interval_seconds=args.retry_interval_seconds,
+                    metadata_dir=metadata_dir,
+                    ios_support_url_path=ios_support_url_path,
+                    contact_email=contact_email,
+                    changelog_dir=changelog_dir,
+                    credentials_path=service_account_json,
+                    user_fraction_raw=args.user_fraction,
                 )
-                continue
-            if error.response_text:
+                fallback_used = track != requested_track
+                draft_release_used = effective_release_status != release_status
+                result_payload = {
+                    "requested_track": requested_track,
+                    "effective_track": track,
+                    "fallback_used": fallback_used,
+                    "precondition_blocked": bool(precondition_error_payload),
+                    "requested_release_status": release_status,
+                    "release_status": effective_release_status,
+                    "draft_release_used": draft_release_used,
+                    "version_code": outcome["version_code"],
+                    "attempt": outcome["attempt"],
+                    "fallback_reason": "FAILED_PRECONDITION" if fallback_used else "",
+                }
+                if precondition_error_payload:
+                    result_payload["production_precondition_error"] = precondition_error_payload
+                if draft_status_error_payload:
+                    result_payload["draft_app_status_error"] = draft_status_error_payload
+                _write_json(result_json_path, result_payload)
                 print(
-                    f"❌ Google Play upload failed on track '{track}': {error.message}\n\n"
-                    f"Response:\n{error.response_text}",
-                    file=sys.stderr,
+                    f"✅ Uploaded version code {outcome['version_code']} to '{track}' track "
+                    f"(requested={requested_track}, status={effective_release_status}, "
+                    f"fallback_used={fallback_used}, draft_release_used={draft_release_used})"
                 )
-            else:
-                print(f"❌ Google Play upload failed on track '{track}': {error.message}", file=sys.stderr)
-            return 1
+                return 0
+            except PublishError as error:
+                payload = {
+                    "package": package,
+                    "requested_track": requested_track,
+                    "track": track,
+                    "release_status": effective_release_status,
+                    "attempt": error.attempt,
+                    "http_status": error.http_status,
+                    "error": error.message,
+                    "response": error.response_text,
+                }
+                _write_json(error_json_path, payload)
+
+                if effective_release_status != "draft" and _is_draft_app_status_error(
+                    error.message,
+                    error.response_text,
+                    error.http_status,
+                ):
+                    draft_status_error_payload = payload
+                    effective_release_status = "draft"
+                    print(
+                        "⚠️ Play app is still draft-only. Retrying upload with release status 'draft'.",
+                        file=sys.stderr,
+                    )
+                    continue
+
+                is_production_precondition = (
+                    idx == 0
+                    and track == "production"
+                    and _is_failed_precondition(error.message, error.response_text, error.http_status)
+                )
+                if is_production_precondition and len(tracks) > 1:
+                    precondition_error_payload = payload
+                    print(
+                        "⚠️ Production publish blocked by FAILED_PRECONDITION. "
+                        f"Falling back to '{tracks[1]}' for continuity.",
+                        file=sys.stderr,
+                    )
+                    break
+                if error.response_text:
+                    print(
+                        f"❌ Google Play upload failed on track '{track}': {error.message}\n\n"
+                        f"Response:\n{error.response_text}",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(f"❌ Google Play upload failed on track '{track}': {error.message}", file=sys.stderr)
+                return 1
 
     print("❌ No publish tracks attempted.", file=sys.stderr)
     return 1

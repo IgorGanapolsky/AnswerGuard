@@ -1,0 +1,34 @@
+project:
+  name: AnswerGuard
+  type: mobile
+  platform: native-ios-android
+
+branches:
+  main:
+    protection:
+      required_reviews: 1
+      dismiss_stale_reviews: true
+      require_up_to_date: true
+      status_checks:
+        - "CI"
+        - "Security"
+  develop:
+    protection:
+      required_reviews: 1
+      dismiss_stale_reviews: true
+      status_checks:
+        - "CI"
+
+automation:
+  pr_review:
+    enabled: true
+  issue_triage:
+    enabled: true
+  release_readback:
+    enabled: true
+
+quality:
+  android:
+    required_local_gate: "cd native-android && ./gradlew testDebugUnitTest assembleDebug"
+  ios:
+    required_local_gate: "cd native-ios && xcodebuild test -scheme AnswerGuard"

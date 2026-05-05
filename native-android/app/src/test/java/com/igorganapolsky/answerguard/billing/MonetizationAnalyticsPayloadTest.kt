@@ -11,12 +11,12 @@ class MonetizationAnalyticsPayloadTest {
             MonetizationAnalyticsPayload.attemptProperties(
                 source = MonetizationSources.PAYWALL,
                 entryPoint = "setup_upgrade_cta",
-                productID = "pro_base",
+                productID = ProManager.BASE_PRODUCT_ID,
             )
 
         assertThat(properties[AnalyticsProperties.ENTRY_POINT]).isEqualTo("setup_upgrade_cta")
         assertThat(properties[AnalyticsProperties.SOURCE]).isEqualTo(MonetizationSources.PAYWALL)
-        assertThat(properties[AnalyticsProperties.PRODUCT_ID]).isEqualTo("pro_base")
+        assertThat(properties[AnalyticsProperties.PRODUCT_ID]).isEqualTo(ProManager.BASE_PRODUCT_ID)
     }
 
     @Test
@@ -25,7 +25,7 @@ class MonetizationAnalyticsPayloadTest {
             MonetizationAnalyticsPayload.successProperties(
                 source = MonetizationSources.BILLING_CALLBACK,
                 entryPoint = null,
-                productID = "elite_tactical",
+                productID = ProManager.ELITE_PRODUCT_ID,
                 responseCode = 0,
                 debugMessage = "ok",
             )
@@ -35,7 +35,7 @@ class MonetizationAnalyticsPayloadTest {
         assertThat(properties[AnalyticsProperties.SUCCESS]).isEqualTo(true)
         assertThat(properties[AnalyticsProperties.RESPONSE_CODE]).isEqualTo(0)
         assertThat(properties[AnalyticsProperties.DEBUG_MESSAGE]).isEqualTo("ok")
-        assertThat(properties[AnalyticsProperties.PRODUCT_ID]).isEqualTo("elite_tactical")
+        assertThat(properties[AnalyticsProperties.PRODUCT_ID]).isEqualTo(ProManager.ELITE_PRODUCT_ID)
     }
 
     @Test

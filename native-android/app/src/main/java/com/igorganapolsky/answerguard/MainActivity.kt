@@ -1,62 +1,91 @@
 package com.igorganapolsky.answerguard
 
-import android.Manifest
+import android.app.role.RoleManager
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.core.content.ContextCompat
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
-import com.igorganapolsky.answerguard.notifications.ReengagementScheduler
-import com.igorganapolsky.answerguard.service.TimerForegroundService
-import com.igorganapolsky.answerguard.ui.navigation.AnswerGuardNavHost
-import com.igorganapolsky.answerguard.ui.theme.AnswerGuardTheme
-import com.igorganapolsky.answerguard.ui.theme.TimerColors
+import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
+import com.igorganapolsky.answerguard.billing.ProManager
+import com.igorganapolsky.answerguard.screening.RoleOnboardingActivity
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var analyticsService: AnalyticsService
+    @Inject lateinit var proManager: ProManager
 
-    private val notificationPermissionLauncher =
-        registerForActivityResult(
-            ActivityResultContracts.RequestPermission(),
-        ) { isGranted ->
-            // Handle permission result if needed
+    private var callScreeningEnabled by mutableStateOf(false)
+
+    private val roleRequestLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            refreshCallScreeningStatus()
+            if (callScreeningEnabled) {
+                analyticsService.track(AnalyticsEvents.CALL_SCREENING_ENABLED)
+                analyticsService.trackFirstProtectionEnabledIfNeeded()
+            }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Show timer UI over lock screen (like Samsung Clock)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
-
         enableEdgeToEdge()
-        requestNotificationPermission()
-        handleAlarmNotificationTap(intent)
         handleDeepLink(intent)
-
-        // User is back — cancel any pending re-engagement reminders
-        ReengagementScheduler.cancel(this)
+        refreshCallScreeningStatus()
 
         setContent {
             AnswerGuardTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = TimerColors.BackgroundDark,
+                    color = AnswerGuardColors.Background,
                 ) {
-                    AnswerGuardNavHost()
+                    AnswerGuardHome(
+                        callScreeningEnabled = callScreeningEnabled,
+                        onEnable = ::requestCallScreeningRole,
+                        onRefresh = ::refreshCallScreeningStatus,
+                        onUpgrade = ::launchProPurchase,
+                        onRestore = ::restorePurchases,
+                    )
                 }
             }
         }
@@ -64,68 +93,301 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleAlarmNotificationTap(intent)
         handleDeepLink(intent)
     }
 
     override fun onResume() {
         super.onResume()
-        // Tell service app is in foreground - suppress notifications
-        sendAppStateToService(isInForeground = true)
+        refreshCallScreeningStatus()
     }
 
-    override fun onPause() {
-        super.onPause()
-        // Tell service app is in background - show notifications
-        sendAppStateToService(isInForeground = false)
-    }
-
-    private fun handleAlarmNotificationTap(intent: Intent?) {
-        if (intent?.getBooleanExtra(TimerForegroundService.EXTRA_FROM_ALARM_NOTIFICATION, false) == true) {
-            // User tapped the alarm notification — stop sound/vibration but keep alarm screen.
-            // The alarm screen shows because timerState.status == ALARM.
-            val silenceIntent =
-                Intent(this, TimerForegroundService::class.java).apply {
-                    action = TimerForegroundService.ACTION_SILENCE_ALARM
-                }
-            startService(silenceIntent)
-            intent.removeExtra(TimerForegroundService.EXTRA_FROM_ALARM_NOTIFICATION)
-        }
-
-        if (intent?.getBooleanExtra(TimerForegroundService.EXTRA_FROM_ALARM_STOP_ACTION, false) == true) {
-            // User tapped the alarm notification Stop action — dismiss alarm and go home.
-            val dismissIntent =
-                Intent(this, TimerForegroundService::class.java).apply {
-                    action = TimerForegroundService.ACTION_DISMISS_ALARM
-                }
-            startService(dismissIntent)
-            intent.removeExtra(TimerForegroundService.EXTRA_FROM_ALARM_STOP_ACTION)
-        }
-    }
-
-    private fun sendAppStateToService(isInForeground: Boolean) {
-        val intent =
-            Intent(this, TimerForegroundService::class.java).apply {
-                action = TimerForegroundService.ACTION_APP_STATE_CHANGED
-                putExtra(TimerForegroundService.EXTRA_APP_IN_FOREGROUND, isInForeground)
+    private fun refreshCallScreeningStatus() {
+        callScreeningEnabled =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val roleManager = getSystemService(RoleManager::class.java)
+                roleManager.isRoleAvailable(RoleManager.ROLE_CALL_SCREENING) &&
+                    roleManager.isRoleHeld(RoleManager.ROLE_CALL_SCREENING)
+            } else {
+                false
             }
-        startService(intent)
+    }
+
+    private fun requestCallScreeningRole() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        roleRequestLauncher.launch(Intent(this, RoleOnboardingActivity::class.java))
+    }
+
+    private fun launchProPurchase() {
+        lifecycleScope.launch {
+            proManager.launchPurchase(
+                activity = this@MainActivity,
+                productID = ProManager.BASE_PRODUCT_ID,
+                entryPoint = "home_pro_card",
+            )
+        }
+    }
+
+    private fun restorePurchases() {
+        lifecycleScope.launch {
+            proManager.restorePurchasesFromPaywall(entryPoint = "home_pro_card")
+        }
     }
 
     private fun handleDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
         analyticsService.trackDeepLink(uri)
     }
+}
 
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS,
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+private object AnswerGuardColors {
+    val Background = Color(0xFF0B1014)
+    val Surface = Color(0xFF121A20)
+    val SurfaceMuted = Color(0xFF182229)
+    val Primary = Color(0xFF2DD4BF)
+    val Warning = Color(0xFFF59E0B)
+    val TextPrimary = Color(0xFFF8FAFC)
+    val TextSecondary = Color(0xFFB6C2CC)
+}
+
+@Composable
+private fun AnswerGuardTheme(content: @Composable () -> Unit) {
+    MaterialTheme(content = content)
+}
+
+@Composable
+private fun AnswerGuardHome(
+    callScreeningEnabled: Boolean,
+    onEnable: () -> Unit,
+    onRefresh: () -> Unit,
+    onUpgrade: () -> Unit,
+    onRestore: () -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(AnswerGuardColors.Background)
+                .padding(24.dp),
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Header()
+            StatusCard(callScreeningEnabled = callScreeningEnabled, onEnable = onEnable, onRefresh = onRefresh)
+            ProCard(onUpgrade = onUpgrade, onRestore = onRestore)
+            HowItWorks()
+            PrivacyCard()
+        }
+    }
+}
+
+@Composable
+private fun ProCard(
+    onUpgrade: () -> Unit,
+    onRestore: () -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "AnswerGuard Pro",
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Unlock advanced spam rules and family protection as they roll out.",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                    onClick = onUpgrade,
+                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Upgrade",
+                        color = Color(0xFF06211E),
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                Button(
+                    onClick = onRestore,
+                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        text = "Restore",
+                        color = AnswerGuardColors.TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun Header() {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "AnswerGuard",
+            color = AnswerGuardColors.TextPrimary,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = "Spam and scam call protection that runs locally on your phone.",
+            color = AnswerGuardColors.TextSecondary,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}
+
+@Composable
+private fun StatusCard(
+    callScreeningEnabled: Boolean,
+    onEnable: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StatusDot(enabled = callScreeningEnabled)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Call Screening",
+                        color = AnswerGuardColors.TextPrimary,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = if (callScreeningEnabled) "Active" else "Not enabled",
+                        color = if (callScreeningEnabled) AnswerGuardColors.Primary else AnswerGuardColors.Warning,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+
+            Button(
+                onClick = if (callScreeningEnabled) onRefresh else onEnable,
+                colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = if (callScreeningEnabled) "Refresh Status" else "Enable Call Screening",
+                    color = Color(0xFF06211E),
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusDot(enabled: Boolean) {
+    Box(
+        modifier =
+            Modifier
+                .size(14.dp)
+                .background(
+                    color = if (enabled) AnswerGuardColors.Primary else AnswerGuardColors.Warning,
+                    shape = RoundedCornerShape(7.dp),
+                ),
+    )
+}
+
+@Composable
+private fun HowItWorks() {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.SurfaceMuted),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "How it works",
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Step("1", "Enable AnswerGuard as your call screening app in Android settings.")
+            Step("2", "Incoming calls are checked locally against confirmed spam patterns.")
+            Step("3", "Unknown calls are allowed by default unless they match a conservative spam rule.")
+        }
+    }
+}
+
+@Composable
+private fun Step(number: String, text: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        Text(
+            text = number,
+            color = AnswerGuardColors.Primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(24.dp),
+        )
+        Text(
+            text = text,
+            color = AnswerGuardColors.TextSecondary,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun PrivacyCard() {
+    val context = LocalContext.current
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Privacy first",
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "AnswerGuard does not upload your call history. Screening decisions happen on-device.",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "Package: ${context.packageName}",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall,
+            )
         }
     }
 }

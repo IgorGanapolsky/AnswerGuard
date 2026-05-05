@@ -8,6 +8,35 @@ platform :ios do
     false
   end
 
+  def duplicate_testflight_build_error?(error)
+    msg = error.to_s
+    return true if msg.include?("bundle version must be higher than the previously uploaded version")
+    return true if msg.include?("value that has already been used")
+    return true if msg.include?("Redundant Binary Upload")
+    return true if msg.include?("You've already uploaded a build with build number")
+    return true if msg.include?("already exists")
+    false
+  end
+
+  def testflight_upload_options(api_key)
+    options = {
+      skip_waiting_for_build_processing: false,
+      api_key: api_key
+    }
+
+    distribute_external = ENV.fetch("TESTFLIGHT_DISTRIBUTE_EXTERNAL", "false") == "true"
+    return options unless distribute_external
+
+    group_names = ENV.fetch("TESTFLIGHT_GROUPS", "").split(",").map(&:strip).reject(&:empty?)
+    UI.user_error!("TESTFLIGHT_GROUPS required when TESTFLIGHT_DISTRIBUTE_EXTERNAL=true") if group_names.empty?
+
+    options[:groups] = group_names
+    options[:distribute_external] = true
+    options[:notify_external_testers] = ENV.fetch("TESTFLIGHT_NOTIFY_EXTERNAL_TESTERS", "false") == "true"
+    options[:changelog] = ENV.fetch("TESTFLIGHT_CHANGELOG", "Internal build from #{ENV.fetch('GITHUB_SHA', 'local')[0..7]}")
+    options
+  end
+
   desc "Build and upload to TestFlight"
   lane :beta do
     setup_ci if ENV["CI"] == "true"
@@ -81,9 +110,11 @@ platform :ios do
         profile_name: widget_profile
       )
 
-      build_app(
+      build_opts = {
         scheme: "AnswerGuard",
         export_method: "app-store",
+        output_directory: ".",
+        output_name: "AnswerGuard",
         export_options: {
           signingStyle: "manual",
           provisioningProfiles: {
@@ -91,21 +122,72 @@ platform :ios do
             "com.igorganapolsky.answerguard.widget" => widget_profile
           }
         }
-      )
+      }
+      build_opts[:xcargs] = "POSTHOG_API_KEY=#{ENV['POSTHOG_API_KEY']}" unless ENV["POSTHOG_API_KEY"].to_s.empty?
+      build_app(**build_opts)
     else
       # Local/dev fallback when match is not configured.
+      posthog_xcargs = ENV["POSTHOG_API_KEY"].to_s.empty? ? "-allowProvisioningUpdates" : "-allowProvisioningUpdates POSTHOG_API_KEY=#{ENV['POSTHOG_API_KEY']}"
       build_app(
         scheme: "AnswerGuard",
         export_method: "app-store",
-        xcargs: "-allowProvisioningUpdates"
+        output_directory: ".",
+        output_name: "AnswerGuard",
+        xcargs: posthog_xcargs
       )
     end
 
-    # Upload to TestFlight
-    upload_to_testflight(
-      skip_waiting_for_build_processing: false,
-      api_key: defined?(api_key) ? api_key : nil
-    )
+    testflight_api_key = defined?(api_key) ? api_key : nil
+    upload_attempts = 0
+    begin
+      upload_to_testflight(**testflight_upload_options(testflight_api_key))
+    rescue => e
+      raise unless duplicate_testflight_build_error?(e)
+      raise if upload_attempts >= 1 || !defined?(api_key)
+
+      upload_attempts += 1
+      latest_remote_build_number = latest_testflight_build_number(
+        api_key: api_key,
+        app_identifier: "com.igorganapolsky.answerguard",
+        version: marketing_version,
+        initial_build_number: next_build_number
+      ).to_i
+      next_build_number = [next_build_number + 1, latest_remote_build_number + 1].max
+      UI.important("Retrying TestFlight upload with build #{next_build_number} after duplicate build rejection.")
+      increment_build_number(
+        xcodeproj: "AnswerGuard.xcodeproj",
+        build_number: next_build_number
+      )
+
+      if ENV["CI"] == "true" && ENV["MATCH_GIT_URL"]
+        build_opts = {
+          scheme: "AnswerGuard",
+          export_method: "app-store",
+          output_directory: ".",
+          output_name: "AnswerGuard",
+          export_options: {
+            signingStyle: "manual",
+            provisioningProfiles: {
+              "com.igorganapolsky.answerguard" => app_profile,
+              "com.igorganapolsky.answerguard.widget" => widget_profile
+            }
+          }
+        }
+        build_opts[:xcargs] = "POSTHOG_API_KEY=#{ENV['POSTHOG_API_KEY']}" unless ENV["POSTHOG_API_KEY"].to_s.empty?
+        build_app(**build_opts)
+      else
+        posthog_xcargs = ENV["POSTHOG_API_KEY"].to_s.empty? ? "-allowProvisioningUpdates" : "-allowProvisioningUpdates POSTHOG_API_KEY=#{ENV['POSTHOG_API_KEY']}"
+        build_app(
+          scheme: "AnswerGuard",
+          export_method: "app-store",
+          output_directory: ".",
+          output_name: "AnswerGuard",
+          xcargs: posthog_xcargs
+        )
+      end
+
+      retry
+    end
   end
 
   desc "Create app in App Store Connect"
@@ -252,7 +334,7 @@ platform :ios do
       match(
         type: "appstore",
         app_identifier: ["com.igorganapolsky.answerguard", "com.igorganapolsky.answerguard.widget"],
-        readonly: false,
+        readonly: true,
         api_key: api_key
       )
     else

@@ -1,0 +1,64 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 1
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - "automation"
+      - "type: enhancement"
+
+  - package-ecosystem: "gradle"
+    directory: "/native-android"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:30"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 1
+    groups:
+      android-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "automation"
+      - "platform: android"
+
+  - package-ecosystem: "npm"
+    directory: "/tests/playwright"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 1
+    groups:
+      playwright-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "automation"
+
+  - package-ecosystem: "bundler"
+    directory: "/native-ios"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:30"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 1
+    groups:
+      ios-bundler-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "automation"
+      - "platform: ios"

@@ -148,20 +148,20 @@ class AnalyticsService
             }
         }
 
-        fun trackFirstTimerConfiguredIfNeeded() {
+        fun trackFirstProtectionEnabledIfNeeded() {
             if (!initialized) return
             val hasConfigured = prefs?.getBoolean(KEY_HAS_CONFIGURED, false) ?: false
             if (!hasConfigured) {
-                track(AnalyticsEvents.FIRST_TIMER_CONFIGURED)
+                track(AnalyticsEvents.FIRST_PROTECTION_ENABLED)
                 prefs?.edit()?.putBoolean(KEY_HAS_CONFIGURED, true)?.apply()
             }
         }
 
-        fun trackFirstTimerCompletedIfNeeded() {
+        fun trackFirstSpamBlockedIfNeeded() {
             if (!initialized) return
             val hasCompleted = prefs?.getBoolean(KEY_HAS_COMPLETED, false) ?: false
             if (!hasCompleted) {
-                track(AnalyticsEvents.FIRST_TIMER_COMPLETED)
+                track(AnalyticsEvents.FIRST_SPAM_BLOCKED)
                 prefs?.edit()?.putBoolean(KEY_HAS_COMPLETED, true)?.apply()
             }
         }
@@ -223,7 +223,7 @@ class AnalyticsService
         }
 
         companion object {
-            private const val PREFS_NAME = "random_timer_analytics"
+            private const val PREFS_NAME = "answerguard_analytics"
             private const val KEY_DISTINCT_ID = "posthog_distinct_id"
             private const val KEY_HAS_OPENED = "has_first_opened"
             private const val KEY_HAS_CONFIGURED = "has_first_configured"
@@ -244,16 +244,11 @@ class AnalyticsService
 object AnalyticsEvents {
     const val APPLICATION_INSTALLED = "Application Installed"
     const val APPLICATION_OPENED = "Application Opened"
-    const val TIMER_STARTED = "timer_started"
-    const val TIMER_COMPLETED = "timer_completed"
-    const val TIMER_PAUSED = "timer_paused"
-    const val TIMER_RESUMED = "timer_resumed"
-    const val TIMER_RESET = "timer_reset"
-    const val TIMER_STOPPED = "timer_stopped"
-    const val ALARM_TRIGGERED = "alarm_triggered"
-    const val ALARM_DISMISSED = "alarm_dismissed"
-    const val TIMER_ABANDONED = "timer_abandoned"
-    const val TIMER_COUNTDOWN_FINISHED = "timer_countdown_finished"
+    const val CALL_SCREENING_ENABLED = "call_screening_enabled"
+    const val CALL_SCREENING_STATUS_REFRESHED = "call_screening_status_refreshed"
+    const val CALL_SCREENED = "call_screened"
+    const val SPAM_CALL_BLOCKED = "spam_call_blocked"
+    const val SPAM_CALL_SILENCED = "spam_call_silenced"
     const val SETTINGS_CHANGED = "settings_changed"
     const val REVIEW_PROMPT_REQUESTED = "review_prompt_requested"
     const val WRITE_REVIEW_TAPPED = "write_review_tapped"
@@ -270,8 +265,8 @@ object AnalyticsEvents {
 
     // Onboarding Funnel
     const val FIRST_OPEN = "first_open"
-    const val FIRST_TIMER_CONFIGURED = "first_timer_configured"
-    const val FIRST_TIMER_COMPLETED = "first_timer_completed"
+    const val FIRST_PROTECTION_ENABLED = "first_protection_enabled"
+    const val FIRST_SPAM_BLOCKED = "first_spam_blocked"
 }
 
 object AnalyticsProperties {
@@ -290,6 +285,6 @@ object AnalyticsProperties {
 }
 
 object AnalyticsScreens {
-    const val TIMER_SETUP = "Timer Setup"
-    const val ACTIVE_TIMER = "Active Timer"
+    const val HOME = "Home"
+    const val PROTECTION = "Protection"
 }

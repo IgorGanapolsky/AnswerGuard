@@ -7,14 +7,15 @@
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](native-ios/)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1-7F52FF?logo=kotlin&logoColor=white)](native-android/)
 
-`AnswerGuard` is a native iOS + Android bootstrap for a privacy-first spam and scam call screening app.
+`AnswerGuard` is a native iOS + Android app for privacy-first spam and scam call protection.
 
-This repository currently preserves the mobile project structure, release automation, Fastlane setup, and GitHub Actions backbone adapted from `Random-Timer`. The copied app code is still scaffold material, not a finished call-blocking product. Build and release infrastructure is in place; the actual spam-call experience still needs to be implemented.
+The repo keeps the release automation, Fastlane setup, and GitHub Actions backbone adapted from `Random-Timer`, while the product surface is now focused on AnswerGuard call screening.
 
 ## What’s Included
 
 - Native Android project in [`native-android/`](native-android/)
 - Native iOS project in [`native-ios/`](native-ios/)
+- Android `CallScreeningService` and role onboarding flow
 - GitHub Actions CI/CD in [`.github/workflows/`](.github/workflows/)
 - Fastlane setup for Android and iOS store delivery
 - Shared local commands in [`Makefile`](Makefile)
@@ -61,9 +62,10 @@ make maestro-android
 
 Target positioning for `AnswerGuard`:
 
-- Reduce spam and bot call interruptions
-- Help users avoid missing legitimate unknown callers
-- Stay privacy-first and transparent about decisions
+- Block only confirmed spam by default
+- Silence suspicious calls instead of aggressively rejecting unknown callers
+- Keep call history and personal block lists local
+- Build monetization around advanced rules and family protection, not data resale
 
 ## License
 

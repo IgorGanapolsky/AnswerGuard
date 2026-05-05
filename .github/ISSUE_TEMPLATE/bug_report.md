@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in Random Tactical Timer
+about: Report a bug in AnswerGuard
 title: "[Bug] "
 labels: bug
 assignees: ''

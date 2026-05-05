@@ -1,19 +1,604 @@
 name: CI
+
 on:
-  push:
-    branches: [main, master, develop]
   pull_request:
-    branches: [main, master, develop]
+    branches: [develop, main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+  merge_group:
+    types: [checks_requested]
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  trunk-check:
-    name: Trunk Check
+  lint:
+    name: Architecture Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Trunk Check
-        uses: trunk-io/trunk-action@v1
-        with:
-          trunk-token: ${{ secrets.TRUNK_API_TOKEN }}
+      - uses: actions/checkout@v4
 
+      - name: Architecture ban checks (Kotlin)
+        run: |
+          ERRORS=0
+          for f in $(find native-android -name '*.kt' -not -path '*/build/*'); do
+            if grep -n 'AndroidViewModel' "$f" | grep -v '// allow-android-viewmodel' > /dev/null 2>&1; then
+              echo "❌ $f: Uses AndroidViewModel"
+              ERRORS=$((ERRORS + 1))
+            fi
+            if grep -n '\.collectAsState()' "$f" > /dev/null 2>&1; then
+              echo "❌ $f: Uses .collectAsState() instead of .collectAsStateWithLifecycle()"
+              ERRORS=$((ERRORS + 1))
+            fi
+            if grep -n 'Handler(Looper' "$f" | grep -v '// allow-handler' > /dev/null 2>&1; then
+              echo "❌ $f: Uses Handler(Looper) instead of coroutines"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "Found $ERRORS architecture violation(s)"
+            exit 1
+          fi
+          echo "✅ No architecture violations found"
+
+      - name: UI state binding audit
+        run: |
+          ERRORS=0
+          SCREENS_DIR="native-android/app/src/main/java/com/igorganapolsky/answerguard/ui/screens"
+
+          # Ban hardcoded progress values in CircularTimer calls
+          for f in $(find "$SCREENS_DIR" -name '*.kt'); do
+            if grep -Pn 'progress\s*=\s*(if\s*\(|0f|1f)' "$f" | grep -v '// allow-hardcoded-progress' > /dev/null 2>&1; then
+              echo "❌ $f: Hardcoded progress value — use state.progress instead"
+              ERRORS=$((ERRORS + 1))
+            fi
+          done
+
+          # Ban ignoring state fields when passing to UI components
+          for f in $(find "$SCREENS_DIR" -name '*.kt'); do
+            if grep -Pn 'CircularTimer\(' "$f" > /dev/null 2>&1; then
+              # Verify state.progress is used (not a ternary or literal)
+              if ! grep -P 'progress\s*=\s*state\.progress' "$f" > /dev/null 2>&1; then
+                echo "⚠️  $f: CircularTimer may not be using state.progress — verify manually"
+              fi
+            fi
+          done
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "Found $ERRORS UI state binding violation(s)"
+            exit 1
+          fi
+          echo "✅ UI state binding audit passed"
+
+  python:
+    name: Legacy Python Compile Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile Python sources
+        run: |
+          set -euo pipefail
+          TARGETS=()
+          [[ -f scripts/rag_memory.py ]] && TARGETS+=("scripts/rag_memory.py")
+          if [[ -d tools/rag ]]; then
+            while IFS= read -r -d '' f; do
+              TARGETS+=("$f")
+            done < <(find tools/rag -type f -name '*.py' -print0 | sort -z)
+          fi
+          if [[ ${#TARGETS[@]} -eq 0 ]]; then
+            echo "No legacy Python targets found; skipping."
+            exit 0
+          fi
+          python -m py_compile "${TARGETS[@]}"
+
+  android:
+    name: Autonomous Android Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: native-android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant execute permission
+        run: chmod +x gradlew
+
+      - name: Create dummy google-services.json for CI
+        run: |
+          cat > app/google-services.json << 'GSEOF'
+          {
+            "project_info": { "project_number": "000000000000", "project_id": "answerguard-ci", "storage_bucket": "answerguard-ci.appspot.com" },
+            "client": [{ "client_info": { "mobilesdk_app_id": "1:000000000000:android:0000000000000000", "android_client_info": { "package_name": "com.igorganapolsky.answerguard" } }, "api_key": [{ "current_key": "CI_PLACEHOLDER" }] }],
+            "configuration_version": "1"
+          }
+          GSEOF
+
+      - name: Run unit tests with coverage
+        run: ./gradlew testDebugUnitTest jacocoDebugUnitTestReport --no-daemon
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: native-android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Android coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-unit-coverage
+          path: |
+            native-android/app/build/reports/tests/testDebugUnitTest
+            native-android/app/build/reports/jacoco/jacocoDebugUnitTestReport
+            native-android/app/build/jacoco/testDebugUnitTest.exec
+
+  ios:
+    name: Autonomous iOS Build Check
+    runs-on: macos-15
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: native-ios
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          XCODE_PATH=""
+          while IFS= read -r candidate; do
+            if DEVELOPER_DIR="${candidate}/Contents/Developer" xcodebuild -showsdks 2>/dev/null | grep -q 'iphonesimulator' \
+              && DEVELOPER_DIR="${candidate}/Contents/Developer" xcrun simctl list devices available 2>/dev/null | grep -q 'iPhone'; then
+              XCODE_PATH="${candidate}"
+              break
+            fi
+          done < <(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V -r)
+
+          if [ -z "${XCODE_PATH}" ]; then
+            echo "No Xcode installation with iOS Simulator SDK found."
+            ls -d /Applications/Xcode*.app 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Using Xcode at: ${XCODE_PATH}"
+          sudo xcode-select -s "${XCODE_PATH}/Contents/Developer"
+          xcodebuild -version
+
+      - name: Resolve simulator destination
+        id: sim
+        run: |
+          # Ask xcodebuild for valid destinations for this exact scheme and pick
+          # the first iOS Simulator destination it accepts.
+          SIM_ID=$(xcodebuild -project AnswerGuard.xcodeproj -scheme AnswerGuard -showdestinations 2>/dev/null | \
+            grep 'platform:iOS Simulator' | \
+            grep -v 'Any iOS Simulator Device' | \
+            sed -nE 's/.*id:([0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}).*/\1/p' | \
+            head -n 1)
+          if [ -z "${SIM_ID}" ]; then
+            echo "No valid iOS Simulator destination found for AnswerGuard."
+            xcodebuild -project AnswerGuard.xcodeproj -scheme AnswerGuard -showdestinations
+            exit 1
+          fi
+          echo "sim_id=${SIM_ID}" >> "$GITHUB_OUTPUT"
+          echo "Using xcodebuild destination simulator ID: ${SIM_ID}"
+
+      - name: Build for testing
+        run: |
+          xcodebuild build-for-testing \
+            -project AnswerGuard.xcodeproj \
+            -scheme AnswerGuard \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.sim_id }}' \
+            -skip-testing:AnswerGuardUITests \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Run unit tests
+        run: |
+          rm -rf build/TestResults.xcresult
+          xcodebuild test \
+            -project AnswerGuard.xcodeproj \
+            -scheme AnswerGuard \
+            -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.sim_id }}' \
+            -only-testing:AnswerGuardTests/SpamDatabaseTests \
+            -skip-testing:AnswerGuardUITests \
+            -enableCodeCoverage YES \
+            -resultBundlePath build/TestResults.xcresult \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload iOS xcresult
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results-xcresult
+          path: native-ios/build/TestResults.xcresult
+          if-no-files-found: warn
+
+  playwright-local:
+    name: Playwright Local Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/playwright
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tests/playwright/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Playwright strict local verification
+        run: npm run verify:strict
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-local-artifacts
+          path: |
+            tests/playwright/playwright-report
+            tests/playwright/test-results
+
+  python-scripts:
+    name: Python Script Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest==8.4.2 pytest-cov==7.0.0 pillow==11.3.0
+
+      - name: Run unit tests
+        run: python -m pytest scripts/tests/ -q --cov=scripts --cov-report=term --cov-report=xml:coverage-python.xml
+
+      - name: Upload Python coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage-xml
+          path: coverage-python.xml
+          if-no-files-found: error
+
+      - name: Upload Python coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
+        with:
+          files: coverage-python.xml
+          flags: python-scripts
+          name: python-scripts-coverage
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Release readiness gate (local)
+        run: |
+          python scripts/release_ops.py check_readiness \
+            --platform ios \
+            --context-out /tmp/release-context-ci.json \
+            --contract-out /tmp/release-delegation-contract-ci.json \
+            --no-remote \
+            --skip-preflight
+
+      - name: Upload release readiness artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-readiness-local
+          path: |
+            /tmp/release-context-ci.json
+            /tmp/release-delegation-contract-ci.json
+          if-no-files-found: warn
+
+  north-star-guardrail:
+    name: North Star Guardrail
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests==2.32.5
+
+      - name: Evaluate paid attribution guardrail
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+        run: |
+          python scripts/north_star_guardrail.py \
+            --repo-root . \
+            --lookback-days 30 \
+            --wqtu-window-days 7 \
+            --require-posthog
+
+      - name: Warn if paid attribution guardrail is violated
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report_path = Path("marketing/data/north_star.json")
+          if not report_path.exists():
+              print("::warning::north_star.json not found; skipped guardrail warning annotation.")
+              raise SystemExit(0)
+
+          payload = json.loads(report_path.read_text(encoding="utf-8"))
+          paid = payload.get("paid", {})
+          if paid.get("guardrail_violated"):
+              reason = paid.get("guardrail_reason") or "paid attribution guardrail violated"
+              print(f"::warning::North Star guardrail violated: {reason}")
+          else:
+              print("North Star guardrail check passed without violations.")
+          PY
+
+      - name: Upload north star artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: north-star-guardrail
+          path: marketing/data/north_star.json
+          retention-days: 7
+
+  security:
+    name: Autonomous Security
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce release branch promotion policy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" != "pull_request" || "$BASE_REF" != "main" ]]; then
+            echo "Skipping release-branch policy check (event=$EVENT_NAME base=$BASE_REF)."
+            exit 0
+          fi
+
+          python3 scripts/validate_release_branch.py --repo-root . --head-ref "$HEAD_REF"
+
+      - name: Install gitleaks (OSS CLI)
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          ARCH="$(uname -m)"
+          case "$ARCH" in
+            x86_64|amd64) ASSET="gitleaks_8.30.0_linux_x64.tar.gz" ;;
+            aarch64|arm64) ASSET="gitleaks_8.30.0_linux_arm64.tar.gz" ;;
+            *) echo "Unsupported arch: $ARCH" && exit 1 ;;
+          esac
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v8.30.0/${ASSET}" -o /tmp/gitleaks.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          install -m 0755 /tmp/gitleaks "$HOME/.local/bin/gitleaks"
+          "$HOME/.local/bin/gitleaks" version
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Secret Scan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          RANGE=""
+          if [[ "$EVENT_NAME" == "pull_request" && -n "$PR_BASE_SHA" && -n "$PR_HEAD_SHA" ]]; then
+            RANGE="${PR_BASE_SHA}..${PR_HEAD_SHA}"
+          elif [[ -n "$BEFORE_SHA" && "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            RANGE="${BEFORE_SHA}..${HEAD_SHA}"
+          elif git rev-parse "${HEAD_SHA}~1" >/dev/null 2>&1; then
+            RANGE="${HEAD_SHA}~1..${HEAD_SHA}"
+          fi
+
+          if [[ -n "$RANGE" ]]; then
+            echo "Scanning commit range: $RANGE"
+            gitleaks git --no-banner --redact --exit-code 1 --log-opts "--all $RANGE"
+          else
+            echo "Scanning full git history fallback"
+            gitleaks git --no-banner --redact --exit-code 1
+          fi
+
+  autonomous-ai-review:
+    name: Autonomous AI Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Enforce AI review thread resolution
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pullNumber = context.payload.pull_request?.number;
+            if (!pullNumber) {
+              core.info("No pull request context; skipping.");
+              return;
+            }
+
+            const aiAuthors = new Set([
+              "sentry",
+              "copilot-pull-request-reviewer[bot]",
+              "gemini-code-assist",
+            ]);
+
+            const query = `
+              query($owner: String!, $repo: String!, $pull: Int!, $after: String) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $pull) {
+                    reviewThreads(first: 100, after: $after) {
+                      pageInfo { hasNextPage endCursor }
+                      nodes {
+                        isResolved
+                        comments(first: 20) {
+                          nodes {
+                            author { login }
+                            url
+                            body
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+
+            let after = null;
+            const blockers = [];
+            do {
+              const result = await github.graphql(query, { owner, repo, pull: pullNumber, after });
+              const threads = result.repository.pullRequest.reviewThreads;
+
+              for (const thread of threads.nodes) {
+                if (thread.isResolved) continue;
+                const aiComments = thread.comments.nodes.filter((c) => aiAuthors.has(c.author?.login || ""));
+                if (aiComments.length === 0) continue;
+
+                const highestSeverity = aiComments.some((c) => /Severity:\s*(CRITICAL|HIGH)/i.test(c.body || ""));
+                const ref = aiComments[0]?.url || "unknown-thread";
+                blockers.push({
+                  url: ref,
+                  severity: highestSeverity ? "high_or_critical" : "unresolved_ai_thread",
+                });
+              }
+
+              after = threads.pageInfo.hasNextPage ? threads.pageInfo.endCursor : null;
+            } while (after);
+
+            if (blockers.length > 0) {
+              const summary = blockers.map((b) => `- ${b.severity}: ${b.url}`).join("\n");
+              core.setFailed(`Unresolved AI review threads detected:\n${summary}`);
+            } else {
+              core.info("AI review gate passed: no unresolved AI review threads.");
+            }
+
+  crashlytics:
+    name: Crashlytics Stability
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Detect Crashlytics credentials
+        id: crashlytics-creds
+        run: |
+          if [ -n "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "has_creds=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_creds=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Crashlytics check because GCP_SA_KEY is not configured."
+          fi
+
+      - name: Authenticate to Google Cloud
+        if: steps.crashlytics-creds.outputs.has_creds == 'true'
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Check crash-free rate
+        if: steps.crashlytics-creds.outputs.has_creds == 'true'
+        run: python scripts/check_crashlytics.py --threshold 99.0 --hours 24
+        continue-on-error: true
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [android, ios, playwright-local, python, python-scripts, security, autonomous-ai-review]
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const androidResult = '${{ needs.android.result }}';
+            const iosResult = '${{ needs.ios.result }}';
+            const pythonResult = '${{ needs.python.result }}';
+            const pythonScriptsResult = "${{ needs['python-scripts'].result }}";
+            const playwrightResult = '${{ needs.playwright-local.result }}';
+            const securityResult = '${{ needs.security.result }}';
+            const aiReviewResult = '${{ needs.autonomous-ai-review.result }}';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            const allPassed =
+              androidResult === 'success' &&
+              iosResult === 'success' &&
+              pythonResult === 'success' &&
+              pythonScriptsResult === 'success' &&
+              playwrightResult === 'success' &&
+              securityResult === 'success' &&
+              aiReviewResult === 'success';
+            const anyFailed =
+              androidResult === 'failure' ||
+              iosResult === 'failure' ||
+              pythonResult === 'failure' ||
+              pythonScriptsResult === 'failure' ||
+              playwrightResult === 'failure' ||
+              securityResult === 'failure' ||
+              aiReviewResult === 'failure';
+
+            let emoji, status;
+            if (allPassed) { emoji = '✅'; status = 'All checks passed'; }
+            else if (anyFailed) { emoji = '❌'; status = 'Some checks failed'; }
+            else { emoji = '⚠️'; status = 'Checks completed with warnings'; }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: `${emoji} **CI ${status}**\n\n| Check | Result |\n|-------|--------|\n| Android Tests | ${androidResult} |\n| iOS Build & Tests | ${iosResult} |\n| Python Unit Tests | ${pythonResult} |\n| Python Script Tests + Release Gate | ${pythonScriptsResult} |\n| Playwright Local Checks | ${playwrightResult} |\n| Security | ${securityResult} |\n\n[View details](${runUrl})`
+            });

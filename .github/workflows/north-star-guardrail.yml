@@ -1,0 +1,89 @@
+name: North Star Guardrail
+
+on:
+  schedule:
+    - cron: '10 14 * * *' # Daily at 14:10 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: north-star-guardrail
+  cancel-in-progress: true
+
+jobs:
+  north-star:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests==2.32.5
+
+      - name: Compute and enforce north star guardrail
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+        run: |
+          python scripts/north_star_guardrail.py \
+            --repo-root . \
+            --lookback-days 30 \
+            --wqtu-window-days 7 \
+            --enforce-guardrail \
+            --require-posthog-when-active
+
+      - name: Refresh attribution feedback snapshot
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+        run: |
+          python scripts/attribution_feedback.py \
+            --repo-root . \
+            --days 30
+
+      - name: Build daily North Star ops report
+        run: |
+          python scripts/north_star_ops.py --repo-root .
+
+      - name: Assert no-scale lock schema
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = Path("marketing/data/north_star.json")
+          if not report.exists():
+              raise SystemExit("north_star.json missing")
+          payload = json.loads(report.read_text(encoding="utf-8"))
+          paid = payload.get("paid")
+          if not isinstance(paid, dict):
+              raise SystemExit("paid section missing from north_star.json")
+          lock = paid.get("no_scale_lock")
+          if not isinstance(lock, dict):
+              raise SystemExit("paid.no_scale_lock missing from north_star.json")
+          required = {"active", "reasons", "enforceable_status"}
+          missing = required - set(lock.keys())
+          if missing:
+              raise SystemExit(f"paid.no_scale_lock missing fields: {sorted(missing)}")
+          print("no_scale_lock schema ok")
+          PY
+
+      - name: Upload north star snapshot
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: north-star-snapshot
+          path: |
+            marketing/data/north_star.json
+            marketing/data/north_star_ops.json
+            marketing/data/north_star_ops.md
+          retention-days: 14

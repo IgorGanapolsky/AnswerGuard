@@ -1,0 +1,32 @@
+name: AnswerGuard
+description: Privacy-first spam and scam call protection for iOS and Android.
+
+issues:
+  labels:
+    priorities:
+      - name: "priority: high"
+        color: "d73a4a"
+        description: "Urgent or critical issue"
+      - name: "priority: medium"
+        color: "fbca04"
+        description: "Important but not urgent"
+      - name: "priority: low"
+        color: "0e8a16"
+        description: "Nice to have"
+    types:
+      - name: "type: bug"
+        color: "d73a4a"
+        description: "Something is not working"
+      - name: "type: compliance"
+        color: "d93f0b"
+        description: "Store, privacy, or policy work"
+      - name: "type: enhancement"
+        color: "a2eeef"
+        description: "Feature improvement"
+    platforms:
+      - name: "platform: ios"
+        color: "c5def5"
+        description: "iOS-specific work"
+      - name: "platform: android"
+        color: "bfdadc"
+        description: "Android-specific work"

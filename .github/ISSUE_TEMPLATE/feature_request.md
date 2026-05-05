@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a feature for Random Tactical Timer
+about: Suggest a feature for AnswerGuard
 title: "[Feature] "
 labels: enhancement
 assignees: ''

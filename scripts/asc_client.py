@@ -6,7 +6,29 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Optional
+
+try:
+    from scripts.repo_dotenv import load_repo_dotenv
+
+    load_repo_dotenv(Path(__file__).resolve().parent.parent)
+except Exception:
+    try:
+        from repo_dotenv import load_repo_dotenv
+
+        load_repo_dotenv(Path(__file__).resolve().parent.parent)
+    except Exception:
+        pass
+
+try:
+    from scripts.pem_env import normalize_inline_pem
+except Exception:
+    try:
+        from pem_env import normalize_inline_pem
+    except Exception:
+        def normalize_inline_pem(text: str) -> str:
+            return text
 
 APP_STORE_CONNECT_API = "https://api.appstoreconnect.apple.com/v1"
 
@@ -35,8 +57,8 @@ def read_private_key_material(key_id: str) -> str:
 
     expanded = os.path.expanduser(value)
     if os.path.isfile(expanded):
-        return _read_file(expanded)
-    return value
+        return normalize_inline_pem(_read_file(expanded))
+    return normalize_inline_pem(value)
 
 
 def safe_json_response(resp: Any) -> dict[str, Any]:
