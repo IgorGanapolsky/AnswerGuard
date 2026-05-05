@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -16,6 +16,11 @@ from asc_client import ASCClient, AscClientError
 
 DEFAULT_BUNDLE_ID = "com.igorganapolsky.answerguard"
 DEFAULT_GROUP = "Internal Testers"
+
+
+class BetaGroup(NamedTuple):
+    id: str
+    is_internal: bool
 
 
 def _attrs(item: dict[str, Any]) -> dict[str, Any]:
@@ -29,11 +34,12 @@ def find_app_id(client: ASCClient, bundle_id: str) -> str:
     return apps[0]["id"]
 
 
-def find_or_create_group(client: ASCClient, app_id: str, group_name: str) -> str:
+def find_or_create_group(client: ASCClient, app_id: str, group_name: str) -> BetaGroup:
     groups = client.get_all(f"/apps/{app_id}/betaGroups", params={"limit": "200"})
     for group in groups:
-        if _attrs(group).get("name") == group_name:
-            return group["id"]
+        attrs = _attrs(group)
+        if attrs.get("name") == group_name:
+            return BetaGroup(group["id"], bool(attrs.get("isInternalGroup", False)))
 
     payload = {
         "data": {
@@ -43,7 +49,7 @@ def find_or_create_group(client: ASCClient, app_id: str, group_name: str) -> str
         }
     }
     created = client.request("POST", "/betaGroups", payload=payload)
-    return created["data"]["id"]
+    return BetaGroup(created["data"]["id"], False)
 
 
 def find_or_create_tester(
@@ -85,7 +91,9 @@ def find_or_create_tester(
     return tester_id
 
 
-def distribute_latest_build(client: ASCClient, *, app_id: str, group_id: str) -> str | None:
+def distribute_latest_build(
+    client: ASCClient, *, app_id: str, group_id: str, is_internal_group: bool = False
+) -> str | None:
     builds = client.get_all(
         "/builds",
         params={
@@ -100,6 +108,9 @@ def distribute_latest_build(client: ASCClient, *, app_id: str, group_id: str) ->
 
     latest = builds[0]
     build_id = latest["id"]
+    if is_internal_group:
+        return str(_attrs(latest).get("version") or build_id)
+
     try:
         client.request(
             "POST",
@@ -123,17 +134,20 @@ def main() -> int:
 
     client = ASCClient.from_env()
     app_id = find_app_id(client, args.bundle_id)
-    group_id = find_or_create_group(client, app_id, args.group)
+    group = find_or_create_group(client, app_id, args.group)
     find_or_create_tester(
         client,
         email=args.email,
         first_name=args.first_name,
         last_name=args.last_name,
-        group_id=group_id,
+        group_id=group.id,
     )
-    build = distribute_latest_build(client, app_id=app_id, group_id=group_id)
+    build = distribute_latest_build(client, app_id=app_id, group_id=group.id, is_internal_group=group.is_internal)
     if build:
-        print(f"✅ {args.email} is in '{args.group}' and build {build} is attached.")
+        if group.is_internal:
+            print(f"✅ {args.email} is in '{args.group}'. Latest internal build is {build}.")
+        else:
+            print(f"✅ {args.email} is in '{args.group}' and build {build} is attached.")
     else:
         print(f"✅ {args.email} is in '{args.group}'. No TestFlight builds are available yet.")
     return 0

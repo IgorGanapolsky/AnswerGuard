@@ -14,7 +14,7 @@ class FakeASCClient:
 
     def get_all(self, path, params=None):
         if path == "/apps/app-1/betaGroups":
-            return [{"id": "group-1", "attributes": {"name": "Internal Testers"}}]
+            return [{"id": "group-1", "attributes": {"name": "Internal Testers", "isInternalGroup": True}}]
         if path == "/betaTesters":
             return [{"id": "tester-1", "attributes": {"email": "iganapolsky@gmail.com"}}]
         if path == "/builds":
@@ -28,6 +28,12 @@ class FakeASCClient:
 
 def test_find_app_id_uses_answerguard_bundle_id():
     assert add_tester.find_app_id(FakeASCClient(), "com.igorganapolsky.answerguard") == "app-1"
+
+
+def test_existing_internal_group_is_detected():
+    client = FakeASCClient()
+    group = add_tester.find_or_create_group(client, "app-1", "Internal Testers")
+    assert group == add_tester.BetaGroup("group-1", True)
 
 
 def test_existing_tester_is_attached_to_group():
@@ -60,3 +66,15 @@ def test_latest_build_is_attached_to_group():
             {"data": [{"type": "builds", "id": "build-1"}]},
         )
     ]
+
+
+def test_internal_group_skips_build_attachment():
+    client = FakeASCClient()
+    build = add_tester.distribute_latest_build(
+        client,
+        app_id="app-1",
+        group_id="group-1",
+        is_internal_group=True,
+    )
+    assert build == "42"
+    assert client.posts == []
