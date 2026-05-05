@@ -555,6 +555,10 @@ def parse_args() -> argparse.Namespace:
         default="both",
         help="For iOS verification, check only TestFlight or both TestFlight and App Store state.",
     )
+    parser.add_argument(
+        "--json-out",
+        help="Optional path for machine-readable verification evidence JSON.",
+    )
     return parser.parse_args()
 
 
@@ -645,6 +649,25 @@ def main():
 
     # --- Results ---
     all_passed = print_results(results)
+    if args.json_out:
+        output_path = Path(args.json_out)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            json.dumps(
+                {
+                    "passed": all_passed,
+                    "platform": args.platform,
+                    "track": args.track,
+                    "version": args.version,
+                    "version_code": args.version_code,
+                    "results": results,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
     sys.exit(0 if all_passed else 1)
 
 

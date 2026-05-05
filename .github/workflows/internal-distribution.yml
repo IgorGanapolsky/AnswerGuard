@@ -337,7 +337,15 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(python scripts/source_versions.py --repo-root . --format json | python -c 'import json,sys; print(json.load(sys.stdin)["ios"]["version_name"])')"
-          python scripts/verify_release.py --platform ios --version "$VERSION" --ios-scope testflight --wait --timeout 900 --poll-interval 60
+          python scripts/verify_release.py --platform ios --version "$VERSION" --ios-scope testflight --wait --timeout 900 --poll-interval 60 --json-out /tmp/ios-release-verification.json
+
+      - name: Upload internal-distribution-verification iOS artifact
+        if: always() && steps.ios_lineage.outputs.uploadable == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-release-verification
+          path: /tmp/ios-release-verification.json
+          if-no-files-found: warn
 
       - name: Ensure TestFlight internal distribution visibility
         if: steps.ios_lineage.outputs.uploadable == 'true'
@@ -534,11 +542,15 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install google-api-python-client==2.190.0 google-auth==2.48.0 google-auth-httplib2==0.3.0 google-auth-oauthlib==1.2.4 requests==2.32.5
-          python scripts/verify_release.py \
-            --platform android \
-            --track internal \
-            --version-code "${{ steps.play_version_code.outputs.next_version_code }}" \
-            --version "${{ steps.versions.outputs.android_version_name }}"
+          python scripts/verify_release.py --platform android --track internal --version-code "${{ steps.play_version_code.outputs.next_version_code }}" --version "${{ steps.versions.outputs.android_version_name }}" --json-out /tmp/android-release-verification.json
+
+      - name: Upload internal-distribution-verification Android artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-release-verification
+          path: /tmp/android-release-verification.json
+          if-no-files-found: warn
 
       - name: Upload Android AAB artifact
         uses: actions/upload-artifact@v7
