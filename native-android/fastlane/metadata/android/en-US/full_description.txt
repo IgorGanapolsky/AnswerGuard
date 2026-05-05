@@ -1,3 +1,14 @@
-AnswerGuard is a privacy-first mobile app in development for screening unknown callers and reducing spam and scam call interruptions.
+AnswerGuard helps reduce spam and scam call interruptions with privacy-first call screening.
 
-This repository currently contains the native Android and iOS scaffold, release automation, and store delivery setup for the product. Replace this draft metadata before Play Store submission.
+Turn on AnswerGuard as your Android call screening app and incoming calls are checked locally against conservative spam rules and your personal block list. Confirmed spam can be blocked, suspicious calls can be silenced, and normal unknown callers are allowed by default so you do not miss legitimate calls.
+
+Why AnswerGuard:
+
+- On-device call screening
+- No account required
+- No call history upload
+- Conservative defaults to reduce false positives
+- Clear setup flow for Android call screening
+- Personal block list support
+
+AnswerGuard is built for people who want fewer spam interruptions without giving up control of their phone calls.

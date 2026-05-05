@@ -2,36 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Exact Alarm Permission (for timer apps, auto-granted) -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-
-    <!-- Notifications (Android 13+) -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Foreground Service for active timer -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-
-    <!-- Keep screen on during alarm -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-
-    <!-- Vibration -->
-    <uses-permission android:name="android.permission.VIBRATE" />
-
-    <!-- Full screen intent for lock screen timer display -->
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
-
-    <!-- Boot completed to reschedule alarms -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <!-- Allow timer notifications to bypass Do Not Disturb -->
-    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Network access for analytics and future signed spam intelligence updates. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- In-App Billing for Pro upgrade -->
     <uses-permission android:name="com.android.vending.BILLING" />
-
-    <!-- Call screening -->
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <!-- Remove AD_ID permission added by dependencies (Firebase/PostHog) — app does not use advertising ID -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
@@ -54,9 +29,7 @@
             android:exported="true"
             android:label="@string/launcher_label"
             android:theme="@style/Theme.AnswerGuard"
-            android:launchMode="singleTop"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true">
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -81,39 +54,6 @@
                 <data android:scheme="answerguard" android:host="open" />
             </intent-filter>
         </activity>
-
-        <!-- Timer Foreground Service -->
-        <service
-            android:name=".service.TimerForegroundService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="timer" />
-        </service>
-
-        <!-- Alarm Receiver -->
-        <receiver
-            android:name=".receiver.AlarmReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="com.igorganapolsky.answerguard.ALARM_TRIGGER" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Boot Receiver to reschedule alarms -->
-        <receiver
-            android:name=".receiver.BootReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Re-engagement notification receiver -->
-        <receiver
-            android:name=".notifications.ReengagementReceiver"
-            android:exported="false" />
 
         <!-- Call Screening Service -->
         <service

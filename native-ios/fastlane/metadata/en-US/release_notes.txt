@@ -1,1 +1,1 @@
-Initial native mobile scaffold bootstrap.
+AnswerGuard now includes a focused spam-call protection experience, clearer privacy positioning, and internal release infrastructure for TestFlight and Firebase distribution.

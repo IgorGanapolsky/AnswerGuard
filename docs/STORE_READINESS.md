@@ -1,6 +1,6 @@
 # AnswerGuard Store Readiness
 
-Status as of 2026-05-05: the inherited native projects build and test locally, but AnswerGuard is not production store-ready as a call-screening app. The current app still implements the Random Timer timer experience with AnswerGuard branding.
+Status as of 2026-05-05: Android now builds as an AnswerGuard call-screening app for internal distribution. iOS TestFlight distribution infrastructure is working, but production App Store submission still requires completing the iOS Call Directory extension target and store assets.
 
 ## Local Gates
 
@@ -78,22 +78,11 @@ Also completed on 2026-05-05:
 - Created Apple Developer Portal bundle IDs for `com.igorganapolsky.answerguard` and `com.igorganapolsky.answerguard.widget`.
 - Generated an AnswerGuard Android release keystore locally at `~/.config/answerguard/release.keystore`.
 - Built and verified a signed Android release APK locally.
+- Delivered iOS TestFlight internal build `1.2.6` build `133` to `iganapolsky@gmail.com`.
+- Delivered Android Firebase internal build `1.2.6 (4)` to the internal tester path.
+- Replaced Android timer UI/runtime code with Android call-screening onboarding, local spam verdicts, and reduced permissions.
 
-Current blockers observed locally: GitHub Actions secrets are not readable after
-they are stored, so Random Timer secrets that exist only in GitHub could not be
-copied into AnswerGuard. The remaining missing secrets are:
-
-- `MATCH_GIT_URL`
-- `MATCH_PASSWORD`
-- `MATCH_GIT_BASIC_AUTHORIZATION`
-- `GOOGLE_SERVICES_JSON`
-- `FIREBASE_SERVICE_ACCOUNT_JSON`
-- `FIREBASE_ANDROID_APP_ID`
-
-Additional Apple blocker: the App Store Connect API key can create Developer
-Portal bundle IDs, but `/apps` creation is not allowed through that API key. The
-AnswerGuard app record still needs to be created in App Store Connect before
-TestFlight upload can succeed.
+Current local caveat: GitHub Actions secrets are write-only, so local verification can confirm the pipeline result but cannot print the stored signing and Firebase secret values.
 
 ## Platform Requirements
 
@@ -103,7 +92,7 @@ Apple requires call blocking/identification apps to use a Call Directory app ext
 
 Apple App Review guideline 2.5.12 also requires CallKit/SMS fraud apps to block only confirmed spam, clearly describe the blocking/identification criteria in marketing text, and not use data from those tools for unrelated profiling, tracking, sharing, or sale.
 
-Required work:
+Required production work:
 
 - Add an iOS Call Directory extension target.
 - Implement `CXCallDirectoryProvider` with a verified spam/allow/label data source.
@@ -124,12 +113,15 @@ Android call screening uses `android.telecom.CallScreeningService`, registered i
 
 Google Play treats SMS and Call Log permissions as highly sensitive. If the app requests restricted call-log permissions, it must qualify as a default Phone/Assistant handler or receive an approved exception. A call-screening app should avoid restricted call-log permissions unless absolutely required and justified.
 
-Required work:
+Completed for internal Android builds:
 
-- Add a `CallScreeningService` implementation.
-- Add the manifest service registration with `BIND_SCREENING_SERVICE`.
-- Add a RoleManager request flow for `ROLE_CALL_SCREENING`.
-- Implement a local-first spam verdict engine that always responds inside 5 seconds.
+- `CallScreeningService` implementation.
+- Manifest service registration with `BIND_SCREENING_SERVICE`.
+- RoleManager request flow for `ROLE_CALL_SCREENING`.
+- Local-first spam verdict engine that responds synchronously.
+
+Required production work:
+
 - Add device/emulator tests for role onboarding, unknown caller handling, contacts behavior, block/allow decisions, and no-permission fallback.
 - Complete Play Console App Content: Data safety, privacy policy, sensitive permission declarations if applicable, target API, content rating, ads, and closed testing.
 
@@ -156,9 +148,6 @@ Already ported:
 
 Remaining store blockers:
 
-- No iOS Call Directory extension exists.
-- No Android `CallScreeningService` exists.
-- Store metadata still describes an app "in development" rather than a finished product.
-- Current screenshots/UI are timer screens, not caller screening.
-- Privacy policy still discusses timer settings and analytics, not phone-number/spam-list handling.
-- Release signing, App Store Connect, Play Console access, store-console form completion, and closed-testing evidence still need credentialed verification.
+- iOS Call Directory extension files exist but still need to be wired into the Xcode project as an app extension target and provisioned.
+- Store screenshots still need to show the caller-screening experience.
+- Play Console App Content and closed-testing evidence still need credentialed verification before production rollout.
