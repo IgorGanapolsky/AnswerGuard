@@ -164,6 +164,7 @@ jobs:
       effective_track: ${{ steps.play_result.outputs.effective_track }}
       fallback_used: ${{ steps.play_result.outputs.fallback_used }}
       precondition_blocked: ${{ steps.play_result.outputs.precondition_blocked }}
+      version_code: ${{ steps.play_result.outputs.version_code }}
     steps:
       - uses: actions/checkout@v4
 
@@ -294,12 +295,14 @@ jobs:
           EFFECTIVE_TRACK="${{ inputs.android_track }}"
           FALLBACK_USED="false"
           PRECONDITION_BLOCKED="false"
+          VERSION_CODE=""
 
           if [ -f /tmp/play-upload-result.json ]; then
             REQUESTED_TRACK="$(jq -r '.requested_track // empty' /tmp/play-upload-result.json)"
             EFFECTIVE_TRACK="$(jq -r '.effective_track // empty' /tmp/play-upload-result.json)"
             FALLBACK_USED="$(jq -r '.fallback_used // false' /tmp/play-upload-result.json)"
             PRECONDITION_BLOCKED="$(jq -r '.precondition_blocked // false' /tmp/play-upload-result.json)"
+            VERSION_CODE="$(jq -r '.version_code // empty' /tmp/play-upload-result.json)"
           fi
 
           if [ -z "$REQUESTED_TRACK" ] || [ "$REQUESTED_TRACK" = "null" ]; then
@@ -313,7 +316,8 @@ jobs:
           echo "effective_track=$EFFECTIVE_TRACK" >> "$GITHUB_OUTPUT"
           echo "fallback_used=$FALLBACK_USED" >> "$GITHUB_OUTPUT"
           echo "precondition_blocked=$PRECONDITION_BLOCKED" >> "$GITHUB_OUTPUT"
-          echo "play_result requested=$REQUESTED_TRACK effective=$EFFECTIVE_TRACK fallback_used=$FALLBACK_USED precondition_blocked=$PRECONDITION_BLOCKED"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "play_result requested=$REQUESTED_TRACK effective=$EFFECTIVE_TRACK version_code=$VERSION_CODE fallback_used=$FALLBACK_USED precondition_blocked=$PRECONDITION_BLOCKED"
 
       - name: Upload Play upload result (if any)
         uses: actions/upload-artifact@v4
@@ -363,7 +367,7 @@ jobs:
         id: versions
         run: |
           # Android versionCode from build.gradle.kts
-          VERSION_CODE=$(grep -oP 'versionCode\s*=\s*\K\d+' native-android/app/build.gradle.kts || echo "")
+          VERSION_CODE=$(sed -nE 's/.*versionCode[[:space:]]*=[^0-9]*([0-9]+).*/\1/p' native-android/app/build.gradle.kts | head -1 || echo "")
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
           # iOS version from project.pbxproj
@@ -435,8 +439,12 @@ jobs:
           if [ "${{ needs.android-release.result }}" = "success" ]; then
             ARGS="$ARGS --track ${{ steps.android_track.outputs.track }}"
           fi
-          if [ -n "${{ steps.versions.outputs.version_code }}" ]; then
-            ARGS="$ARGS --version-code ${{ steps.versions.outputs.version_code }}"
+          ANDROID_VERSION_CODE="${{ needs.android-release.outputs.version_code }}"
+          if [ -z "$ANDROID_VERSION_CODE" ] || [ "$ANDROID_VERSION_CODE" = "null" ]; then
+            ANDROID_VERSION_CODE="${{ steps.versions.outputs.version_code }}"
+          fi
+          if [ -n "$ANDROID_VERSION_CODE" ]; then
+            ARGS="$ARGS --version-code $ANDROID_VERSION_CODE"
           fi
           if [ -n "${{ steps.versions.outputs.ios_version }}" ]; then
             ARGS="$ARGS --version ${{ steps.versions.outputs.ios_version }}"

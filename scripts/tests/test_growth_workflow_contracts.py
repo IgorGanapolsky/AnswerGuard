@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
 INTERNAL_DISTRIBUTION_WORKFLOW = ROOT / ".github/workflows/internal-distribution.yml"
+NATIVE_RELEASE_WORKFLOW = ROOT / ".github/workflows/native-release.yml"
 NORTH_STAR_GUARDRAIL_WORKFLOW = ROOT / ".github/workflows/north-star-guardrail.yml"
 NORTH_STAR_OPS_WORKFLOW = ROOT / ".github/workflows/north-star-ops.yml"
 WEEKLY_EXPERIMENT_WORKFLOW = ROOT / ".github/workflows/weekly-north-star-experiment.yml"
@@ -34,6 +35,15 @@ def test_internal_distribution_workflow_emits_platform_specific_release_artifact
     assert "--json-out /tmp/android-release-verification.json" in source
     assert "ios-release-verification" in source
     assert "android-release-verification" in source
+
+
+def test_native_release_verifier_uses_play_upload_version_code_output():
+    source = NATIVE_RELEASE_WORKFLOW.read_text(encoding="utf-8")
+
+    assert "version_code: ${{ steps.play_result.outputs.version_code }}" in source
+    assert "VERSION_CODE=\"$(jq -r '.version_code // empty' /tmp/play-upload-result.json)\"" in source
+    assert "ANDROID_VERSION_CODE=\"${{ needs.android-release.outputs.version_code }}\"" in source
+    assert "sed -nE 's/.*versionCode[[:space:]]*=[^0-9]*([0-9]+).*/\\1/p'" in source
 
 
 def test_north_star_guardrail_workflow_runs_daily_ops_pipeline():
