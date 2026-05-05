@@ -11,9 +11,21 @@ on:
         description: "Git ref to distribute (optional, defaults to develop)"
         required: false
         type: string
+      target:
+        description: "Distribution target"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all_safe
+          - all
+          - ios_firebase
+          - ios
+          - android_play
+          - android_firebase
 
 concurrency:
-  group: internal-distribution-${{ github.event_name }}-${{ github.event.workflow_run.head_branch || inputs.ref || github.ref_name }}
+  group: internal-distribution-${{ github.event_name }}-${{ github.event.workflow_run.head_branch || inputs.ref || github.ref_name }}-${{ inputs.target || 'all_safe' }}
   cancel-in-progress: true
 
 jobs:
@@ -26,6 +38,7 @@ jobs:
       ref: ${{ steps.decide.outputs.ref }}
       sha: ${{ steps.decide.outputs.sha }}
       reason: ${{ steps.decide.outputs.reason }}
+      target: ${{ steps.decide.outputs.target }}
     steps:
       - name: Decide whether to run
         id: decide
@@ -35,6 +48,7 @@ jobs:
           WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
           WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
           INPUT_REF: ${{ inputs.ref }}
+          INPUT_TARGET: ${{ inputs.target }}
         run: |
           set -euo pipefail
 
@@ -42,28 +56,41 @@ jobs:
           REF=""
           SHA=""
           REASON="not_eligible"
+          TARGET="${INPUT_TARGET:-all}"
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             REF="${INPUT_REF:-develop}"
+            case "$TARGET" in
+              all_safe|all|ios_firebase|ios|android_play|android_firebase)
+                ;;
+              *)
+                echo "❌ Unsupported target: $TARGET"
+                exit 1
+                ;;
+            esac
             SHOULD_RUN="true"
             REASON="manual_dispatch"
           elif [[ "$EVENT_NAME" == "workflow_run" && "$WORKFLOW_CONCLUSION" == "success" && "$WORKFLOW_BRANCH" == "develop" ]]; then
             REF="$WORKFLOW_SHA"
             SHA="$WORKFLOW_SHA"
+            TARGET="all_safe"
             SHOULD_RUN="true"
             REASON="ci_green_on_develop"
           fi
 
-          echo "should_run=$SHOULD_RUN" >> "$GITHUB_OUTPUT"
-          echo "ref=$REF" >> "$GITHUB_OUTPUT"
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
-          echo "gate: should_run=$SHOULD_RUN reason=$REASON ref=$REF sha=$SHA"
+          {
+            echo "should_run=$SHOULD_RUN"
+            echo "ref=$REF"
+            echo "sha=$SHA"
+            echo "reason=$REASON"
+            echo "target=$TARGET"
+          } >> "$GITHUB_OUTPUT"
+          echo "gate: should_run=$SHOULD_RUN reason=$REASON ref=$REF sha=$SHA target=$TARGET"
 
   ios-testflight-internal:
     name: iOS TestFlight (Internal)
     needs: [gate]
-    if: needs.gate.outputs.should_run == 'true'
+    if: needs.gate.outputs.should_run == 'true' && (needs.gate.outputs.target == 'all_safe' || needs.gate.outputs.target == 'all' || needs.gate.outputs.target == 'ios_firebase' || needs.gate.outputs.target == 'ios')
     runs-on: macos-26
     environment: production
     steps:
@@ -132,7 +159,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "$APPSTORE_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
+          echo "$APPSTORE_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_"${APPSTORE_KEY_ID}".p8
 
       - name: Configure git credentials for match
         env:
@@ -174,7 +201,7 @@ jobs:
   android-internal:
     name: Android Google Play (Internal)
     needs: [gate]
-    if: needs.gate.outputs.should_run == 'true'
+    if: needs.gate.outputs.should_run == 'true' && (needs.gate.outputs.target == 'all_safe' || needs.gate.outputs.target == 'all' || needs.gate.outputs.target == 'android_play')
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -186,21 +213,18 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${GOOGLE_SERVICES_JSON:-}" ]; then
-            echo "❌ Missing required secret: GOOGLE_SERVICES_JSON"
-            exit 1
-          fi
-          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
-            echo "❌ Missing required secret: ANDROID_KEYSTORE_BASE64"
-            exit 1
-          fi
-          if [ -z "${GOOGLE_PLAY_JSON_KEY:-}" ]; then
-            echo "❌ Missing required secret: GOOGLE_PLAY_JSON_KEY"
-            exit 1
-          fi
+          for name in GOOGLE_SERVICES_JSON ANDROID_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD GOOGLE_PLAY_JSON_KEY; do
+            if [ -z "${!name:-}" ]; then
+              echo "❌ Missing required secret: $name"
+              exit 1
+            fi
+          done
 
       - name: Preflight release checks (Android)
         run: bash scripts/preflight-release.sh --platform android --layer 1
@@ -247,7 +271,7 @@ jobs:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
         run: |
           set -euo pipefail
-          ./gradlew bundleRelease --no-daemon
+          ./gradlew -PciVersionCode="${{ github.run_number }}" bundleRelease --no-daemon
 
       - name: Distribute to Google Play Internal
         working-directory: native-android
@@ -256,7 +280,8 @@ jobs:
         run: |
           set -euo pipefail
           echo "$GOOGLE_PLAY_JSON_KEY" > play-store-key.json
-          export GOOGLE_PLAY_JSON_KEY_PATH="$(pwd)/play-store-key.json"
+          GOOGLE_PLAY_JSON_KEY_PATH="$(pwd)/play-store-key.json"
+          export GOOGLE_PLAY_JSON_KEY_PATH
           fastlane internal
 
       - name: Upload Android AAB artifact
@@ -271,4 +296,106 @@ jobs:
         if: always()
         run: |
           rm -f /tmp/release.keystore native-android/play-store-key.json
+
+  android-firebase-internal:
+    name: Android Firebase (Internal)
+    needs: [gate]
+    if: needs.gate.outputs.should_run == 'true' && (needs.gate.outputs.target == 'all' || needs.gate.outputs.target == 'ios_firebase' || needs.gate.outputs.target == 'android_firebase')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.gate.outputs.ref }}
+
+      - name: Fail fast on Firebase distribution inputs
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_ANDROID_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          FIREBASE_INTERNAL_GROUPS: ${{ vars.FIREBASE_INTERNAL_GROUPS }}
+          FIREBASE_INTERNAL_TESTERS: ${{ vars.FIREBASE_INTERNAL_TESTERS }}
+        run: |
+          set -euo pipefail
+          for name in GOOGLE_SERVICES_JSON ANDROID_KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD FIREBASE_SERVICE_ACCOUNT_JSON FIREBASE_ANDROID_APP_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "❌ Missing required secret: $name"
+              exit 1
+            fi
+          done
+          if [ -z "${FIREBASE_INTERNAL_GROUPS:-}" ] && [ -z "${FIREBASE_INTERNAL_TESTERS:-}" ]; then
+            echo "FIREBASE_INTERNAL_GROUPS=internal-testers" >> "$GITHUB_ENV"
+          else
+            echo "FIREBASE_INTERNAL_GROUPS=${FIREBASE_INTERNAL_GROUPS:-}" >> "$GITHUB_ENV"
+            echo "FIREBASE_INTERNAL_TESTERS=${FIREBASE_INTERNAL_TESTERS:-}" >> "$GITHUB_ENV"
+          fi
+          if ! [[ "$FIREBASE_ANDROID_APP_ID" =~ ^1:[0-9]+:android:[a-fA-F0-9]+$ ]]; then
+            echo "❌ FIREBASE_ANDROID_APP_ID must match 1:PROJECT_NUMBER:android:APP_ID"
+            exit 1
+          fi
+
+      - name: Preflight release checks (Android)
+        run: bash scripts/preflight-release.sh --platform android --layer 1
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Create google-services.json
+        working-directory: native-android
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+
+      - name: Decode keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > /tmp/release.keystore
+
+      - name: Build release APK
+        working-directory: native-android
+        env:
+          KEYSTORE_PATH: /tmp/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+        run: |
+          set -euo pipefail
+          ./gradlew -PciVersionCode="${{ github.run_number }}" assembleRelease --no-daemon
+
+      - name: Distribute to Firebase
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          groups: ${{ env.FIREBASE_INTERNAL_GROUPS }}
+          testers: ${{ env.FIREBASE_INTERNAL_TESTERS }}
+          file: native-android/app/build/outputs/apk/release/app-release.apk
+          releaseNotes: |
+            Internal AnswerGuard build from ${{ needs.gate.outputs.sha || github.sha }}
+            Ref: ${{ needs.gate.outputs.ref }}
+
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-apk-firebase-internal
+          path: native-android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: warn
+
+      - name: Cleanup secrets
+        if: always()
+        run: |
+          rm -f /tmp/release.keystore
 # Triggering fresh check

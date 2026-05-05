@@ -100,6 +100,7 @@ scripts/__pycache__/
 .artifacts/
 .env
 gradle.properties
+!native-android/gradle.properties
 *.backup
 *.disabled
 

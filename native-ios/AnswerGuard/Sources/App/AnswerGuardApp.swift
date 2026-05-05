@@ -6,6 +6,12 @@ struct AnswerGuardApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ui-test-reset-state") {
+            UserDefaults.standard.removeObject(forKey: "timer_config")
+            UserDefaults.standard.removeObject(forKey: "active_timer_state")
+        }
+#endif
         AnalyticsService.shared.initialize()
     }
 

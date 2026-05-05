@@ -2,6 +2,7 @@
 .PHONY: verify verify-android verify-android-instrumentation verify-ios verify-ios-ui maestro-android maestro-ios
 .PHONY: playwright-install playwright-install-agent-browser playwright-verify-local playwright-verify-strict playwright-store-console playwright-store-console-agent playwright-sync-auth-secrets
 .PHONY: device-tests device-tests-adb phoneclaw-visual
+.PHONY: distribute-internal distribute-ios distribute-firebase
 
 ANDROID_DIR := native-android
 IOS_DIR := native-ios
@@ -180,3 +181,12 @@ device-tests-adb:
 phoneclaw-visual:
 	@echo "==> PhoneClaw: pushing visual test scripts to device"
 	@bash scripts/device-tests/phoneclaw/setup-device.sh
+
+distribute-internal:
+	@gh workflow run internal-distribution.yml --ref $$(git branch --show-current) -f ref=$$(git branch --show-current) -f target=ios_firebase
+
+distribute-ios:
+	@gh workflow run internal-distribution.yml --ref $$(git branch --show-current) -f ref=$$(git branch --show-current) -f target=ios
+
+distribute-firebase:
+	@gh workflow run internal-distribution.yml --ref $$(git branch --show-current) -f ref=$$(git branch --show-current) -f target=android_firebase
