@@ -28,7 +28,7 @@ jobs:
       matrix:
         scan-type: [dependencies, code, mobile]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 

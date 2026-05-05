@@ -37,7 +37,7 @@ jobs:
       IOS_METADATA_ONLY: ${{ inputs.metadata_only }}
       IOS_STRICT_RETRY_ON_EDITABLE: ${{ inputs.strict_retry_on_editable }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Fail fast on required App Store secrets
         env:
