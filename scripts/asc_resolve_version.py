@@ -130,6 +130,24 @@ def _create_ios_version(client: ASCClient, app_id: str, version: str) -> Dict[st
     return data
 
 
+def _update_ios_version_string(client: ASCClient, version_id: str, version: str) -> Dict[str, Any]:
+    payload = client.request(
+        "PATCH",
+        f"/appStoreVersions/{version_id}",
+        payload={
+            "data": {
+                "type": "appStoreVersions",
+                "id": version_id,
+                "attributes": {"versionString": version},
+            }
+        },
+    )
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        die(f"Failed to update App Store version {version_id} to {version}: malformed response", code=2)
+    return data
+
+
 @dataclass
 class Resolution:
     selected_version: str
@@ -235,6 +253,25 @@ def resolve_version(
         editable_attrs = highest_editable.get("attributes") or {}
         editable_version = str(editable_attrs.get("versionString") or "")
         editable_state = str(editable_attrs.get("appStoreState") or "UNKNOWN")
+        editable_id = str(highest_editable.get("id") or "")
+        if create_if_needed and editable_id:
+            try:
+                updated = _update_ios_version_string(client, editable_id, preferred_version)
+            except RuntimeError as exc:
+                info(
+                    f"Could not update editable App Store version {editable_version} "
+                    f"to preferred {preferred_version}: {exc}. Reusing existing editable version."
+                )
+            else:
+                updated_attrs = updated.get("attributes") or {}
+                return Resolution(
+                    selected_version=str(updated_attrs.get("versionString") or preferred_version),
+                    selected_state=str(updated_attrs.get("appStoreState") or editable_state),
+                    created=False,
+                    reason="preferred_missing_updated_highest_editable",
+                    selected_id=str(updated.get("id") or editable_id),
+                    preferred_version=preferred_version,
+                )
         return Resolution(
             selected_version=editable_version,
             selected_state=editable_state,

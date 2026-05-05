@@ -10,17 +10,25 @@ from pathlib import Path
 from typing import Any, Optional
 
 try:
-    from repo_dotenv import load_repo_dotenv
+    from scripts.repo_dotenv import load_repo_dotenv
 
     load_repo_dotenv(Path(__file__).resolve().parent.parent)
 except Exception:
-    pass
+    try:
+        from repo_dotenv import load_repo_dotenv
+
+        load_repo_dotenv(Path(__file__).resolve().parent.parent)
+    except Exception:
+        pass
 
 try:
-    from pem_env import normalize_inline_pem
+    from scripts.pem_env import normalize_inline_pem
 except Exception:
-    def normalize_inline_pem(text: str) -> str:
-        return text
+    try:
+        from pem_env import normalize_inline_pem
+    except Exception:
+        def normalize_inline_pem(text: str) -> str:
+            return text
 
 APP_STORE_CONNECT_API = "https://api.appstoreconnect.apple.com/v1"
 

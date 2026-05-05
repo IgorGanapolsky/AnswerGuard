@@ -13,6 +13,7 @@ class _FakeClient:
     def __init__(self, versions):
         self.versions = list(versions)
         self.created = []
+        self.updated = []
 
     def get_all(self, path, params=None):
         if path.endswith("/appStoreVersions"):
@@ -33,6 +34,14 @@ class _FakeClient:
             self.created.append(created)
             self.versions.insert(0, created)
             return {"data": created}
+        if method == "PATCH" and path.startswith("/appStoreVersions/"):
+            version_id = path.rsplit("/", 1)[1]
+            for item in self.versions:
+                if item["id"] == version_id:
+                    item["attributes"]["versionString"] = payload["data"]["attributes"]["versionString"]
+                    self.updated.append(item)
+                    return {"data": item}
+            raise AssertionError(f"Unknown version id: {version_id}")
         raise AssertionError(f"Unhandled request: {method} {path}")
 
 
@@ -116,13 +125,27 @@ class AscResolveVersionUnitTests(unittest.TestCase):
         self.assertFalse(result.created)
         self.assertIn("reused_highest_editable", result.reason)
 
-    def test_reuses_existing_editable_when_preferred_missing_and_auto_next_patch(self):
+    def test_updates_existing_editable_when_preferred_missing_and_auto_next_patch(self):
+        client = _FakeClient([_version("1.0", "PREPARE_FOR_SUBMISSION", vid="v1")])
+        result = resolve_version(
+            client=client,
+            app_id="app1",
+            preferred_version="1.2.6",
+            create_if_needed=True,
+            auto_next_patch=True,
+        )
+        self.assertEqual(result.selected_version, "1.2.6")
+        self.assertFalse(result.created)
+        self.assertEqual(result.reason, "preferred_missing_updated_highest_editable")
+        self.assertEqual(client.updated[0]["id"], "v1")
+
+    def test_reuses_existing_editable_when_preferred_missing_and_create_disabled(self):
         client = _FakeClient([_version("1.2.0", "PREPARE_FOR_SUBMISSION")])
         result = resolve_version(
             client=client,
             app_id="app1",
             preferred_version="1.1.2",
-            create_if_needed=True,
+            create_if_needed=False,
             auto_next_patch=True,
         )
         self.assertEqual(result.selected_version, "1.2.0")
