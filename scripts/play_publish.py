@@ -8,6 +8,7 @@ import glob
 import json
 import mimetypes
 import os
+import re
 import struct
 import sys
 import time
@@ -34,6 +35,7 @@ DRAFT_APP_STATUS_MARKERS = (
     "only releases with status draft may be created on draft app",
 )
 EDIT_EXPIRED_FRAGMENT = "this edit has expired"
+VERSION_CODE_USED_RE = re.compile(r"version code (?P<version_code>\d+) has already been used", re.IGNORECASE)
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 PLAY_IMAGE_DIMENSIONS = {
     ("images", "icon.png"): (512, 512),
@@ -118,6 +120,11 @@ def _is_draft_app_status_error(message: str, response_text: str, http_status: in
 def _is_edit_expired(message: str, response_text: str, http_status: int | None) -> bool:
     combined = f"{message}\n{response_text}".lower()
     return http_status == 400 and EDIT_EXPIRED_FRAGMENT in combined
+
+
+def _extract_used_version_code(message: str, response_text: str) -> str:
+    match = VERSION_CODE_USED_RE.search(f"{message}\n{response_text}")
+    return match.group("version_code") if match else ""
 
 
 def _is_transient_http(http_status: int | None, message: str) -> bool:
@@ -303,12 +310,24 @@ def _publish_to_track(
             edit = service.edits().insert(body={}, packageName=package).execute()
             edit_id = edit["id"]
 
-            bundle = service.edits().bundles().upload(
-                packageName=package,
-                editId=edit_id,
-                media_body=MediaFileUpload(str(aab_path), mimetype="application/octet-stream"),
-            ).execute()
-            version_code = bundle["versionCode"]
+            try:
+                bundle = service.edits().bundles().upload(
+                    packageName=package,
+                    editId=edit_id,
+                    media_body=MediaFileUpload(str(aab_path), mimetype="application/octet-stream"),
+                ).execute()
+                version_code = bundle["versionCode"]
+            except HttpError as error:
+                message = str(error)
+                response_text = _extract_response_text(error)
+                version_code = _extract_used_version_code(message, response_text)
+                if not version_code:
+                    raise
+                print(
+                    f"⚠️ Version code {version_code} already exists in Play. "
+                    "Reusing it for track update.",
+                    file=sys.stderr,
+                )
 
             _update_listing_and_assets(
                 service=service,
