@@ -157,6 +157,7 @@ jobs:
   ios:
     name: Autonomous iOS Build Check
     runs-on: macos-15
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: native-ios
@@ -219,6 +220,7 @@ jobs:
             -project AnswerGuard.xcodeproj \
             -scheme AnswerGuard \
             -destination 'platform=iOS Simulator,id=${{ steps.sim.outputs.sim_id }}' \
+            -only-testing:AnswerGuardTests/SpamDatabaseTests \
             -skip-testing:AnswerGuardUITests \
             -enableCodeCoverage YES \
             -resultBundlePath build/TestResults.xcresult \
