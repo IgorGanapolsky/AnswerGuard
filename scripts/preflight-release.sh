@@ -196,12 +196,24 @@ if [[ "$PLATFORM" == "android" || "$PLATFORM" == "both" ]]; then
     FG_DIR="$ANDROID_META/images/featureGraphic"
     if [[ -d "$FG_DIR" ]]; then
       check_dir_has_files "$FG_DIR" "*.png" "Android feature graphic" 1
+      FEATURE_GRAPHIC="$FG_DIR/feature.png"
+      if [[ -f "$FEATURE_GRAPHIC" ]]; then
+        FEATURE_SIZE=$(python3 "$PROJECT_ROOT/scripts/png_dimensions.py" "$FEATURE_GRAPHIC" 2>/dev/null || echo "")
+        if [[ "$FEATURE_SIZE" != "1024x500" ]]; then
+          err "Android feature graphic must be 1024x500 for Google Play (got ${FEATURE_SIZE:-unreadable})"
+        fi
+      fi
     else
       warn "Android featureGraphic directory missing (recommended but not required)"
     fi
 
     # App icon
-    check_file_exists "$ANDROID_META/images/icon.png" "Android store icon" || true
+    if check_file_exists "$ANDROID_META/images/icon.png" "Android store icon"; then
+      ICON_SIZE=$(python3 "$PROJECT_ROOT/scripts/png_dimensions.py" "$ANDROID_META/images/icon.png" 2>/dev/null || echo "")
+      if [[ "$ICON_SIZE" != "512x512" ]]; then
+        err "Android store icon must be 512x512 for Google Play (got ${ICON_SIZE:-unreadable})"
+      fi
+    fi
   fi
 
   # Description length checks

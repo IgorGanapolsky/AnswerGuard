@@ -1,6 +1,27 @@
+import struct
+import tempfile
 import unittest
+from pathlib import Path
 
-from scripts.play_publish import _is_failed_precondition, _release_payload
+from scripts.play_publish import (
+    _is_failed_precondition,
+    _release_payload,
+    _validate_play_image_dimensions,
+)
+
+
+PNG_SIG = b"\x89PNG\r\n\x1a\n"
+
+
+def _write_png_header(path: Path, width: int, height: int) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(
+        PNG_SIG
+        + b"\x00\x00\x00\r"
+        + b"IHDR"
+        + struct.pack(">II", width, height)
+        + b"\x08\x06\x00\x00\x00"
+    )
 
 
 class PlayPublishTests(unittest.TestCase):
@@ -50,6 +71,28 @@ class PlayPublishTests(unittest.TestCase):
         )
         self.assertNotIn("userFraction", payload)
         self.assertEqual(payload["releaseNotes"][0]["text"], "notes")
+
+    def test_validate_play_image_dimensions_accepts_required_sizes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            metadata_dir = Path(tmp)
+            _write_png_header(metadata_dir / "images" / "icon.png", 512, 512)
+            _write_png_header(
+                metadata_dir / "images" / "featureGraphic" / "feature.png",
+                1024,
+                500,
+            )
+
+            self.assertEqual(_validate_play_image_dimensions(metadata_dir), [])
+
+    def test_validate_play_image_dimensions_rejects_bad_icon_size(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            metadata_dir = Path(tmp)
+            _write_png_header(metadata_dir / "images" / "icon.png", 1024, 1024)
+
+            errors = _validate_play_image_dimensions(metadata_dir)
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("expected 512x512, got 1024x1024", errors[0])
 
 
 if __name__ == "__main__":

@@ -8,6 +8,7 @@ import glob
 import json
 import mimetypes
 import os
+import struct
 import sys
 import time
 from dataclasses import dataclass
@@ -29,6 +30,11 @@ FAILED_PRECONDITION_MARKERS = (
     "failed_precondition",
     "precondition check failed",
 )
+PNG_SIG = b"\x89PNG\r\n\x1a\n"
+PLAY_IMAGE_DIMENSIONS = {
+    ("images", "icon.png"): (512, 512),
+    ("images", "featureGraphic", "feature.png"): (1024, 500),
+}
 
 
 @dataclass
@@ -58,6 +64,32 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 def _mime_for(path: str) -> str:
     mime, _ = mimetypes.guess_type(path)
     return mime or "application/octet-stream"
+
+
+def _png_dimensions(path: Path) -> tuple[int, int]:
+    with path.open("rb") as f:
+        header = f.read(24)
+    if len(header) < 24 or header[:8] != PNG_SIG:
+        raise ValueError("not a PNG")
+    return struct.unpack(">II", header[16:24])
+
+
+def _validate_play_image_dimensions(metadata_dir: Path) -> list[str]:
+    errors = []
+    for relative_parts, expected in PLAY_IMAGE_DIMENSIONS.items():
+        path = metadata_dir.joinpath(*relative_parts)
+        if not path.exists():
+            continue
+        try:
+            actual = _png_dimensions(path)
+        except Exception as exc:
+            errors.append(f"{path}: could not read PNG dimensions: {exc}")
+            continue
+        if actual != expected:
+            errors.append(
+                f"{path}: expected {expected[0]}x{expected[1]}, got {actual[0]}x{actual[1]}"
+            )
+    return errors
 
 
 def _extract_response_text(error: Exception) -> str:
@@ -362,6 +394,13 @@ def main() -> int:
     result_json_path = Path(args.result_json)
     error_json_path = Path(args.error_json)
     release_status = (args.release_status or "completed").strip() or "completed"
+
+    image_dimension_errors = _validate_play_image_dimensions(metadata_dir)
+    if image_dimension_errors:
+        print("❌ Google Play image dimension preflight failed:", file=sys.stderr)
+        for error in image_dimension_errors:
+            print(f"  - {error}", file=sys.stderr)
+        return 2
 
     precondition_error_payload: dict[str, Any] | None = None
     for idx, track in enumerate(tracks):
