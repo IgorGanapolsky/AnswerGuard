@@ -1,0 +1,41 @@
+categories:
+  bug:
+    labels: ["type: bug", "triage"]
+    sla: 48h
+  compliance:
+    labels: ["type: compliance", "triage"]
+    sla: 24h
+  feature:
+    labels: ["type: enhancement"]
+    sla: 7d
+
+automation:
+  new_issues:
+    - auto_label: true
+    - request_reproduction: true
+  stale_issues:
+    mark_stale_after: 60d
+    close_stale_after: 14d
+    exempt_labels:
+      - "type: compliance"
+      - "status: blocked"
+
+labels:
+  - name: "triage"
+    color: "fbca04"
+    description: "Needs initial triage"
+  - name: "type: bug"
+    color: "d73a4a"
+    description: "Something is not working"
+  - name: "type: compliance"
+    color: "d93f0b"
+    description: "Store, privacy, permission, or policy work"
+  - name: "type: enhancement"
+    color: "a2eeef"
+    description: "Feature or product improvement"
+  - name: "platform: ios"
+    color: "c5def5"
+    description: "iOS-specific work"
+  - name: "platform: android"
+    color: "bfdadc"
+    description: "Android-specific work"
