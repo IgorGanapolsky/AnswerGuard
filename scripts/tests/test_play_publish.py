@@ -6,6 +6,7 @@ from pathlib import Path
 from scripts.play_publish import (
     _build_app_details,
     _is_draft_app_status_error,
+    _is_edit_expired,
     _is_failed_precondition,
     _release_payload,
     _validate_play_image_dimensions,
@@ -69,6 +70,15 @@ class PlayPublishTests(unittest.TestCase):
                 "HttpError 403",
                 "Only releases with status draft may be created on draft app.",
                 403,
+            )
+        )
+
+    def test_detects_expired_edit_error(self):
+        self.assertTrue(
+            _is_edit_expired(
+                "HttpError 400",
+                '{"error":{"message":"This edit has expired, please create a new Edit."}}',
+                400,
             )
         )
 
