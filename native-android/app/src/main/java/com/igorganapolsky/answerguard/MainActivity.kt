@@ -57,6 +57,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var proManager: ProManager
 
     private var callScreeningEnabled by mutableStateOf(false)
+    private var proActionInProgress by mutableStateOf(false)
+    private var proStatusMessage by mutableStateOf<String?>(null)
 
     private val roleRequestLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -85,6 +87,8 @@ class MainActivity : ComponentActivity() {
                         onRefresh = ::refreshCallScreeningStatus,
                         onUpgrade = ::launchProPurchase,
                         onRestore = ::restorePurchases,
+                        proActionInProgress = proActionInProgress,
+                        proStatusMessage = proStatusMessage,
                     )
                 }
             }
@@ -118,18 +122,49 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun launchProPurchase() {
+        if (proActionInProgress) return
         lifecycleScope.launch {
-            proManager.launchPurchase(
-                activity = this@MainActivity,
-                productID = ProManager.BASE_PRODUCT_ID,
-                entryPoint = "home_pro_card",
-            )
+            proActionInProgress = true
+            proStatusMessage = "Connecting to Google Play..."
+            try {
+                val launched =
+                    proManager.launchPurchase(
+                        activity = this@MainActivity,
+                        productID = ProManager.BASE_PRODUCT_ID,
+                        entryPoint = "home_pro_card",
+                    )
+                proStatusMessage =
+                    if (launched) {
+                        "Google Play is open. Complete your purchase there."
+                    } else {
+                        "Could not open Google Play billing. Check Play Store setup and try again."
+                    }
+            } catch (_: Exception) {
+                proStatusMessage = "Could not start the Pro upgrade. Try again."
+            } finally {
+                proActionInProgress = false
+            }
         }
     }
 
     private fun restorePurchases() {
+        if (proActionInProgress) return
         lifecycleScope.launch {
-            proManager.restorePurchasesFromPaywall(entryPoint = "home_pro_card")
+            proActionInProgress = true
+            proStatusMessage = "Checking Google Play purchases..."
+            try {
+                val restored = proManager.restorePurchasesFromPaywall(entryPoint = "home_pro_card")
+                proStatusMessage =
+                    if (restored) {
+                        "Pro purchase restored."
+                    } else {
+                        "No active Pro purchase found for this Google Play account."
+                    }
+            } catch (_: Exception) {
+                proStatusMessage = "Could not restore purchases. Try again."
+            } finally {
+                proActionInProgress = false
+            }
         }
     }
 
@@ -161,6 +196,8 @@ private fun AnswerGuardHome(
     onRefresh: () -> Unit,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
+    proActionInProgress: Boolean,
+    proStatusMessage: String?,
 ) {
     Box(
         modifier =
@@ -179,7 +216,12 @@ private fun AnswerGuardHome(
             Spacer(modifier = Modifier.height(16.dp))
             Header()
             StatusCard(callScreeningEnabled = callScreeningEnabled, onEnable = onEnable, onRefresh = onRefresh)
-            ProCard(onUpgrade = onUpgrade, onRestore = onRestore)
+            ProCard(
+                onUpgrade = onUpgrade,
+                onRestore = onRestore,
+                actionInProgress = proActionInProgress,
+                statusMessage = proStatusMessage,
+            )
             HowItWorks()
             PrivacyCard()
         }
@@ -190,6 +232,8 @@ private fun AnswerGuardHome(
 private fun ProCard(
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
+    actionInProgress: Boolean,
+    statusMessage: String?,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
@@ -214,6 +258,7 @@ private fun ProCard(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
                     onClick = onUpgrade,
+                    enabled = !actionInProgress,
                     colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
                     modifier = Modifier.weight(1f),
                 ) {
@@ -225,6 +270,7 @@ private fun ProCard(
                 }
                 Button(
                     onClick = onRestore,
+                    enabled = !actionInProgress,
                     colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
                     modifier = Modifier.weight(1f),
                 ) {
@@ -234,6 +280,13 @@ private fun ProCard(
                         fontWeight = FontWeight.Bold,
                     )
                 }
+            }
+            if (!statusMessage.isNullOrBlank()) {
+                Text(
+                    text = statusMessage,
+                    color = AnswerGuardColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         }
     }
