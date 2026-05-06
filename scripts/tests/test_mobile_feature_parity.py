@@ -8,6 +8,7 @@ ANDROID_MAIN = ROOT / "native-android/app/src/main/java/com/igorganapolsky/answe
 ANDROID_SCREENING_SERVICE = ROOT / "native-android/app/src/main/java/com/igorganapolsky/answerguard/screening/AnswerGuardScreeningService.kt"
 ANDROID_ROLE_ONBOARDING = ROOT / "native-android/app/src/main/java/com/igorganapolsky/answerguard/screening/RoleOnboardingActivity.kt"
 ANDROID_VERDICT_ENGINE = ROOT / "native-android/app/src/main/java/com/igorganapolsky/answerguard/screening/SpamVerdictEngine.kt"
+ANDROID_PRO_MANAGER = ROOT / "native-android/app/src/main/java/com/igorganapolsky/answerguard/billing/ProManager.kt"
 IOS_PRO_MANAGER = ROOT / "native-ios/AnswerGuard/Sources/Services/ProManager.swift"
 IOS_HOME = ROOT / "native-ios/AnswerGuard/Sources/UI/Screens/AnswerGuardHomeScreen.swift"
 IOS_CALL_DIRECTORY_MANAGER = ROOT / "native-ios/AnswerGuard/Sources/Services/CallDirectoryManager.swift"
@@ -80,3 +81,23 @@ def test_pro_surface_stays_answer_guard_specific():
     assert "AnswerGuard Pro" in android_main
     assert "advanced spam rules" in android_main
     assert "func unlockEliteForDebug()" not in ios_pro_manager
+
+
+def test_android_pro_buttons_report_billing_progress_and_failures():
+    android_main = _read(ANDROID_MAIN)
+    android_pro_manager = _read(ANDROID_PRO_MANAGER)
+
+    for snippet in [
+        "proActionInProgress",
+        "proStatusMessage",
+        "Connecting to Google Play...",
+        "Could not open Google Play billing.",
+        "No active Pro purchase found",
+        "enabled = !actionInProgress",
+    ]:
+        assert snippet in android_main
+
+    assert "val launched =" in android_main
+    assert "val restored =" in android_main
+    assert "ensureBillingReady()" in android_pro_manager
+    assert "CompletableDeferred<BillingResult>" in android_pro_manager

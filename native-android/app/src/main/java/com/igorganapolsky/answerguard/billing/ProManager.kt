@@ -20,9 +20,8 @@ import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
 import com.igorganapolsky.answerguard.analytics.AnalyticsProperties
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +31,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private fun billingResult(
+    responseCode: Int,
+    debugMessage: String,
+): BillingResult =
+    BillingResult
+        .newBuilder()
+        .setResponseCode(responseCode)
+        .setDebugMessage(debugMessage)
+        .build()
 
 @Singleton
 class ProManager
@@ -76,32 +85,68 @@ class ProManager
 
         private val cachedProductDetails = mutableMapOf<String, com.android.billingclient.api.ProductDetails>()
         private var pendingPurchaseEntryPoint: String? = null
+        private var activeConnection: CompletableDeferred<BillingResult>? = null
 
         init {
             connectAndRestore()
         }
 
         private fun connectAndRestore() {
-            billingClient.startConnection(
-                object : BillingClientStateListener {
-                    override fun onBillingSetupFinished(result: BillingResult) {
-                        if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                            externalScope.launch {
-                                restorePurchases(
-                                    source = MonetizationSources.AUTO_RESTORE,
-                                    entryPoint = null,
-                                    trackResult = false,
-                                )
-                                fetchAllProductDetails()
-                            }
-                        }
-                    }
+            externalScope.launch {
+                if (ensureBillingReady().responseCode == BillingClient.BillingResponseCode.OK) {
+                    restorePurchases(
+                        source = MonetizationSources.AUTO_RESTORE,
+                        entryPoint = null,
+                        trackResult = false,
+                    )
+                    fetchAllProductDetails()
+                }
+            }
+        }
 
-                    override fun onBillingServiceDisconnected() {
-                        // Retry on next purchase attempt
-                    }
-                },
-            )
+        private suspend fun ensureBillingReady(): BillingResult {
+            if (billingClient.isReady) {
+                return billingResult(BillingClient.BillingResponseCode.OK, "billing_ready")
+            }
+
+            activeConnection?.let { existingConnection ->
+                return existingConnection.await()
+            }
+
+            val connection = CompletableDeferred<BillingResult>()
+            activeConnection = connection
+            try {
+                billingClient.startConnection(
+                    object : BillingClientStateListener {
+                        override fun onBillingSetupFinished(result: BillingResult) {
+                            connection.complete(result)
+                        }
+
+                        override fun onBillingServiceDisconnected() {
+                            connection.complete(
+                                billingResult(
+                                    BillingClient.BillingResponseCode.SERVICE_DISCONNECTED,
+                                    "billing_service_disconnected",
+                                ),
+                            )
+                        }
+                    },
+                )
+            } catch (error: Exception) {
+                connection.complete(
+                    billingResult(
+                        BillingClient.BillingResponseCode.SERVICE_DISCONNECTED,
+                        error.message ?: "billing_connection_failed",
+                    ),
+                )
+            }
+            return try {
+                connection.await()
+            } finally {
+                if (activeConnection === connection) {
+                    activeConnection = null
+                }
+            }
         }
 
         private suspend fun restorePurchases(
@@ -109,15 +154,15 @@ class ProManager
             entryPoint: String?,
             trackResult: Boolean,
         ): Boolean {
-            if (!billingClient.isReady) {
-                connectAndRestore()
+            val readyResult = ensureBillingReady()
+            if (readyResult.responseCode != BillingClient.BillingResponseCode.OK || !billingClient.isReady) {
                 if (trackResult) {
                     trackRestoreResult(
                         success = false,
                         source = source,
                         entryPoint = entryPoint,
-                        responseCode = BillingClient.BillingResponseCode.SERVICE_DISCONNECTED,
-                        debugMessage = "billing_not_ready",
+                        responseCode = readyResult.responseCode,
+                        debugMessage = readyResult.debugMessage.ifBlank { "billing_not_ready" },
                     )
                 }
                 return false
@@ -178,14 +223,14 @@ class ProManager
             entryPoint: String,
         ): Boolean {
             pendingPurchaseEntryPoint = entryPoint
-            if (!billingClient.isReady) {
-                connectAndRestore()
+            val readyResult = ensureBillingReady()
+            if (readyResult.responseCode != BillingClient.BillingResponseCode.OK || !billingClient.isReady) {
                 trackPurchaseResult(
                     success = false,
                     source = MonetizationSources.PAYWALL,
                     entryPoint = entryPoint,
-                    responseCode = BillingClient.BillingResponseCode.SERVICE_DISCONNECTED,
-                    debugMessage = "billing_not_ready",
+                    responseCode = readyResult.responseCode,
+                    debugMessage = readyResult.debugMessage.ifBlank { "billing_not_ready" },
                 )
                 pendingPurchaseEntryPoint = null
                 return false
