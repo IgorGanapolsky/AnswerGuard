@@ -60,20 +60,29 @@ jobs:
           fi
 
           if [ -z "$ASC_PATH" ] || [ -z "$PLAY_PATH" ]; then
-            echo "::error::Store console verification requires both ASC_STORAGE_STATE_JSON and PLAY_STORAGE_STATE_JSON."
-            exit 1
+            if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+              echo "::error::Store console verification requires both ASC_STORAGE_STATE_JSON and PLAY_STORAGE_STATE_JSON."
+              exit 1
+            fi
+
+            echo "::warning::Skipping scheduled store console verification because ASC_STORAGE_STATE_JSON and/or PLAY_STORAGE_STATE_JSON is not set."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
+          echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "asc_path=$ASC_PATH" >> "$GITHUB_OUTPUT"
           echo "play_path=$PLAY_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Run read-only console checks
+        if: steps.auth.outputs.skip != 'true'
         env:
           ASC_STORAGE_STATE_PATH: ${{ steps.auth.outputs.asc_path }}
           PLAY_STORAGE_STATE_PATH: ${{ steps.auth.outputs.play_path }}
         run: npm run test:console
 
       - name: Run read-only console checks (agent-browser)
+        if: steps.auth.outputs.skip != 'true'
         env:
           ASC_STORAGE_STATE_PATH: ${{ steps.auth.outputs.asc_path }}
           PLAY_STORAGE_STATE_PATH: ${{ steps.auth.outputs.play_path }}
