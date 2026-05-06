@@ -53,6 +53,7 @@ class ProManager
         companion object {
             const val BASE_PRODUCT_ID = "answerguard_pro"
             const val ELITE_PRODUCT_ID = "answerguard_family"
+            const val PRO_PRODUCT_ID = ELITE_PRODUCT_ID
 
             internal fun canUseDebugUnlock(
                 isDebugBuild: Boolean = BuildConfig.DEBUG,
@@ -346,6 +347,11 @@ class ProManager
                 details?.oneTimePurchaseOfferDetails?.formattedPrice ?: "$7.99"
             }
         }
+
+        suspend fun launchProPurchase(
+            activity: Activity,
+            entryPoint: String,
+        ): Boolean = launchPurchase(activity, PRO_PRODUCT_ID, entryPoint)
 
         override fun onPurchasesUpdated(
             result: BillingResult,

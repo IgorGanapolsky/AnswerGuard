@@ -99,5 +99,9 @@ def test_android_pro_buttons_report_billing_progress_and_failures():
 
     assert "val launched =" in android_main
     assert "val restored =" in android_main
+    assert "launchProPurchase(" in android_main
+    assert "productID = ProManager.BASE_PRODUCT_ID" not in android_main
+    assert "const val PRO_PRODUCT_ID = ELITE_PRODUCT_ID" in android_pro_manager
+    assert "launchProPurchase(" in android_pro_manager
     assert "ensureBillingReady()" in android_pro_manager
     assert "CompletableDeferred<BillingResult>" in android_pro_manager

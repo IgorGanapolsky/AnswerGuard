@@ -128,9 +128,8 @@ class MainActivity : ComponentActivity() {
             proStatusMessage = "Connecting to Google Play..."
             try {
                 val launched =
-                    proManager.launchPurchase(
+                    proManager.launchProPurchase(
                         activity = this@MainActivity,
-                        productID = ProManager.BASE_PRODUCT_ID,
                         entryPoint = "home_pro_card",
                     )
                 proStatusMessage =
