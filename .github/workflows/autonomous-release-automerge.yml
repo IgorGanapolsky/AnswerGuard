@@ -1,0 +1,75 @@
+name: Autonomous Release Automerge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Optional PR number to auto-merge"
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-automerge:
+    if: |
+      (github.event_name == 'pull_request_target' &&
+       github.event.pull_request.base.ref == 'main' &&
+       startsWith(github.event.pull_request.head.ref, 'release/') &&
+       github.event.pull_request.draft == false) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve PR number
+        id: pr
+        env:
+          DISPATCH_PR: ${{ inputs.pr_number }}
+          EVENT_PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          PR_NUMBER="${DISPATCH_PR:-${EVENT_PR:-}}"
+          if [[ -z "${PR_NUMBER}" ]]; then
+            echo "No PR number provided." >&2
+            exit 1
+          fi
+          echo "pr_number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Enable PR auto-merge (squash)
+        env:
+          PROJECT_PAT: ${{ secrets.PROJECT_PAT }}
+          DEFAULT_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+
+          enable_automerge() {
+            local label="$1"
+            local token="$2"
+
+            if [[ -z "$token" ]]; then
+              echo "Skipping ${label}: token is not configured."
+              return 1
+            fi
+
+            echo "Attempting auto-merge with ${label}."
+            GH_TOKEN="$token" gh pr merge "$PR_NUMBER" \
+              --repo "$GITHUB_REPOSITORY" \
+              --squash \
+              --auto \
+              --delete-branch
+          }
+
+          if enable_automerge "GITHUB_TOKEN" "$DEFAULT_TOKEN"; then
+            exit 0
+          fi
+
+          if enable_automerge "PROJECT_PAT fallback" "${PROJECT_PAT:-}"; then
+            exit 0
+          fi
+
+          echo "Unable to enable release auto-merge with available tokens." >&2
+          exit 1

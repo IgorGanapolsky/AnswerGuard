@@ -1,0 +1,20 @@
+# Firebase App Testing agent (Android) natural-language cases.
+tests:
+  - displayName: AnswerGuard onboarding and Pro gate smoke
+    id: answerguard-smoke-onboarding-pro
+    steps:
+      - goal: >
+          Open AnswerGuard. If Android shows permission dialogs, accept them.
+          Reach the main app screen without signing in and without completing any purchase.
+        hint: >
+          Dismiss one-time overlays if present. Stay in the primary call-screening experience.
+        finalScreenAssertion: >
+          The text "AnswerGuard" or "Call Screening" is visible on the screen.
+      - goal: >
+          Find the AnswerGuard Pro upgrade affordance and open it.
+          Scroll if the Pro control is not visible.
+        hint: >
+          Prefer controls labeled Pro, AnswerGuard Pro, Upgrade, or subscription.
+        finalScreenAssertion: >
+          A paywall or subscription screen is visible, with text related to AnswerGuard Pro,
+          choosing a plan, or starting a subscription.
