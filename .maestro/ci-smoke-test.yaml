@@ -1,19 +1,13 @@
-appId: com.iganapolsky.randomtimer
+appId: com.igorganapolsky.answerguard
 ---
-# CI Smoke test: Works on any screen size (compact or regular).
-# Does NOT assert on "Random Tactical Timer" title which is hidden in compact mode.
+# CI smoke test: launch AnswerGuard and verify the stable home surface.
 - launchApp
 - waitForAnimationToEnd
 
-# "Start Timer" button is always visible regardless of viewport height
 - extendedWaitUntil:
-    visible: 'Start Timer'
+    visible: 'AnswerGuard'
     timeout: 30000
 
-# Start the timer
-- tapOn: 'Start Timer'
-
-# Verify timer screen is shown
-- assertVisible:
-    text: 'Pause'
-    optional: true
+- assertVisible: 'Call Screening'
+- assertVisible: 'Enable Call Screening'
+- assertVisible: 'AnswerGuard Pro'

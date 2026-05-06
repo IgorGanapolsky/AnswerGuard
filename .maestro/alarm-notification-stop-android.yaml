@@ -1,14 +1,8 @@
-appId: com.iganapolsky.randomtimer
+appId: com.igorganapolsky.answerguard
 ---
+# Legacy filename kept for script compatibility; verifies AnswerGuard launches.
 - clearState
-- launchApp:
-    arguments:
-      -ui-test-state: alarm
-- assertVisible: "Stop"
-- assertVisible: "Silence"
-- stopApp
-- openNotifications
-- assertVisible: "Stop"
-- assertVisible: "Silence"
-- tapOn: "Stop"
-- assertVisible: "Start Timer"
+- launchApp
+- waitForAnimationToEnd
+- assertVisible: 'AnswerGuard'
+- assertVisible: 'Call Screening'

@@ -1,19 +1,11 @@
-appId: com.iganapolsky.randomtimer
+appId: com.igorganapolsky.answerguard
 ---
-# Verification helper: paused timer in background should show notification.
-
+# Legacy filename kept for script compatibility; verifies background return.
 - launchApp:
     clearState: true
-- assertVisible: "Random Tactical Timer"
-- assertVisible: "Start Timer"
-
-- tapOn: "Start Timer"
-- assertVisible:
-    text: "Pause"
-
-- tapOn: "Pause"
-- assertVisible:
-    text: "Resume"
-
-# Send app to background.
+- assertVisible: 'AnswerGuard'
+- assertVisible: 'Call Screening'
 - pressKey: Home
+- launchApp
+- assertVisible: 'AnswerGuard'
+- assertVisible: 'Call Screening'

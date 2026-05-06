@@ -69,4 +69,26 @@ class ProManagerSubscriptionOfferSelectionTest {
         assertThat(selected?.offerToken).isEqualTo("monthly-token")
         assertThat(selected?.displayPrice).isEqualTo("$4.99")
     }
+
+    @Test
+    fun `selectPreferredSubscriptionOffer returns null for empty offers`() {
+        assertThat(selectPreferredSubscriptionOffer(emptyList())).isNull()
+    }
+
+    @Test
+    fun `displayPrice falls back to first phase when last phase is absent only by empty list`() {
+        val emptyOffer = SubscriptionOffer(offerToken = "empty", pricingPhases = emptyList())
+        val phasedOffer =
+            SubscriptionOffer(
+                offerToken = "phased",
+                pricingPhases =
+                    listOf(
+                        SubscriptionPricingPhase(formattedPrice = "$0.99", billingPeriod = "P1W"),
+                        SubscriptionPricingPhase(formattedPrice = "$4.99", billingPeriod = "P1M"),
+                    ),
+            )
+
+        assertThat(emptyOffer.displayPrice).isNull()
+        assertThat(phasedOffer.displayPrice).isEqualTo("$4.99")
+    }
 }
