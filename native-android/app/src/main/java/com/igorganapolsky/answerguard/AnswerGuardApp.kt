@@ -3,6 +3,7 @@ package com.igorganapolsky.answerguard
 import android.app.Application
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.screening.UserBlocklist
+import com.igorganapolsky.answerguard.screening.ScreeningLog
 import com.google.firebase.analytics.FirebaseAnalytics
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -15,6 +16,7 @@ class AnswerGuardApp : Application() {
     override fun onCreate() {
         super.onCreate()
         UserBlocklist.init(this)
+        ScreeningLog.init(this)
 
         // PostHog is our source of truth for product analytics.
         // Disable Firebase Analytics event collection to avoid duplicate telemetry streams.

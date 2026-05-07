@@ -32,8 +32,15 @@ object SpamVerdictEngine {
         Regex("""^(\+?1)?900\d+$"""),                          // 900 premium
     )
 
-    fun evaluate(rawNumber: String): SpamVerdict {
+    fun evaluate(rawNumber: String, verstat: Int = -1): SpamVerdict {
         val digits = rawNumber.filter { it.isDigit() }
+
+        // 0. Check STIR/SHAKEN verification (if available)
+        // ConnectionVerificationState.VERIFICATION_STATUS_FAILED = 2
+        if (verstat == 2) {
+            Log.w(tag, "$digits FAILED carrier verification — silencing")
+            return SpamVerdict.SILENCE
+        }
 
         if (digits.isBlank()) {
             Log.w(tag, "Unknown/private number — silencing")

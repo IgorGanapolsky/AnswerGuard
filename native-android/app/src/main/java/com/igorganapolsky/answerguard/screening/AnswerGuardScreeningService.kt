@@ -3,6 +3,7 @@ package com.igorganapolsky.answerguard.screening
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.util.Log
+import java.util.UUID
 
 import android.os.Build
 import androidx.annotation.RequiresApi
@@ -21,10 +22,31 @@ class AnswerGuardScreeningService : CallScreeningService() {
 
     override fun onScreenCall(callDetails: Call.Details) {
         val handle = callDetails.handle?.schemeSpecificPart ?: ""
-        Log.d(tag, "Screening call from: $handle")
+        
+        // Extract STIR/SHAKEN verification status (VERSTAT)
+        // Available since Android 11 (API 30)
+        val verstat = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            callDetails.callerNumberVerificationStatus
+        } else {
+            -1 // Unknown
+        }
 
-        val verdict = SpamVerdictEngine.evaluate(handle)
+        Log.d(tag, "Screening call from: $handle (VERSTAT: $verstat)")
+
+        val verdict = SpamVerdictEngine.evaluate(handle, verstat)
         Log.i(tag, "Verdict for $handle: $verdict")
+
+        // Record the event for the UI
+        ScreeningLog.log(ScreeningEvent(
+            id = UUID.randomUUID().toString(),
+            phoneNumber = handle,
+            verdict = when(verdict) {
+                SpamVerdict.BLOCK -> ScreeningVerdict.BLOCKED
+                SpamVerdict.SILENCE -> ScreeningVerdict.SILENCED
+                SpamVerdict.ALLOW -> ScreeningVerdict.ALLOWED
+            },
+            reason = "Pattern matching + Local Rules"
+        ))
 
         val response = CallResponse.Builder().apply {
             when (verdict) {

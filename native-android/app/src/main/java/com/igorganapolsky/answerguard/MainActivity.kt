@@ -51,6 +51,13 @@ import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
 import kotlinx.coroutines.launch
 
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.igorganapolsky.answerguard.screening.AdvancedScreeningScreen
+import com.igorganapolsky.answerguard.screening.ScreeningViewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var analyticsService: AnalyticsService
@@ -74,18 +81,36 @@ class MainActivity : ComponentActivity() {
         refreshCallScreeningStatus()
 
         setContent {
+            val navController = rememberNavController()
+            val screeningViewModel: ScreeningViewModel = viewModel()
+
             AnswerGuardTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = AnswerGuardColors.Background,
-                ) {
-                    AnswerGuardHome(
-                        callScreeningEnabled = callScreeningEnabled,
-                        onEnable = ::requestCallScreeningRole,
-                        onRefresh = ::refreshCallScreeningStatus,
-                        onUpgrade = ::launchProPurchase,
-                        onRestore = ::restorePurchases,
-                    )
+                NavHost(navController = navController, startDestination = "home") {
+                    composable("home") {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = AnswerGuardColors.Background,
+                        ) {
+                            AnswerGuardHome(
+                                callScreeningEnabled = callScreeningEnabled,
+                                onEnable = ::requestCallScreeningRole,
+                                onRefresh = { 
+                                    refreshCallScreeningStatus()
+                                    if (callScreeningEnabled) {
+                                        navController.navigate("screening")
+                                    }
+                                },
+                                onUpgrade = ::launchProPurchase,
+                                onRestore = ::restorePurchases,
+                            )
+                        }
+                    }
+                    composable("screening") {
+                        AdvancedScreeningScreen(
+                            viewModel = screeningViewModel,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
                 }
             }
         }
