@@ -4,6 +4,9 @@ import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.util.Log
 
+import android.os.Build
+import androidx.annotation.RequiresApi
+
 /**
  * AnswerGuard call screening service.
  *
@@ -11,6 +14,7 @@ import android.util.Log
  * The system calls [onScreenCall] for each incoming call; we must respond
  * within 5 seconds or the system defaults to allowing the call.
  */
+@RequiresApi(Build.VERSION_CODES.Q)
 class AnswerGuardScreeningService : CallScreeningService() {
 
     private val tag = "AnswerGuardScreening"

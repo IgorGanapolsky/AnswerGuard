@@ -55,7 +55,7 @@ struct DangerButton: View {
         PrimaryButton(
             title: title,
             action: action,
-            backgroundColor: .timerDanger
+            backgroundColor: .statusDanger
         )
         .accessibilityLabel(title)
         .accessibilityAddTraits(.isButton)
@@ -77,9 +77,9 @@ struct PressableButtonStyle: ButtonStyle {
         Color.backgroundDark.ignoresSafeArea()
 
         VStack(spacing: 16) {
-            PrimaryButton(title: "Start Timer") {}
+            PrimaryButton(title: "Enable Protection") {}
             SecondaryButton(title: "Cancel") {}
-            DangerButton(title: "Stop Alarm") {}
+            DangerButton(title: "Remove Number") {}
         }
         .padding()
     }

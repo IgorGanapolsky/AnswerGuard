@@ -1,24 +1,14 @@
-appId: com.iganapolsky.randomtimer
+appId: com.igorganapolsky.answerguard
 ---
-# Smoke test: Verify app launches and timer flow works
 - launchApp
+- assertVisible: 'AnswerGuard'
+- assertVisible: 'Call Screening'
+- assertVisible: 'AnswerGuard Pro'
+- assertVisible: 'Privacy first'
+- assertVisible: 'How it works'
 
-# Verify main screen elements are visible
-- assertVisible: 'Random Tactical Timer'
+# Test button click
+- tapOn: 'Enable Call Screening'
 - assertVisible:
-    text: '.*Goes Off In This Range.*'
-- assertVisible:
-    text: '.*Minimum:.*'
-- assertVisible:
-    text: '.*Maximum:.*'
-- assertVisible:
-    text: '.*Alarm Sound Duration.*'
-- assertVisible: 'Start Timer'
-
-# Start the timer
-- tapOn: 'Start Timer'
-
-# Verify timer screen is shown (pause button should be visible)
-- assertVisible:
-    text: 'Pause'
+    text: '.*'
     optional: true

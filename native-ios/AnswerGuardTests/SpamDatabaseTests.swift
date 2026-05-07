@@ -1,4 +1,5 @@
 import XCTest
+import CallKit
 @testable import AnswerGuard
 
 final class SpamDatabaseTests: XCTestCase {

@@ -176,11 +176,11 @@ device-tests:
 	@bash scripts/device-tests/run-all.sh
 
 device-tests-adb:
-	@bash scripts/device-tests/run-all.sh --adb-only
+	@echo "ADB shell suites were removed with the legacy product surface."
+	@echo "Use 'make device-tests' for the AnswerGuard Maestro smoke flow."
 
 phoneclaw-visual:
-	@echo "==> PhoneClaw: pushing visual test scripts to device"
-	@bash scripts/device-tests/phoneclaw/setup-device.sh
+	@echo "PhoneClaw visual scripts were removed with the legacy product surface."
 
 distribute-internal:
 	@gh workflow run internal-distribution.yml --ref $$(git branch --show-current) -f ref=$$(git branch --show-current) -f target=ios_firebase

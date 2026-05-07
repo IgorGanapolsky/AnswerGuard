@@ -28,7 +28,7 @@ def test_android_declares_real_call_screening_capability():
     assert "RoleManager.ROLE_CALL_SCREENING" in role_onboarding
 
 
-def test_android_removed_timer_runtime_surface():
+def test_android_removed_legacy_runtime_surface():
     manifest = _read(ANDROID_MANIFEST)
     main = _read(ANDROID_MAIN)
 

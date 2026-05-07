@@ -5,9 +5,9 @@
     {
       "severity": "major",
       "status": "open",
-      "file": "native-ios/AnswerGuard/Sources/Services/TimerManager.swift",
+      "file": "native-ios/AnswerGuard/Sources/Services/CallDirectoryManager.swift",
       "description": "State transition is unsafe.",
-      "suggestion": "Add alarm-state gate before reset."
+      "suggestion": "Add reload-state gate before reset."
     }
   ]
 }

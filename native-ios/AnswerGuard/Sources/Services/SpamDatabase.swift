@@ -1,9 +1,10 @@
 import Foundation
+import CallKit
 import os
 
 /// Thread-safe local spam/block number store.
 /// Backed by UserDefaults (App Group) so the Call Directory extension can read it.
-public final class SpamDatabase {
+public final class SpamDatabase: @unchecked Sendable {
 
     public static let shared = SpamDatabase()
 
@@ -51,6 +52,12 @@ public final class SpamDatabase {
     }
 
     public func setIdentificationEntries(_ entries: [IdentificationEntry]) {
+        guard !entries.isEmpty else {
+            defaults.removeObject(forKey: identifiedKey)
+            logger.info("Cleared identification list")
+            return
+        }
+
         guard let data = try? JSONEncoder().encode(entries) else { return }
         defaults.set(data, forKey: identifiedKey)
         logger.info("Updated identification list: \(entries.count) entries")

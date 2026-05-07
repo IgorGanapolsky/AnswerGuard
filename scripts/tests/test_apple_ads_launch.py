@@ -68,7 +68,7 @@ def test_add_negative_keywords_counts_created(monkeypatch):
 
 def test_read_no_scale_lock_detects_lock(tmp_path, monkeypatch):
     mod = _import_module(monkeypatch)
-    report = tmp_path / "marketing" / "data" / "north_star.json"
+    report = tmp_path / "marketing" / "data" / "paid_guardrail.json"
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(
         '{"paid":{"no_scale_lock":{"active":true,"reasons":["zero paid users"],"enforceable_status":"enforceable"}}}',
@@ -81,7 +81,7 @@ def test_read_no_scale_lock_detects_lock(tmp_path, monkeypatch):
 
 def test_read_no_scale_lock_legacy_fallback(tmp_path, monkeypatch):
     mod = _import_module(monkeypatch)
-    report = tmp_path / "marketing" / "data" / "north_star.json"
+    report = tmp_path / "marketing" / "data" / "paid_guardrail.json"
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(
         '{"paid":{"guardrail_violated":true,"guardrail_reason":"legacy violation"}}',

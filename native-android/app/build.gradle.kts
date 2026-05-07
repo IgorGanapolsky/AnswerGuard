@@ -159,9 +159,6 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)
 
-    // Media Session (Bluetooth/Android Auto alarm dismiss)
-    implementation(libs.androidx.media)
-
     // Testing
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

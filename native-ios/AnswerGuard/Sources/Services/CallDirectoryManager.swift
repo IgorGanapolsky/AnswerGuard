@@ -38,17 +38,23 @@ final class CallDirectoryManager: ObservableObject {
         lastError = nil
         defer { isRefreshing = false }
 
-        await withCheckedContinuation { continuation in
+        let reloadError: String? = await withCheckedContinuation { continuation in
             CXCallDirectoryManager.sharedInstance.reloadExtension(
                 withIdentifier: extensionID
-            ) { [weak self] error in
+            ) { error in
                 if let error {
-                    self?.lastError = error.localizedDescription
-                    self?.logger.error("Reload failed: \(error.localizedDescription)")
+                    continuation.resume(returning: error.localizedDescription)
+                } else {
+                    continuation.resume(returning: nil)
                 }
-                continuation.resume()
             }
         }
+
+        if let reloadError {
+            lastError = reloadError
+            logger.error("Reload failed: \(reloadError)")
+        }
+
         await refreshStatus()
     }
 

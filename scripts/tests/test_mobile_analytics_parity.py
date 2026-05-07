@@ -64,7 +64,7 @@ class MobileAnalyticsParityTests(unittest.TestCase):
         )
         self.assertEqual({"Home", "Protection"}, android_screens)
 
-    def test_product_specific_events_replace_random_timer_events(self):
+    def test_product_specific_events_replace_legacy_events(self):
         source = ANDROID_ANALYTICS.read_text(encoding="utf-8")
         for event in [
             "call_screening_enabled",

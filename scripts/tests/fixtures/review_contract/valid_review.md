@@ -8,7 +8,7 @@
     {
       "severity": "minor",
       "status": "open",
-      "file": "native-ios/AnswerGuard/Sources/UI/Screens/ActiveTimerScreen.swift",
+      "file": "native-ios/AnswerGuard/Sources/UI/Screens/AnswerGuardHomeScreen.swift",
       "line": 88,
       "description": "Spacing constant can be extracted for consistency.",
       "suggestion": "Use existing spacing token from theme constants."

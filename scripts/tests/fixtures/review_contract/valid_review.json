@@ -1,22 +1,22 @@
 {
   "verdict": "REQUEST_CHANGES",
-  "summary": "One major issue found in timer state transitions.",
+  "summary": "One major issue found in call-screening state transitions.",
   "issues": [
     {
       "severity": "major",
       "status": "open",
-      "file": "native-ios/AnswerGuard/Sources/Services/TimerManager.swift",
+      "file": "native-ios/AnswerGuard/Sources/Services/CallDirectoryManager.swift",
       "line": 312,
-      "description": "Timer state can be reset while alarm playback is active.",
-      "suggestion": "Guard reset path until alarm state is dismissed."
+      "description": "Call directory reload state can be reset while a reload is active.",
+      "suggestion": "Guard reset path until the active reload completes."
     },
     {
       "severity": "critical",
       "status": "fixed",
-      "file": "native-android/app/src/main/java/com/igorganapolsky/answerguard/service/TimerForegroundService.kt",
+      "file": "native-android/app/src/main/java/com/igorganapolsky/answerguard/screening/AnswerGuardScreeningService.kt",
       "line": 783,
-      "description": "Alarm player fallback leaked audio focus on exception path.",
-      "suggestion": "Always release focus in finally block when playback setup fails."
+      "description": "Call details fallback could allow a known blocked number on exception.",
+      "suggestion": "Default to the conservative local blocklist verdict when handle parsing fails."
     }
   ]
 }

@@ -4,8 +4,7 @@ import os
 extension Logger {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.igorganapolsky.answerguard"
 
-    static let timer = Logger(subsystem: subsystem, category: "timer")
-    static let notification = Logger(subsystem: subsystem, category: "notification")
-    static let liveActivity = Logger(subsystem: subsystem, category: "liveActivity")
+    static let callScreening = Logger(subsystem: subsystem, category: "callScreening")
+    static let callDirectory = Logger(subsystem: subsystem, category: "callDirectory")
     static let analytics = Logger(subsystem: subsystem, category: "analytics")
 }

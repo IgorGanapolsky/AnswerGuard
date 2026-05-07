@@ -256,16 +256,16 @@ def verify_campaign(headers: Dict[str, str], campaign_id: int) -> Dict[str, Any]
 
 
 def read_no_scale_lock(repo_root: Path) -> tuple[bool, str]:
-    report_path = repo_root / "marketing" / "data" / "north_star.json"
+    report_path = repo_root / "marketing" / "data" / "paid_guardrail.json"
     if not report_path.exists():
         return False, ""
     try:
         payload = json.loads(report_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        return True, f"north_star.json unreadable ({exc})"
+        return True, f"paid_guardrail.json unreadable ({exc})"
     paid = payload.get("paid", {}) if isinstance(payload, dict) else {}
     if not isinstance(paid, dict):
-        return True, "paid section missing from north_star.json"
+        return True, "paid section missing from paid_guardrail.json"
     lock = paid.get("no_scale_lock")
     if isinstance(lock, dict) and "active" in lock:
         active = bool(lock.get("active"))

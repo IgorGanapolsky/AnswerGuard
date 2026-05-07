@@ -154,15 +154,11 @@ final class ProManager: ObservableObject {
 
     // MARK: - Feature Gates
 
-    static let maxSecondsFree = 300
-    static let maxSecondsPro = 3600
+    static let freeBlockedNumberLimit = 25
+    static let proBlockedNumberLimit = 1_000
 
-    var maxSecondsLimit: Int {
-        isPro ? Self.maxSecondsPro : Self.maxSecondsFree
-    }
-
-    var availableSounds: [SoundType] {
-        isPro ? SoundType.allCases : SoundType.freeSounds
+    var blockedNumberLimit: Int {
+        isPro ? Self.proBlockedNumberLimit : Self.freeBlockedNumberLimit
     }
 
     func unlockProForDebug() {
@@ -173,6 +169,16 @@ final class ProManager: ObservableObject {
 
 enum StoreError: Error {
     case failedVerification
+}
+
+enum EntitlementLevel: String {
+    case none
+    case base
+    case elite
+
+    var isPro: Bool {
+        self == .base || self == .elite
+    }
 }
 
 enum ProPurchaseResult: String {

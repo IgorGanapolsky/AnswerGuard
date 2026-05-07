@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""High-level release operations interface for Random-Timer.
+"""High-level release operations interface for AnswerGuard.
 
 Commands:
   - check_readiness: local preflight + consolidated release context snapshot

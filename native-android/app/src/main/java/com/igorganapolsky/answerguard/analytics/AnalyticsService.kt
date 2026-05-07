@@ -203,12 +203,12 @@ class AnalyticsService
         private fun environment(): String = if (buildAudience() == "live") "production" else "development"
 
         private fun isEmulator(): Boolean {
-            val fingerprint = Build.FINGERPRINT.lowercase()
-            val model = Build.MODEL.lowercase()
-            val manufacturer = Build.MANUFACTURER.lowercase()
-            val brand = Build.BRAND.lowercase()
-            val device = Build.DEVICE.lowercase()
-            val product = Build.PRODUCT.lowercase()
+            val fingerprint = Build.FINGERPRINT?.lowercase() ?: ""
+            val model = Build.MODEL?.lowercase() ?: ""
+            val manufacturer = Build.MANUFACTURER?.lowercase() ?: ""
+            val brand = Build.BRAND?.lowercase() ?: ""
+            val device = Build.DEVICE?.lowercase() ?: ""
+            val product = Build.PRODUCT?.lowercase() ?: ""
             return (
                 fingerprint.startsWith("generic") ||
                     fingerprint.contains("emulator") ||

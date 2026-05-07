@@ -17,8 +17,8 @@ final class AnalyticsService {
     private var initialized = false
     private let distinctIdDefaultsKey = "posthog_distinct_id"
     private let hasFirstOpenedKey = "has_first_opened"
-    private let hasFirstConfiguredKey = "has_first_configured"
-    private let hasFirstCompletedKey = "has_first_completed"
+    private let hasFirstProtectionEnabledKey = "has_first_protection_enabled"
+    private let hasFirstSpamBlockedKey = "has_first_spam_blocked"
     private let hasTrackedApplicationInstalledKey = "has_tracked_application_installed"
     private let utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]
     private let appleAdsAttributionFetchedKey = "apple_ads_attribution_fetched"
@@ -281,20 +281,20 @@ final class AnalyticsService {
         defaults.set(true, forKey: hasFirstOpenedKey)
     }
 
-    func trackFirstTimerConfiguredIfNeeded() {
+    func trackFirstProtectionEnabledIfNeeded() {
         guard initialized else { return }
         let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: hasFirstConfiguredKey) else { return }
-        track(AnalyticsEvents.firstTimerConfigured)
-        defaults.set(true, forKey: hasFirstConfiguredKey)
+        guard !defaults.bool(forKey: hasFirstProtectionEnabledKey) else { return }
+        track(AnalyticsEvents.firstProtectionEnabled)
+        defaults.set(true, forKey: hasFirstProtectionEnabledKey)
     }
 
-    func trackFirstTimerCompletedIfNeeded() {
+    func trackFirstSpamBlockedIfNeeded() {
         guard initialized else { return }
         let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: hasFirstCompletedKey) else { return }
-        track(AnalyticsEvents.firstTimerCompleted)
-        defaults.set(true, forKey: hasFirstCompletedKey)
+        guard !defaults.bool(forKey: hasFirstSpamBlockedKey) else { return }
+        track(AnalyticsEvents.firstSpamBlocked)
+        defaults.set(true, forKey: hasFirstSpamBlockedKey)
     }
 
     // MARK: - Stored Attribution
@@ -327,16 +327,11 @@ final class AnalyticsService {
 enum AnalyticsEvents {
     static let applicationInstalled = "Application Installed"
     static let applicationOpened = "Application Opened"
-    static let timerStarted = "timer_started"
-    static let timerCompleted = "timer_completed"
-    static let timerPaused = "timer_paused"
-    static let timerResumed = "timer_resumed"
-    static let timerReset = "timer_reset"
-    static let timerStopped = "timer_stopped"
-    static let alarmTriggered = "alarm_triggered"
-    static let alarmDismissed = "alarm_dismissed"
-    static let timerAbandoned = "timer_abandoned"
-    static let timerCountdownFinished = "timer_countdown_finished"
+    static let callScreeningEnabled = "call_screening_enabled"
+    static let callScreeningRefreshed = "call_screening_refreshed"
+    static let spamCallBlocked = "spam_call_blocked"
+    static let suspiciousCallSilenced = "suspicious_call_silenced"
+    static let callAllowed = "call_allowed"
     static let settingsChanged = "settings_changed"
     static let reviewPromptRequested = "review_prompt_requested"
     static let writeReviewTapped = "write_review_tapped"
@@ -353,8 +348,8 @@ enum AnalyticsEvents {
 
     // Onboarding Funnel
     static let firstOpen = "first_open"
-    static let firstTimerConfigured = "first_timer_configured"
-    static let firstTimerCompleted = "first_timer_completed"
+    static let firstProtectionEnabled = "first_protection_enabled"
+    static let firstSpamBlocked = "first_spam_blocked"
 }
 
 enum AnalyticsProperties {
@@ -374,11 +369,11 @@ enum AnalyticsProperties {
 enum AnalyticsValues {
     static let abandonReasonUserCancelled = "user_cancelled"
     static let abandonReasonStaleRestoreExpired = "stale_restore_expired"
-    static let abandonSourceTimerControls = "timer_controls"
+    static let abandonSourceProtectionControls = "protection_controls"
     static let abandonSourceStateRestore = "state_restore"
 }
 
 enum AnalyticsScreens {
-    static let timerSetup = "Timer Setup"
-    static let activeTimer = "Active Timer"
+    static let home = "Home"
+    static let onboarding = "Call Screening Onboarding"
 }

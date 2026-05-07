@@ -9,8 +9,6 @@
 
 `AnswerGuard` is a native iOS + Android app for privacy-first spam and scam call protection.
 
-The repo keeps the release automation, Fastlane setup, and GitHub Actions backbone adapted from `Random-Timer`, while the product surface is now focused on AnswerGuard call screening.
-
 ## What’s Included
 
 - Native Android project in [`native-android/`](native-android/)

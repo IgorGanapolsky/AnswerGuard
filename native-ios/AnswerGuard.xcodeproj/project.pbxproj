@@ -8,52 +8,23 @@
 
 /* Begin PBXBuildFile section */
 		064BAA16EA4D4830B29F2D9C /* AnswerGuardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCFBE5D59081407DA7F38ED6 /* AnswerGuardUITests.swift */; };
-		0B6A472176A53D70127E8133 /* CircularTimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7810CC4BC51B69F8B2799FF7 /* CircularTimerView.swift */; };
-		0D85510DFBFA57EC653BEFAC /* ActiveTimerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965D6C9486FA65E74E5A03EC /* ActiveTimerScreen.swift */; };
 		0DDD8A9A4BBA38ABE292B47F /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E4CF9C669D336F6C2FD8E7 /* PrimaryButton.swift */; };
-		1128B196E27E8531DC06D2FF /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BE6975376BF7C7C6B14F8BF /* NotificationService.swift */; };
-		17E69C010FAA04EFC0076358 /* TimerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5328BD9D4D105BCDE8D488F4 /* TimerModels.swift */; };
 		1BAE4130DA7DC5758A7F13FE /* StoreReviewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48232C2EAE9FAA775617C954 /* StoreReviewManager.swift */; };
-		1DB82123D1FB23AC92C566D7 /* drum_roll.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = F5F3E399050BD30295736FEA /* drum_roll.mp3 */; };
-		1EF5792885AFE606EACC05F9 /* TimerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE62A2F6E881E0CCA7DF2361 /* TimerManager.swift */; };
-		2B75985921EFA190A6114447 /* airhorn.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = F29061814BF691DA7F9CD649 /* airhorn.mp3 */; };
-		3FFD4482489894E382E7B6E8 /* klaxon.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 01D20814587EFDB22A275849 /* klaxon.mp3 */; };
-		49B707298D8B919D28D01A71 /* SharedTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD7E2987345EA2F0A52A882 /* SharedTypes.swift */; };
-		4C7AAC0D5B84BD7DFA0ACEAB /* TimerSetupScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA529E7A224C8E8728DAE7A /* TimerSetupScreen.swift */; };
-		4E242D865279E0BFD5B9CF7B /* gentle-chime.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 91AD2CFB9AE9EF347F990B2F /* gentle-chime.mp3 */; };
 		4ED9D921707F80E1AC5501F3 /* AnswerGuardApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 368C8F93B37D3B244F271919 /* AnswerGuardApp.swift */; };
 		4F4A683B236AE94216503707 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A84792F8E1380EF1A87461 /* Colors.swift */; };
-		4F9999B0FD7F8A78A7A7C9A6 /* siren.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = B346A5600C70703BAB7FB9E6 /* siren.mp3 */; };
-		4FF9285AE33C37D3F7655511 /* whistle.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C2A2B6F508A20346A871C6F5 /* whistle.mp3 */; };
-		56DF942937CE323893E2E4C6 /* alarm.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3063864498ABB31478972EDD /* alarm.mp3 */; };
-		5817A12E9686AD21EAFE028A /* PaywallSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808390B0F0B9EE36AC342E7A /* PaywallSheet.swift */; };
-		5B6F3408CC4B851C6428EAAA /* buzzer.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 8E92FED72459C5B7A18BEE3D /* buzzer.mp3 */; };
-		69A55EE7F47BF51A55C13896 /* AnswerGuardLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ACBE63218A7CEC69F1E5422 /* AnswerGuardLiveActivity.swift */; };
-		7333136EFF1A48ADABA95895 /* bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 75387774E2DAB72906B19DCD /* bell.mp3 */; };
-		840C3EEAD4E35D7D202C1C68 /* TimerModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B55AFED96FE157EA7D0BF85 /* TimerModelsTests.swift */; };
 		85ABA1B34E3D14E790434638 /* ProManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A3DD46F85A68522E1B0902 /* ProManager.swift */; };
 		96771424C44C551B73F7732B /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D15E4584476AB7D519E638B /* GlassCard.swift */; };
-		997459C4BEB58C7A5CB1C72F /* gong.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 18EB65CABE2573B583A2913B /* gong.mp3 */; };
 		A1B2C3D400000001DEADBEEF /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D400000002DEADBEEF /* Logger.swift */; };
 		A1B2C3D400000003DEADBEEF /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D400000004DEADBEEF /* AnalyticsService.swift */; };
 		A1B2C3D400000004SHARE01 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D400000004SHARE02 /* ShareSheet.swift */; };
-		A1B2C3D4E5F60718A1B2C3D4 /* CircularTimerViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D5 /* CircularTimerViewTests.swift */; };
 		AACD00112233445566778801 /* CallDirectoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AACD00112233445566778802 /* CallDirectoryManager.swift */; };
 		AAGH00112233445566778801 /* AnswerGuardHomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAGH00112233445566778802 /* AnswerGuardHomeScreen.swift */; };
 		AABB001122334455DEADBEE0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABB001122334455DEADBEEF /* Assets.xcassets */; };
-		AIVC00112233445566778899 /* AIVoiceCalloutService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AIVC00112233445566778800 /* AIVoiceCalloutService.swift */; };
-		B1C2D3E4F5A6071800STATS1 /* TrainingStatsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6071800STATS2 /* TrainingStatsService.swift */; };
-		BC2E89FF69ECC3F835BB9D9D /* AnswerGuardWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 05CD46A1911192043939F56F /* AnswerGuardWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		C1D2E3F4A5B60718C1D2E3F4 /* SilenceAndStopAlarmTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B60718C1D2E3F5 /* SilenceAndStopAlarmTests.swift */; };
-		D6D5DBA2177110DF7C339F94 /* ServiceProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EB219B60074D5E0130A3D15 /* ServiceProtocols.swift */; };
-		D8BFD3BC04A1001EE7329508 /* StorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4045FE32D7D1E2F9D4C423C /* StorageService.swift */; };
-		D91C11A4CCFA99B1AF1AEA34 /* AnswerGuardWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50E4F1687D48222CB0AD3509 /* AnswerGuardWidgetBundle.swift */; };
-		DB8217C38D6B214B931042F7 /* TimerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5328BD9D4D105BCDE8D488F4 /* TimerModels.swift */; };
-		E1DD7FFA2F3044B7A5F461C1 /* LiveActivityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EEB9F4FF4ED4C88A5232642 /* LiveActivityService.swift */; };
-		E479E3D609A46B2F93C1BD2C /* RangeSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA1C5AD670D6527A669A21F /* RangeSliderView.swift */; };
 		PH00112233445566778899AA /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = PH00112233445566778899BB /* PostHog */; };
 		PRIV001122334455AABB0002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PRIV001122334455AABB0001 /* PrivacyInfo.xcprivacy */; };
 		PRVT001122334455AABB0002 /* ProValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = PRVT001122334455AABB0001 /* ProValidationTests.swift */; };
+		SPAM001122334455AABB0002 /* SpamDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = SPAM001122334455AABB0001 /* SpamDatabase.swift */; };
+		SPAMT01122334455AABB0002 /* SpamDatabaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = SPAMT01122334455AABB0001 /* SpamDatabaseTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,13 +34,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 071F286DC49E27F1773FA883;
 			remoteInfo = AnswerGuard;
-		};
-		A81BED66FA956A6A357D5F6D /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 0EDC84FE4BE7EB4ACDD83C02 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 6B67826C44AEC156CD76B7DC;
-			remoteInfo = AnswerGuardWidgetExtension;
 		};
 		D3B5D27FE9DAFDE56963E3F1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -87,7 +51,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				BC2E89FF69ECC3F835BB9D9D /* AnswerGuardWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -95,56 +58,27 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		01D20814587EFDB22A275849 /* klaxon.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = klaxon.mp3; sourceTree = "<group>"; };
-		05CD46A1911192043939F56F /* AnswerGuardWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = AnswerGuardWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		18EB65CABE2573B583A2913B /* gong.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = gong.mp3; sourceTree = "<group>"; };
-		1ACBE63218A7CEC69F1E5422 /* AnswerGuardLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardLiveActivity.swift; sourceTree = "<group>"; };
 		1D15E4584476AB7D519E638B /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
-		1FEB9292178DAA002E1375B9 /* AnswerGuardWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnswerGuardWidgetExtension.entitlements; sourceTree = "<group>"; };
 		25FCEC0B24402A66BBCC142A /* AnswerGuardTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AnswerGuardTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		3063864498ABB31478972EDD /* alarm.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = alarm.mp3; sourceTree = "<group>"; };
 		368C8F93B37D3B244F271919 /* AnswerGuardApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardApp.swift; sourceTree = "<group>"; };
-		3BE6975376BF7C7C6B14F8BF /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		48232C2EAE9FAA775617C954 /* StoreReviewManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StoreReviewManager.swift; sourceTree = "<group>"; };
 		4C626B57059C6BDF97711A5D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		4EB219B60074D5E0130A3D15 /* ServiceProtocols.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServiceProtocols.swift; sourceTree = "<group>"; };
-		50E4F1687D48222CB0AD3509 /* AnswerGuardWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardWidgetBundle.swift; sourceTree = "<group>"; };
-		5328BD9D4D105BCDE8D488F4 /* TimerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerModels.swift; sourceTree = "<group>"; };
 		5897E50AB48E9FBF061E29B4 /* AnswerGuard.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AnswerGuard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		68E4CF9C669D336F6C2FD8E7 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
-		75387774E2DAB72906B19DCD /* bell.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = bell.mp3; sourceTree = "<group>"; };
-		7810CC4BC51B69F8B2799FF7 /* CircularTimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularTimerView.swift; sourceTree = "<group>"; };
-		7B55AFED96FE157EA7D0BF85 /* TimerModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerModelsTests.swift; sourceTree = "<group>"; };
-		7CA1C5AD670D6527A669A21F /* RangeSliderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSliderView.swift; sourceTree = "<group>"; };
-		808390B0F0B9EE36AC342E7A /* PaywallSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PaywallSheet.swift; sourceTree = "<group>"; };
-		8E92FED72459C5B7A18BEE3D /* buzzer.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = buzzer.mp3; sourceTree = "<group>"; };
-		8EEB9F4FF4ED4C88A5232642 /* LiveActivityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityService.swift; sourceTree = "<group>"; };
-		91AD2CFB9AE9EF347F990B2F /* gentle-chime.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "gentle-chime.mp3"; sourceTree = "<group>"; };
-		965D6C9486FA65E74E5A03EC /* ActiveTimerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveTimerScreen.swift; sourceTree = "<group>"; };
 		A1B2C3D400000002DEADBEEF /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		A1B2C3D400000004DEADBEEF /* AnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsService.swift; sourceTree = "<group>"; };
 		A1B2C3D400000004SHARE02 /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718A1B2C3D5 /* CircularTimerViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularTimerViewTests.swift; sourceTree = "<group>"; };
 		A5A3DD46F85A68522E1B0902 /* ProManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProManager.swift; sourceTree = "<group>"; };
-		AAA529E7A224C8E8728DAE7A /* TimerSetupScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerSetupScreen.swift; sourceTree = "<group>"; };
 		AACD00112233445566778802 /* CallDirectoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallDirectoryManager.swift; sourceTree = "<group>"; };
 		AAGH00112233445566778802 /* AnswerGuardHomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardHomeScreen.swift; sourceTree = "<group>"; };
 		AABB001122334455DEADBEEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = AnswerGuard/Resources/Assets.xcassets; sourceTree = "<group>"; };
-		AIVC00112233445566778800 /* AIVoiceCalloutService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIVoiceCalloutService.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5A6071800STATS2 /* TrainingStatsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingStatsService.swift; sourceTree = "<group>"; };
-		B346A5600C70703BAB7FB9E6 /* siren.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = siren.mp3; sourceTree = "<group>"; };
 		B9A84792F8E1380EF1A87461 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		BDB556957D054D23B9D4D664 /* AnswerGuardUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AnswerGuardUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		C1D2E3F4A5B60718C1D2E3F5 /* SilenceAndStopAlarmTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SilenceAndStopAlarmTests.swift; sourceTree = "<group>"; };
-		C2A2B6F508A20346A871C6F5 /* whistle.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = whistle.mp3; sourceTree = "<group>"; };
 		CCFBE5D59081407DA7F38ED6 /* AnswerGuardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardUITests.swift; sourceTree = "<group>"; };
-		CE62A2F6E881E0CCA7DF2361 /* TimerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerManager.swift; sourceTree = "<group>"; };
-		D4045FE32D7D1E2F9D4C423C /* StorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageService.swift; sourceTree = "<group>"; };
-		ECD7E2987345EA2F0A52A882 /* SharedTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTypes.swift; sourceTree = "<group>"; };
-		F29061814BF691DA7F9CD649 /* airhorn.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = airhorn.mp3; sourceTree = "<group>"; };
-		F5F3E399050BD30295736FEA /* drum_roll.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = drum_roll.mp3; sourceTree = "<group>"; };
 		PRIV001122334455AABB0001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AnswerGuard/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		PRVT001122334455AABB0001 /* ProValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProValidationTests.swift; sourceTree = "<group>"; };
+		SPAM001122334455AABB0001 /* SpamDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpamDatabase.swift; sourceTree = "<group>"; };
+		SPAMT01122334455AABB0001 /* SpamDatabaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpamDatabaseTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -165,7 +99,6 @@
 				5897E50AB48E9FBF061E29B4 /* AnswerGuard.app */,
 				25FCEC0B24402A66BBCC142A /* AnswerGuardTests.xctest */,
 				BDB556957D054D23B9D4D664 /* AnswerGuardUITests.xctest */,
-				05CD46A1911192043939F56F /* AnswerGuardWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -180,22 +113,18 @@
 		};
 		4A083F7CAA823D4930153B06 /* AnswerGuardTests */ = {
 			isa = PBXGroup;
-			children = (
-				A1B2C3D4E5F60718A1B2C3D5 /* CircularTimerViewTests.swift */,
-				PRVT001122334455AABB0001 /* ProValidationTests.swift */,
-				C1D2E3F4A5B60718C1D2E3F5 /* SilenceAndStopAlarmTests.swift */,
-				7B55AFED96FE157EA7D0BF85 /* TimerModelsTests.swift */,
-			);
+				children = (
+					PRVT001122334455AABB0001 /* ProValidationTests.swift */,
+					SPAMT01122334455AABB0001 /* SpamDatabaseTests.swift */,
+				);
 			path = AnswerGuardTests;
 			sourceTree = "<group>";
 		};
 		552F50DFC810EB390ED7DC36 /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				7810CC4BC51B69F8B2799FF7 /* CircularTimerView.swift */,
 				1D15E4584476AB7D519E638B /* GlassCard.swift */,
 				68E4CF9C669D336F6C2FD8E7 /* PrimaryButton.swift */,
-				7CA1C5AD670D6527A669A21F /* RangeSliderView.swift */,
 				A1B2C3D400000004SHARE02 /* ShareSheet.swift */,
 			);
 			path = Components;
@@ -218,19 +147,13 @@
 		A7465B81D29C7680F842A4F4 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3D400000004DEADBEEF /* AnalyticsService.swift */,
-				A1B2C3D400000002DEADBEEF /* Logger.swift */,
-				3BE6975376BF7C7C6B14F8BF /* NotificationService.swift */,
-				8EEB9F4FF4ED4C88A5232642 /* LiveActivityService.swift */,
-				AACD00112233445566778802 /* CallDirectoryManager.swift */,
-				D4045FE32D7D1E2F9D4C423C /* StorageService.swift */,
-				CE62A2F6E881E0CCA7DF2361 /* TimerManager.swift */,
-				4EB219B60074D5E0130A3D15 /* ServiceProtocols.swift */,
-				48232C2EAE9FAA775617C954 /* StoreReviewManager.swift */,
-				B1C2D3E4F5A6071800STATS2 /* TrainingStatsService.swift */,
-				A5A3DD46F85A68522E1B0902 /* ProManager.swift */,
-				AIVC00112233445566778800 /* AIVoiceCalloutService.swift */,
-			);
+					A1B2C3D400000004DEADBEEF /* AnalyticsService.swift */,
+					A1B2C3D400000002DEADBEEF /* Logger.swift */,
+					AACD00112233445566778802 /* CallDirectoryManager.swift */,
+					SPAM001122334455AABB0001 /* SpamDatabase.swift */,
+					48232C2EAE9FAA775617C954 /* StoreReviewManager.swift */,
+					A5A3DD46F85A68522E1B0902 /* ProManager.swift */,
+				);
 			path = Services;
 			sourceTree = "<group>";
 		};
@@ -254,12 +177,9 @@
 		};
 		BF2FCD2370C088340557209E /* Screens */ = {
 			isa = PBXGroup;
-			children = (
-				965D6C9486FA65E74E5A03EC /* ActiveTimerScreen.swift */,
-				AAGH00112233445566778802 /* AnswerGuardHomeScreen.swift */,
-				AAA529E7A224C8E8728DAE7A /* TimerSetupScreen.swift */,
-				808390B0F0B9EE36AC342E7A /* PaywallSheet.swift */,
-			);
+				children = (
+					AAGH00112233445566778802 /* AnswerGuardHomeScreen.swift */,
+				);
 			path = Screens;
 			sourceTree = "<group>";
 		};
@@ -283,28 +203,10 @@
 			name = Sources;
 			path = AnswerGuard/Sources;
 			sourceTree = "<group>";
-		};
-		DAE21E1BE339F9330CF1883A /* SharedModels */ = {
+			};
+			DB1EB0493351D1D4C087065E /* Sounds */ = {
 			isa = PBXGroup;
 			children = (
-				5328BD9D4D105BCDE8D488F4 /* TimerModels.swift */,
-			);
-			path = SharedModels;
-			sourceTree = "<group>";
-		};
-		DB1EB0493351D1D4C087065E /* Sounds */ = {
-			isa = PBXGroup;
-			children = (
-				3063864498ABB31478972EDD /* alarm.mp3 */,
-				91AD2CFB9AE9EF347F990B2F /* gentle-chime.mp3 */,
-				01D20814587EFDB22A275849 /* klaxon.mp3 */,
-				C2A2B6F508A20346A871C6F5 /* whistle.mp3 */,
-				8E92FED72459C5B7A18BEE3D /* buzzer.mp3 */,
-				18EB65CABE2573B583A2913B /* gong.mp3 */,
-				F29061814BF691DA7F9CD649 /* airhorn.mp3 */,
-				F5F3E399050BD30295736FEA /* drum_roll.mp3 */,
-				B346A5600C70703BAB7FB9E6 /* siren.mp3 */,
-				75387774E2DAB72906B19DCD /* bell.mp3 */,
 			);
 			name = Sounds;
 			path = AnswerGuard/Resources/Sounds;
@@ -317,26 +219,12 @@
 			);
 			path = AnswerGuardUITests;
 			sourceTree = "<group>";
-		};
-		F0050F788BCC05C75D7EA40F /* AnswerGuardWidget */ = {
-			isa = PBXGroup;
-			children = (
-				4C626B57059C6BDF97711A5D /* Info.plist */,
-				1ACBE63218A7CEC69F1E5422 /* AnswerGuardLiveActivity.swift */,
-				50E4F1687D48222CB0AD3509 /* AnswerGuardWidgetBundle.swift */,
-				1FEB9292178DAA002E1375B9 /* AnswerGuardWidgetExtension.entitlements */,
-				ECD7E2987345EA2F0A52A882 /* SharedTypes.swift */,
-			);
-			path = AnswerGuardWidget;
-			sourceTree = "<group>";
-		};
-		F8289CF182E2C94C3F449A81 = {
+			};
+			F8289CF182E2C94C3F449A81 = {
 			isa = PBXGroup;
 			children = (
 				4A083F7CAA823D4930153B06 /* AnswerGuardTests */,
 				E404D625B80F47B498797ECB /* AnswerGuardUITests */,
-				F0050F788BCC05C75D7EA40F /* AnswerGuardWidget */,
-				DAE21E1BE339F9330CF1883A /* SharedModels */,
 				DB1EB0493351D1D4C087065E /* Sounds */,
 				D32BDC3522EA9C4F129D3A58 /* Sources */,
 				AABB001122334455DEADBEEF /* Assets.xcassets */,
@@ -368,16 +256,14 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1FC5C4B604AB7C83642F1A28 /* Build configuration list for PBXNativeTarget "AnswerGuard" */;
 			buildPhases = (
-				4B3649502FCACD78DF51B7D7 /* Sources */,
-				PH00112233445566778899CC /* Frameworks */,
-				C860582E5E34407E753D7F99 /* Resources */,
-				C1D86135661BEED30B3D6574 /* Embed Foundation Extensions */,
-			);
+					4B3649502FCACD78DF51B7D7 /* Sources */,
+					PH00112233445566778899CC /* Frameworks */,
+					C860582E5E34407E753D7F99 /* Resources */,
+				);
 			buildRules = (
 			);
-			dependencies = (
-				B309A62F166A0C885742BA28 /* PBXTargetDependency */,
-			);
+				dependencies = (
+				);
 			name = AnswerGuard;
 			packageProductDependencies = (
 				PH00112233445566778899BB /* PostHog */,
@@ -385,23 +271,8 @@
 			productName = AnswerGuard;
 			productReference = 5897E50AB48E9FBF061E29B4 /* AnswerGuard.app */;
 			productType = "com.apple.product-type.application";
-		};
-		6B67826C44AEC156CD76B7DC /* AnswerGuardWidgetExtension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 6928FF87BC5E7BA0886D9F95 /* Build configuration list for PBXNativeTarget "AnswerGuardWidgetExtension" */;
-			buildPhases = (
-				A082432CA7AC1CD3BEBA0A62 /* Sources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = AnswerGuardWidgetExtension;
-			productName = AnswerGuardWidgetExtension;
-			productReference = 05CD46A1911192043939F56F /* AnswerGuardWidgetExtension.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
-		780772D950CC4419ABCBBAB5 /* AnswerGuardUITests */ = {
+			};
+			780772D950CC4419ABCBBAB5 /* AnswerGuardUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0BADE4CBF85B4271B73F574A /* Build configuration list for PBXNativeTarget "AnswerGuardUITests" */;
 			buildPhases = (
@@ -434,11 +305,7 @@
 						DevelopmentTeam = 9GMM26JC5X;
 						ProvisioningStyle = Automatic;
 					};
-					6B67826C44AEC156CD76B7DC = {
-						DevelopmentTeam = 9GMM26JC5X;
-						ProvisioningStyle = Automatic;
-					};
-					780772D950CC4419ABCBBAB5 = {
+						780772D950CC4419ABCBBAB5 = {
 						DevelopmentTeam = 9GMM26JC5X;
 						ProvisioningStyle = Automatic;
 					};
@@ -462,11 +329,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				071F286DC49E27F1773FA883 /* AnswerGuard */,
-				068B65121206C32BF6322382 /* AnswerGuardTests */,
-				780772D950CC4419ABCBBAB5 /* AnswerGuardUITests */,
-				6B67826C44AEC156CD76B7DC /* AnswerGuardWidgetExtension */,
-			);
+					071F286DC49E27F1773FA883 /* AnswerGuard */,
+					068B65121206C32BF6322382 /* AnswerGuardTests */,
+					780772D950CC4419ABCBBAB5 /* AnswerGuardUITests */,
+				);
 		};
 /* End PBXProject section */
 
@@ -475,18 +341,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				56DF942937CE323893E2E4C6 /* alarm.mp3 in Resources */,
-				4E242D865279E0BFD5B9CF7B /* gentle-chime.mp3 in Resources */,
 				AABB001122334455DEADBEE0 /* Assets.xcassets in Resources */,
 				PRIV001122334455AABB0002 /* PrivacyInfo.xcprivacy in Resources */,
-				3FFD4482489894E382E7B6E8 /* klaxon.mp3 in Resources */,
-				4FF9285AE33C37D3F7655511 /* whistle.mp3 in Resources */,
-				5B6F3408CC4B851C6428EAAA /* buzzer.mp3 in Resources */,
-				997459C4BEB58C7A5CB1C72F /* gong.mp3 in Resources */,
-				2B75985921EFA190A6114447 /* airhorn.mp3 in Resources */,
-				1DB82123D1FB23AC92C566D7 /* drum_roll.mp3 in Resources */,
-				4F9999B0FD7F8A78A7A7C9A6 /* siren.mp3 in Resources */,
-				7333136EFF1A48ADABA95895 /* bell.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -505,53 +361,28 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1B2C3D400000003DEADBEEF /* AnalyticsService.swift in Sources */,
-				0D85510DFBFA57EC653BEFAC /* ActiveTimerScreen.swift in Sources */,
-				0B6A472176A53D70127E8133 /* CircularTimerView.swift in Sources */,
-				4F4A683B236AE94216503707 /* Colors.swift in Sources */,
-				96771424C44C551B73F7732B /* GlassCard.swift in Sources */,
-				1128B196E27E8531DC06D2FF /* NotificationService.swift in Sources */,
-				E1DD7FFA2F3044B7A5F461C1 /* LiveActivityService.swift in Sources */,
-				AACD00112233445566778801 /* CallDirectoryManager.swift in Sources */,
-				0DDD8A9A4BBA38ABE292B47F /* PrimaryButton.swift in Sources */,
-				4ED9D921707F80E1AC5501F3 /* AnswerGuardApp.swift in Sources */,
-				AAGH00112233445566778801 /* AnswerGuardHomeScreen.swift in Sources */,
-				E479E3D609A46B2F93C1BD2C /* RangeSliderView.swift in Sources */,
-				A1B2C3D400000004SHARE01 /* ShareSheet.swift in Sources */,
-				D8BFD3BC04A1001EE7329508 /* StorageService.swift in Sources */,
-				1EF5792885AFE606EACC05F9 /* TimerManager.swift in Sources */,
-				17E69C010FAA04EFC0076358 /* TimerModels.swift in Sources */,
-				4C7AAC0D5B84BD7DFA0ACEAB /* TimerSetupScreen.swift in Sources */,
-				D6D5DBA2177110DF7C339F94 /* ServiceProtocols.swift in Sources */,
-				1BAE4130DA7DC5758A7F13FE /* StoreReviewManager.swift in Sources */,
-				B1C2D3E4F5A6071800STATS1 /* TrainingStatsService.swift in Sources */,
-				A1B2C3D400000001DEADBEEF /* Logger.swift in Sources */,
-				85ABA1B34E3D14E790434638 /* ProManager.swift in Sources */,
-				AIVC00112233445566778899 /* AIVoiceCalloutService.swift in Sources */,
-				5817A12E9686AD21EAFE028A /* PaywallSheet.swift in Sources */,
+					A1B2C3D400000003DEADBEEF /* AnalyticsService.swift in Sources */,
+					4F4A683B236AE94216503707 /* Colors.swift in Sources */,
+					96771424C44C551B73F7732B /* GlassCard.swift in Sources */,
+					AACD00112233445566778801 /* CallDirectoryManager.swift in Sources */,
+					0DDD8A9A4BBA38ABE292B47F /* PrimaryButton.swift in Sources */,
+					4ED9D921707F80E1AC5501F3 /* AnswerGuardApp.swift in Sources */,
+					AAGH00112233445566778801 /* AnswerGuardHomeScreen.swift in Sources */,
+					A1B2C3D400000004SHARE01 /* ShareSheet.swift in Sources */,
+					1BAE4130DA7DC5758A7F13FE /* StoreReviewManager.swift in Sources */,
+					A1B2C3D400000001DEADBEEF /* Logger.swift in Sources */,
+					85ABA1B34E3D14E790434638 /* ProManager.swift in Sources */,
+					SPAM001122334455AABB0002 /* SpamDatabase.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A082432CA7AC1CD3BEBA0A62 /* Sources */ = {
+			CA4E80465DB6DB61FEB6A5DF /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				69A55EE7F47BF51A55C13896 /* AnswerGuardLiveActivity.swift in Sources */,
-				D91C11A4CCFA99B1AF1AEA34 /* AnswerGuardWidgetBundle.swift in Sources */,
-				49B707298D8B919D28D01A71 /* SharedTypes.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		CA4E80465DB6DB61FEB6A5DF /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A1B2C3D4E5F60718A1B2C3D4 /* CircularTimerViewTests.swift in Sources */,
-				PRVT001122334455AABB0002 /* ProValidationTests.swift in Sources */,
-				C1D2E3F4A5B60718C1D2E3F4 /* SilenceAndStopAlarmTests.swift in Sources */,
-				DB8217C38D6B214B931042F7 /* TimerModels.swift in Sources */,
-				840C3EEAD4E35D7D202C1C68 /* TimerModelsTests.swift in Sources */,
-			);
+					PRVT001122334455AABB0002 /* ProValidationTests.swift in Sources */,
+					SPAMT01122334455AABB0002 /* SpamDatabaseTests.swift in Sources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
@@ -567,12 +398,7 @@
 			target = 071F286DC49E27F1773FA883 /* AnswerGuard */;
 			targetProxy = D3B5D27FE9DAFDE56963E3F1 /* PBXContainerItemProxy */;
 		};
-		B309A62F166A0C885742BA28 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 6B67826C44AEC156CD76B7DC /* AnswerGuardWidgetExtension */;
-			targetProxy = A81BED66FA956A6A357D5F6D /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
+	/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		02ACBFF2FE72E4428D7448AA /* Debug */ = {
@@ -613,31 +439,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.igorganapolsky.answerguard;
 				PROVISIONING_PROFILE_SPECIFIER = "match AppStore com.igorganapolsky.answerguard";
 				SDKROOT = iphoneos;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		093F04E2079538687B15A343 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_IDENTITY = "Apple Distribution";
-				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 132;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = AnswerGuardWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.2.6;
-				PRODUCT_BUNDLE_IDENTIFIER = com.igorganapolsky.answerguard.widget;
-				PROVISIONING_PROFILE_SPECIFIER = "match AppStore com.igorganapolsky.answerguard.widget";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -728,31 +529,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.igorganapolsky.answerguard;
 				PROVISIONING_PROFILE_SPECIFIER = "match AppStore com.igorganapolsky.answerguard";
 				SDKROOT = iphoneos;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		71022F62A5D06CEC91345947 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_IDENTITY = "Apple Distribution";
-				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 132;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = AnswerGuardWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 1.2.6;
-				PRODUCT_BUNDLE_IDENTIFIER = com.igorganapolsky.answerguard.widget;
-				PROVISIONING_PROFILE_SPECIFIER = "match AppStore com.igorganapolsky.answerguard.widget";
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -882,17 +658,8 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
-		};
-		6928FF87BC5E7BA0886D9F95 /* Build configuration list for PBXNativeTarget "AnswerGuardWidgetExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				71022F62A5D06CEC91345947 /* Debug */,
-				093F04E2079538687B15A343 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		CD36B60FFBE1306E78F16436 /* Build configuration list for PBXProject "AnswerGuard" */ = {
+			};
+			CD36B60FFBE1306E78F16436 /* Build configuration list for PBXProject "AnswerGuard" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				16FDC5DDEF28A124C3BFAA9C /* Debug */,

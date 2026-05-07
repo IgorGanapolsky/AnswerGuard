@@ -19,10 +19,10 @@ The GitHub Actions workflow `.github/workflows/internal-distribution.yml` can de
 - TestFlight, Firebase App Distribution, and Google Play internal: `target=all`
 - TestFlight plus Google Play internal, skipping Firebase: `target=all_safe`
 
-The workflow mirrors the Random Timer internal-distribution shape: push-triggered
-distribution on `develop`/`main`, manual `workflow_dispatch`, ref-to-SHA
-resolution, iOS version-lineage guardrails, TestFlight read-back, Firebase
-read-back, and signoff statuses for distributed SHAs.
+The workflow supports push-triggered distribution on `develop`/`main`, manual
+`workflow_dispatch`, ref-to-SHA resolution, iOS version-lineage guardrails,
+TestFlight read-back, Firebase read-back, and signoff statuses for distributed
+SHAs.
 
 Local shortcuts:
 
@@ -80,7 +80,7 @@ Also completed on 2026-05-05:
 - Built and verified a signed Android release APK locally.
 - Delivered iOS TestFlight internal build `1.2.6` build `133` to `iganapolsky@gmail.com`.
 - Delivered Android Firebase internal build `1.2.6 (4)` to the internal tester path.
-- Replaced Android timer UI/runtime code with Android call-screening onboarding, local spam verdicts, and reduced permissions.
+- Replaced legacy Android UI/runtime code with Android call-screening onboarding, local spam verdicts, and reduced permissions.
 
 Current local caveat: GitHub Actions secrets are write-only, so local verification can confirm the pipeline result but cannot print the stored signing and Firebase secret values.
 
@@ -135,11 +135,7 @@ Official references:
 - https://support.google.com/googleplay/android-developer/answer/11926878
 - https://support.google.com/googleplay/android-developer/answer/14151465
 
-## Random Timer Reference
-
-Use `../Random-Timer` as the operational template for release automation, metadata sync, screenshot capture, CI gates, App Store Connect scripts, and Play Console scripts. Do not copy timer-specific product claims, permissions, screenshots, or app review notes into AnswerGuard.
-
-Already ported:
+## Ported Infrastructure
 
 - `native-android/gradle.properties`
 - Local Android SDK pointer in ignored `native-android/local.properties`

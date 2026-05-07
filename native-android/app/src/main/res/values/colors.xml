@@ -4,9 +4,9 @@
     <color name="background_light">#FF141419</color>
     <color name="accent_primary">#FFDC2626</color>
     <color name="text_primary">#FFF8FAFC</color>
-    <color name="timer_active">#FF10B981</color>
-    <color name="timer_warning">#FFF59E0B</color>
-    <color name="timer_danger">#FFEF4444</color>
+    <color name="protection_active">#FF10B981</color>
+    <color name="protection_warning">#FFF59E0B</color>
+    <color name="protection_danger">#FFEF4444</color>
 
     <!-- Material Design 3 - Notification colors -->
     <color name="md3_notification_background">#FF1C1B1F</color>
