@@ -2,7 +2,7 @@ name: Internal Distribution
 
 on:
   push:
-    branches: [develop, main]
+    branches: [develop, main, feat/bootstrap-answerguard]
   workflow_dispatch:
     inputs:
       ref:
@@ -81,8 +81,8 @@ jobs:
           TARGET="${INPUT_TARGET:-all}"
 
           if [[ "$EVENT_NAME" == "push" ]]; then
-            if [[ "$GITHUB_REF_NAME_VALUE" != "main" && "$GITHUB_REF_NAME_VALUE" != "develop" ]]; then
-              echo "Automatic internal distribution is only allowed on pushes to develop or main."
+            if [[ "$GITHUB_REF_NAME_VALUE" != "main" && "$GITHUB_REF_NAME_VALUE" != "develop" && "$GITHUB_REF_NAME_VALUE" != "feat/bootstrap-answerguard" ]]; then
+              echo "Automatic internal distribution is only allowed on pushes to develop, main, or feat/bootstrap-answerguard."
               {
                 echo "should_run=false"
                 echo "ref="
@@ -101,12 +101,12 @@ jobs:
             SHOULD_RUN="true"
             if [[ "$GITHUB_REF_NAME_VALUE" == "develop" ]]; then
               REASON="auto_push_develop"
+            elif [[ "$GITHUB_REF_NAME_VALUE" == "feat/bootstrap-answerguard" ]]; then
+              REASON="auto_push_feat_bootstrap"
             else
               REASON="auto_push_main"
             fi
           elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            # Budget ack check removed — REQUIRED_BUDGET_ACK was never defined,
-            # causing unbound variable crash with set -u.
             TARGET="${INPUT_TARGET:-all}"
             case "$TARGET" in
               all_safe)
@@ -278,7 +278,7 @@ jobs:
 
       - name: Setup Ruby
         if: steps.ios_lineage.outputs.uploadable == 'true'
-        uses: ruby/setup-ruby@e65c17d16e57e481586a6a5a0282698790062f92 # v1.300.0
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
           bundler-cache: true
@@ -341,7 +341,7 @@ jobs:
 
       - name: Upload internal-distribution-verification iOS artifact
         if: always() && steps.ios_lineage.outputs.uploadable == 'true'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: ios-release-verification
           path: /tmp/ios-release-verification.json
@@ -358,14 +358,10 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(python scripts/source_versions.py --repo-root . --format json | python -c 'import json,sys; print(json.load(sys.stdin)["ios"]["version_name"])')"
-          python scripts/ensure_internal_distribution.py \
-            --platform ios \
-            --ios-version "$VERSION" \
-            --ios-groups "$TESTFLIGHT_INTERNAL_GROUPS" \
-            --ios-required-testers "$TESTFLIGHT_REQUIRED_TESTERS"
+          python scripts/ensure_internal_distribution.py             --platform ios             --ios-version "$VERSION"             --ios-groups "$TESTFLIGHT_INTERNAL_GROUPS"             --ios-required-testers "$TESTFLIGHT_REQUIRED_TESTERS"
 
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         if: always() && steps.ios_lineage.outputs.uploadable == 'true'
         with:
           name: ios-ipa-internal
@@ -391,11 +387,7 @@ jobs:
           TARGET_REF: ${{ needs.gate.outputs.ref }}
         run: |
           set -euo pipefail
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" \
-            -f state=success \
-            -f context='internal-signoff/testflight' \
-            -f description="CEO approved TestFlight internal build for ${TARGET_REF}" \
-            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}"             -f state=success             -f context='internal-signoff/testflight'             -f description="CEO approved TestFlight internal build for ${TARGET_REF}"             -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
   android-play-internal:
     name: Android Google Play (Internal)
@@ -429,7 +421,7 @@ jobs:
         run: bash scripts/preflight-release.sh --platform android --layer 1 --skip-store-assets
 
       - name: Setup Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
@@ -443,7 +435,7 @@ jobs:
         run: python -m pip install google-auth requests
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@e65c17d16e57e481586a6a5a0282698790062f92 # v1.300.0
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
           bundler-cache: true
@@ -489,11 +481,7 @@ jobs:
           KEY_PATH="$RUNNER_TEMP/play-service-account.json"
           printf '%s' "$GOOGLE_PLAY_JSON_KEY" > "$KEY_PATH"
           python -m pip install google-api-python-client==2.190.0 google-auth==2.48.0 google-auth-httplib2==0.3.0
-          NEXT_CODE="$(python scripts/compute_android_release_version_code.py \
-            --service-account-json "$KEY_PATH" \
-            --gradle-file native-android/app/build.gradle.kts \
-            --timeout-seconds 180 \
-            --request-retries 3)"
+          NEXT_CODE="$(python scripts/compute_android_release_version_code.py             --service-account-json "$KEY_PATH"             --gradle-file native-android/app/build.gradle.kts             --timeout-seconds 180             --request-retries 3)"
           echo "next_version_code=$NEXT_CODE" >> "$GITHUB_OUTPUT"
 
       - name: Create google-services.json
@@ -546,14 +534,14 @@ jobs:
 
       - name: Upload internal-distribution-verification Android artifact
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: android-release-verification
           path: /tmp/android-release-verification.json
           if-no-files-found: warn
 
       - name: Upload Android AAB artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-aab-internal
@@ -623,8 +611,6 @@ jobs:
           print(",".join(testers))
           PY
           )"
-          # Prefer groups over individual testers; default to 'internal-testers'
-          # group which matches the alias created in Firebase Console.
           if [ -z "${FIREBASE_INTERNAL_GROUPS:-}" ] && [ -z "$COMBINED_FIREBASE_TESTERS" ]; then
             echo "⚠️ Neither FIREBASE_INTERNAL_GROUPS nor FIREBASE_INTERNAL_TESTERS set — defaulting groups to 'internal-testers'"
             echo "FIREBASE_INTERNAL_GROUPS=internal-testers" >> "$GITHUB_ENV"
@@ -644,7 +630,7 @@ jobs:
         run: bash scripts/preflight-release.sh --platform android --layer 1 --skip-store-assets
 
       - name: Setup Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
@@ -682,12 +668,11 @@ jobs:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
         run: |
           set -euo pipefail
-          # build.gradle.kts reads ciVersionCode Gradle property only (not ANDROID_VERSION_CODE env)
           echo "Firebase internal APK: ciVersionCode=${{ github.run_number }} (workflow run_number)"
           ./gradlew -PciVersionCode="${{ github.run_number }}" assembleRelease --no-daemon
 
       - name: Distribute to Firebase
-        uses: wzieba/Firebase-Distribution-Github-Action@bd494989dd4bec0343f78adee87fe66e48279ad6 # v1
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
         id: firebase_dist
         with:
           appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
@@ -708,17 +693,10 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(python scripts/source_versions.py --repo-root . --format json | python -c 'import json,sys; print(json.load(sys.stdin)["android"]["version_name"])')"
-          python scripts/ensure_internal_distribution.py \
-            --platform firebase \
-            --firebase-app-id "$FIREBASE_ANDROID_APP_ID" \
-            --firebase-build-version "${{ github.run_number }}" \
-            --firebase-display-version "$VERSION" \
-            --firebase-group-aliases "$FIREBASE_INTERNAL_GROUPS" \
-            --firebase-tester-emails "$FIREBASE_INTERNAL_TESTERS" \
-            --firebase-required-testers "$FIREBASE_INTERNAL_TESTERS"
+          python scripts/ensure_internal_distribution.py             --platform firebase             --firebase-app-id "$FIREBASE_ANDROID_APP_ID"             --firebase-build-version "${{ github.run_number }}"             --firebase-display-version "$VERSION"             --firebase-group-aliases "$FIREBASE_INTERNAL_GROUPS"             --firebase-tester-emails "$FIREBASE_INTERNAL_TESTERS"             --firebase-required-testers "$FIREBASE_INTERNAL_TESTERS"
 
       - name: Upload Android APK artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-apk-firebase-internal
@@ -747,8 +725,4 @@ jobs:
           TARGET_REF: ${{ needs.gate.outputs.ref }}
         run: |
           set -euo pipefail
-          gh api "repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" \
-            -f state=success \
-            -f context='internal-signoff/firebase' \
-            -f description="CEO approved Firebase internal build for ${TARGET_REF}" \
-            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}"             -f state=success             -f context='internal-signoff/firebase'             -f description="CEO approved Firebase internal build for ${TARGET_REF}"             -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
