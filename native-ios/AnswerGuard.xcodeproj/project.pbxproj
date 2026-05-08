@@ -434,7 +434,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				POSTHOG_API_KEY = "$(POSTHOG_API_KEY)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.igorganapolsky.answerguard;
 				PROVISIONING_PROFILE_SPECIFIER = "match AppStore com.igorganapolsky.answerguard";
@@ -524,7 +524,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				POSTHOG_API_KEY = "$(POSTHOG_API_KEY)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.igorganapolsky.answerguard;
 				PROVISIONING_PROFILE_SPECIFIER = "match AppStore com.igorganapolsky.answerguard";

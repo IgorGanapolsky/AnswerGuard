@@ -1,0 +1,4 @@
+- New production dashboard with real-time call activity log.
+- STIR/SHAKEN carrier verification to silence unverified spoofers.
+- Personal blocklist manager: manually add/remove spam numbers.
+- Privacy-first local screening engine.
