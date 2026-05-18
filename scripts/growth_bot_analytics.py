@@ -8,7 +8,7 @@ import datetime as dt
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
 BOT_PATTERNS = [
     (re.compile(r"gptbot|openai", re.I), "ai_training", "openai"),

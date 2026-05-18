@@ -3,13 +3,17 @@ import SwiftUI
 struct AnswerGuardHomeScreen: View {
 
     @StateObject private var cdManager = CallDirectoryManager.shared
+    @StateObject private var contactsService = ContactsService.shared
     @State private var showOnboarding = false
+    @State private var showBlocklist = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 headerSection
                 statusCard
+                contactsCard
+                blocklistCard
                 actionsSection
                 howItWorksSection
             }
@@ -20,8 +24,12 @@ struct AnswerGuardHomeScreen: View {
         .sheet(isPresented: $showOnboarding) {
             CallDirectoryOnboardingView()
         }
+        .sheet(isPresented: $showBlocklist) {
+            BlocklistManagementView()
+        }
         .task {
             await cdManager.refreshStatus()
+            contactsService.checkStatus()
         }
     }
 
@@ -66,6 +74,53 @@ struct AnswerGuardHomeScreen: View {
         }
         .padding()
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var contactsCard: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Contact Identification")
+                    .font(.headline)
+                Text(contactsService.isAuthorized ? "Active" : "Recommended")
+                    .font(.subheadline)
+                    .foregroundStyle(contactsService.isAuthorized ? .green : .orange)
+            }
+            Spacer()
+            if contactsService.isAuthorized {
+                Image(systemName: "person.crop.circle.badge.checkmark")
+                    .font(.title)
+                    .foregroundStyle(.green)
+            } else {
+                Button("Allow") {
+                    Task { await contactsService.requestAccess() }
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var blocklistCard: some View {
+        Button {
+            showBlocklist = true
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Personal Blocklist")
+                        .font(.headline)
+                    Text("Manage blocked numbers")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(.plain)
     }
 
     private var actionsSection: some View {
@@ -179,5 +234,106 @@ struct CallDirectoryOnboardingView: View {
 #Preview {
     NavigationStack {
         AnswerGuardHomeScreen()
+    }
+}
+
+// MARK: - Blocklist Management
+
+struct BlocklistManagementView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var numbers: [Int64] = []
+    @State private var newNumber = ""
+    @State private var showingContactWarning = false
+    @State private var pendingNumber: Int64?
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        TextField("Enter number", text: $newNumber)
+                            .keyboardType(.numberPad)
+                        Button("Add") {
+                            prepareAddNumber()
+                        }
+                        .disabled(newNumber.isEmpty)
+                    }
+                } footer: {
+                    Text("These numbers will be rejected immediately.")
+                }
+// ... (rest of body)
+            }
+            .alert("Block Contact?", isPresented: $showingContactWarning) {
+                Button("Block Anyway", role: .destructive) {
+                    if let val = pendingNumber {
+                        performAddNumber(val)
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingNumber = nil
+                }
+            } message: {
+                Text("This number is in your contacts. Are you sure you want to block it?")
+            }
+// ...
+
+                Section("Blocked Numbers") {
+                    if numbers.isEmpty {
+                        Text("No numbers blocked").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(numbers, id: \.self) { number in
+                            Text(String(number))
+                                .swipeActions {
+                                    Button(role: .destructive) {
+                                        removeNumber(number)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Blocklist")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .onAppear {
+                refresh()
+            }
+        }
+    }
+
+    private func refresh() {
+        numbers = SpamDatabase.shared.blockedNumbers()
+    }
+
+    private func prepareAddNumber() {
+        let digits = newNumber.filter { $0.isNumber }
+        guard let val = Int64(digits) else { return }
+
+        if ContactsService.shared.isNumberInContacts(newNumber) {
+            pendingNumber = val
+            showingContactWarning = true
+        } else {
+            performAddNumber(val)
+        }
+    }
+
+    private func performAddNumber(_ number: Int64) {
+        SpamDatabase.shared.addBlockedNumber(number)
+        newNumber = ""
+        pendingNumber = nil
+        refresh()
+        Task { await CallDirectoryManager.shared.reloadExtension() }
+    }
+
+    private func removeNumber(_ number: Int64) {
+        SpamDatabase.shared.removeBlockedNumber(number)
+        refresh()
+        Task { await CallDirectoryManager.shared.reloadExtension() }
     }
 }

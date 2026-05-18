@@ -1,0 +1,19 @@
+appId: com.igorganapolsky.answerguard
+---
+# Deep link entry point: launch via the custom scheme registered in the
+# manifest (answerguard://open with utm params). App should resolve the
+# intent into MainActivity, fire the deep-link analytics event, and render
+# the standard home surface — no crash, no blank screen.
+- launchApp:
+    clearState: true
+    arguments:
+      deepLink: 'answerguard://open?utm_source=maestro&utm_medium=e2e&utm_campaign=device_tests'
+
+- extendedWaitUntil:
+    visible: 'AnswerGuard'
+    timeout: 30000
+
+- assertVisible: 'AnswerGuard'
+- assertVisible: 'Call Screening'
+- assertVisible: 'AnswerGuard Pro'
+- assertVisible: 'Enable Call Screening'

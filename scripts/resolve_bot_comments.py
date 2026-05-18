@@ -2,7 +2,6 @@
 import subprocess
 import json
 import sys
-import os
 
 # Bot authors whose comments we want to resolve automatically
 BOT_AUTHORS = [

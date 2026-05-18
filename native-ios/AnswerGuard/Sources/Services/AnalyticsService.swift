@@ -8,7 +8,6 @@ import AdServices
 #endif
 
 /// Analytics Service for PostHog integration
-/// To enable: Add PostHog Swift SDK via SPM (https://github.com/PostHog/posthog-ios)
 @MainActor
 final class AnalyticsService {
     static let shared = AnalyticsService()
@@ -17,13 +16,11 @@ final class AnalyticsService {
     private var initialized = false
     private let distinctIdDefaultsKey = "posthog_distinct_id"
     private let hasFirstOpenedKey = "has_first_opened"
-    private let hasFirstConfiguredKey = "has_first_configured"
-    private let hasFirstCompletedKey = "has_first_completed"
+    private let hasFirstProtectionEnabledKey = "has_first_protection_enabled"
     private let hasTrackedApplicationInstalledKey = "has_tracked_application_installed"
     private let utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]
     private let appleAdsAttributionFetchedKey = "apple_ads_attribution_fetched"
 
-    // API key loaded from Info.plist (set POSTHOG_API_KEY in build settings)
     private var apiKey: String {
         Bundle.main.object(forInfoDictionaryKey: "POSTHOG_API_KEY") as? String ?? ""
     }
@@ -98,7 +95,6 @@ final class AnalyticsService {
 
 #if canImport(PostHog)
         let config = PostHogConfig(apiKey: apiKey, host: host)
-        // Emit lifecycle events manually so every event includes our live/dev context tags.
         config.captureApplicationLifecycleEvents = false
         config.captureScreenViews = false
         PostHogSDK.shared.setup(config)
@@ -159,13 +155,11 @@ final class AnalyticsService {
         let utmParams = extractUtmParams(from: url)
         guard !utmParams.isEmpty else { return }
 
-        // Persist attribution
         let defaults = UserDefaults.standard
         for (key, value) in utmParams {
             defaults.set(value, forKey: key)
         }
 
-        // Set as person properties for all future events
 #if canImport(PostHog)
         PostHogSDK.shared.identify(
             PostHogSDK.shared.getDistinctId(),
@@ -181,7 +175,7 @@ final class AnalyticsService {
         }
         var params: [String: Any] = [:]
         for key in utmKeys {
-            if let value = components.queryItems?.first(where: { $0.name == key })?.value,
+            if let value = components.queryItems?.first(where: { /bin/bash.name == key })?.value,
                !value.isEmpty {
                 params[key] = value
             }
@@ -200,10 +194,7 @@ final class AnalyticsService {
 
 #if canImport(AdServices)
         if #available(iOS 14.3, *) {
-            guard let token = try? AAAttribution.attributionToken() else {
-                logger.debug("No Apple Ads attribution token available")
-                return
-            }
+            guard let token = try? AAAttribution.attributionToken() else { return }
 
             var request = URLRequest(url: URL(string: "https://api-adservices.apple.com/api/v1/")!)
             request.httpMethod = "POST"
@@ -211,20 +202,11 @@ final class AnalyticsService {
             request.httpBody = Data(token.utf8)
 
             URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-                guard let data = data, error == nil else {
-                    self?.logger.error("Apple Ads attribution request failed: \(error?.localizedDescription ?? "unknown")")
-                    return
-                }
-
-                guard let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                    self?.logger.error("Apple Ads attribution response not parseable")
-                    return
-                }
+                guard let data = data, error == nil else { return }
+                guard let result = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
 
                 let campaignId = result["campaignId"] as? Int ?? 0
-                // campaignId 1234567890 is Apple's test/organic value — skip it
                 guard campaignId != 0, campaignId != 1234567890 else {
-                    self?.logger.info("Apple Ads attribution: organic install (no paid campaign)")
                     DispatchQueue.main.async {
                         guard let key = self?.appleAdsAttributionFetchedKey else { return }
                         UserDefaults.standard.set(true, forKey: key)
@@ -237,34 +219,23 @@ final class AnalyticsService {
                     "utm_medium": "asa",
                     "utm_campaign": result["campaignName"] as? String ?? "unknown",
                     "apple_ads_campaign_id": campaignId,
-                    "apple_ads_adgroup_id": result["adGroupId"] as? Int ?? 0,
-                    "apple_ads_keyword": result["keyword"] as? String ?? "",
                 ]
 
                 DispatchQueue.main.async { [weak self] in
                     guard let self else { return }
                     UserDefaults.standard.set(true, forKey: self.appleAdsAttributionFetchedKey)
 
-                    // Persist UTM params for future events
-                    UserDefaults.standard.set("apple_search_ads", forKey: "utm_source")
-                    UserDefaults.standard.set("asa", forKey: "utm_medium")
-                    UserDefaults.standard.set(attribution["utm_campaign"], forKey: "utm_campaign")
-
 #if canImport(PostHog)
-                    PostHogSDK.shared.identify(
-                        PostHogSDK.shared.getDistinctId(),
-                        userProperties: attribution
-                    )
+                    PostHogSDK.shared.identify(PostHogSDK.shared.getDistinctId(), userProperties: attribution)
                     PostHogSDK.shared.capture(AnalyticsEvents.appleAdsAttribution, properties: attribution)
 #endif
-                    self.logger.info("Apple Ads attribution captured: campaign=\(attribution["utm_campaign"] as? String ?? "?")")
                 }
             }.resume()
         }
 #endif
     }
 
-    // MARK: - Onboarding Funnel
+    // MARK: - Events
 
     private func trackApplicationLifecycleEvents() {
         let defaults = UserDefaults.standard
@@ -281,62 +252,30 @@ final class AnalyticsService {
         defaults.set(true, forKey: hasFirstOpenedKey)
     }
 
-    func trackFirstTimerConfiguredIfNeeded() {
+    func trackFirstProtectionEnabledIfNeeded() {
         guard initialized else { return }
         let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: hasFirstConfiguredKey) else { return }
-        track(AnalyticsEvents.firstTimerConfigured)
-        defaults.set(true, forKey: hasFirstConfiguredKey)
-    }
-
-    func trackFirstTimerCompletedIfNeeded() {
-        guard initialized else { return }
-        let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: hasFirstCompletedKey) else { return }
-        track(AnalyticsEvents.firstTimerCompleted)
-        defaults.set(true, forKey: hasFirstCompletedKey)
-    }
-
-    // MARK: - Stored Attribution
-
-    func getStoredAttribution() -> [String: String] {
-        let defaults = UserDefaults.standard
-        var result: [String: String] = [:]
-        for key in utmKeys {
-            if let value = defaults.string(forKey: key) {
-                result[key] = value
-            }
-        }
-        return result
+        guard !defaults.bool(forKey: hasFirstProtectionEnabledKey) else { return }
+        track(AnalyticsEvents.firstProtectionEnabled)
+        defaults.set(true, forKey: hasFirstProtectionEnabledKey)
     }
 
     private func getOrCreateDistinctId() -> String {
         let defaults = UserDefaults.standard
-        if let existing = defaults.string(forKey: distinctIdDefaultsKey),
-           existing.isEmpty == false {
+        if let existing = defaults.string(forKey: distinctIdDefaultsKey), !existing.isEmpty {
             return existing
         }
-
         let generated = UUID().uuidString
         defaults.set(generated, forKey: distinctIdDefaultsKey)
         return generated
     }
 }
 
-// Event names for consistency
 enum AnalyticsEvents {
     static let applicationInstalled = "Application Installed"
     static let applicationOpened = "Application Opened"
-    static let timerStarted = "timer_started"
-    static let timerCompleted = "timer_completed"
-    static let timerPaused = "timer_paused"
-    static let timerResumed = "timer_resumed"
-    static let timerReset = "timer_reset"
-    static let timerStopped = "timer_stopped"
-    static let alarmTriggered = "alarm_triggered"
-    static let alarmDismissed = "alarm_dismissed"
-    static let timerAbandoned = "timer_abandoned"
-    static let timerCountdownFinished = "timer_countdown_finished"
+    static let callScreeningEnabled = "call_screening_enabled"
+    static let callScreeningStatusRefreshed = "call_screening_status_refreshed"
     static let settingsChanged = "settings_changed"
     static let reviewPromptRequested = "review_prompt_requested"
     static let writeReviewTapped = "write_review_tapped"
@@ -347,38 +286,18 @@ enum AnalyticsEvents {
     static let paywallPurchaseResult = "paywall_purchase_result"
     static let paywallRestoreResult = "paywall_restore_result"
 
-    // Attribution
     static let deepLinkOpened = "deep_link_opened"
     static let appleAdsAttribution = "apple_ads_attribution"
-
-    // Onboarding Funnel
     static let firstOpen = "first_open"
-    static let firstTimerConfigured = "first_timer_configured"
-    static let firstTimerCompleted = "first_timer_completed"
+    static let firstProtectionEnabled = "first_protection_enabled"
 }
 
 enum AnalyticsProperties {
     static let entryPoint = "entry_point"
     static let result = "result"
-    static let abandonReason = "abandon_reason"
-    static let abandonSource = "abandon_source"
-    static let dismissMethod = "dismiss_method"
     static let productId = "product_id"
-    static let entitlementLevel = "entitlement_level"
     static let environment = "environment"
     static let buildAudience = "build_audience"
     static let buildType = "build_type"
     static let runtimeTarget = "runtime_target"
-}
-
-enum AnalyticsValues {
-    static let abandonReasonUserCancelled = "user_cancelled"
-    static let abandonReasonStaleRestoreExpired = "stale_restore_expired"
-    static let abandonSourceTimerControls = "timer_controls"
-    static let abandonSourceStateRestore = "state_restore"
-}
-
-enum AnalyticsScreens {
-    static let timerSetup = "Timer Setup"
-    static let activeTimer = "Active Timer"
 }

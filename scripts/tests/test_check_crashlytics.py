@@ -1,8 +1,6 @@
 """Tests for check_crashlytics.py."""
 
 import importlib
-import sys
-import types
 from unittest.mock import MagicMock, patch
 
 
@@ -60,7 +58,6 @@ def test_check_bigquery_export_returns_none_on_404():
 
 def test_check_bigquery_export_returns_empty_list():
     with patch.object(cc.urllib.request, "urlopen") as mock_urlopen:
-        import io
         import json
 
         response_data = {"tables": []}

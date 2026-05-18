@@ -1,0 +1,25 @@
+appId: com.igorganapolsky.answerguard
+---
+# Verify Pro upgrade entry point: tapping Upgrade triggers a billing attempt
+# and surfaces a user-visible status message. Real Play Billing is unavailable
+# on CI emulators, so we accept either the "connecting" success path message
+# or the "could not open" failure message — both prove the click handler ran
+# and updated UI state. Test fails only if NO status text appears.
+# TODO: needs testTag("pro_upgrade_button") and testTag("pro_status_message") for stable matching.
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'AnswerGuard Pro'
+    timeout: 30000
+
+- assertVisible: 'Upgrade'
+- tapOn: 'Upgrade'
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      text: '.*(Google Play|Could not open|Connecting).*'
+    timeout: 15000
+
+- assertVisible: 'AnswerGuard Pro'
+- assertVisible: 'Upgrade'

@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "modelType": "multinomial_naive_bayes",
+  "labels": [
+    "allow",
+    "recall",
+    "verify",
+    "warn",
+    "deny"
+  ],
+  "exampleCount": 1,
+  "labelCounts": {
+    "allow": 1,
+    "recall": 0,
+    "verify": 0,
+    "warn": 0,
+    "deny": 0
+  },
+  "labelTokenTotals": {
+    "allow": 4,
+    "recall": 0,
+    "verify": 0,
+    "warn": 0,
+    "deny": 0
+  },
+  "labelTokenCounts": {
+    "allow": {
+      "kind_audit": 1,
+      "decision_allow": 1,
+      "tool_run_harness": 1,
+      "source_gates-engine": 1
+    },
+    "recall": {},
+    "verify": {},
+    "warn": {},
+    "deny": {}
+  },
+  "vocabularySize": 4,
+  "metrics": {
+    "trainingAccuracy": 1,
+    "holdoutAccuracy": 0,
+    "holdoutSize": 0,
+    "trainingExamples": 1
+  },
+  "sourceCounts": {
+    "feedback": 0,
+    "audit": 1,
+    "diagnostic": 0,
+    "decision": 0
+  },
+  "updatedAt": "2026-05-18T19:52:57.859Z",
+  "labelMetrics": {
+    "allow": {
+      "total": 1,
+      "correct": 1,
+      "accuracy": 1
+    },
+    "recall": {
+      "total": 0,
+      "correct": 0,
+      "accuracy": 0
+    },
+    "verify": {
+      "total": 0,
+      "correct": 0,
+      "accuracy": 0
+    },
+    "warn": {
+      "total": 0,
+      "correct": 0,
+      "accuracy": 0
+    },
+    "deny": {
+      "total": 0,
+      "correct": 0,
+      "accuracy": 0
+    }
+  },
+  "topTokens": {
+    "allow": [
+      {
+        "token": "decision_allow",
+        "count": 1
+      },
+      {
+        "token": "kind_audit",
+        "count": 1
+      },
+      {
+        "token": "source_gates-engine",
+        "count": 1
+      },
+      {
+        "token": "tool_run_harness",
+        "count": 1
+      }
+    ],
+    "recall": [],
+    "verify": [],
+    "warn": [],
+    "deny": []
+  }
+}

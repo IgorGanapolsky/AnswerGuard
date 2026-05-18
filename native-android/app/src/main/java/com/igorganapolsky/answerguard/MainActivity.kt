@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,15 +58,24 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var proManager: ProManager
 
     private var callScreeningEnabled by mutableStateOf(false)
+    private var contactsPermissionGranted by mutableStateOf(false)
     private var proActionInProgress by mutableStateOf(false)
     private var proStatusMessage by mutableStateOf<String?>(null)
 
     private val roleRequestLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            refreshCallScreeningStatus()
+            refreshStatus()
             if (callScreeningEnabled) {
                 analyticsService.track(AnalyticsEvents.CALL_SCREENING_ENABLED)
                 analyticsService.trackFirstProtectionEnabledIfNeeded()
+            }
+        }
+
+    private val contactsPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            contactsPermissionGranted = isGranted
+            if (isGranted) {
+                analyticsService.track("contacts_permission_granted")
             }
         }
 
@@ -73,7 +83,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         handleDeepLink(intent)
-        refreshCallScreeningStatus()
+        refreshStatus()
 
         setContent {
             AnswerGuardTheme {
@@ -83,8 +93,10 @@ class MainActivity : ComponentActivity() {
                 ) {
                     AnswerGuardHome(
                         callScreeningEnabled = callScreeningEnabled,
+                        contactsPermissionGranted = contactsPermissionGranted,
                         onEnable = ::requestCallScreeningRole,
-                        onRefresh = ::refreshCallScreeningStatus,
+                        onRefresh = ::refreshStatus,
+                        onEnableContacts = ::requestContactsPermission,
                         onUpgrade = ::launchProPurchase,
                         onRestore = ::restorePurchases,
                         proActionInProgress = proActionInProgress,
@@ -102,10 +114,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        refreshCallScreeningStatus()
+        refreshStatus()
     }
 
-    private fun refreshCallScreeningStatus() {
+    private fun refreshStatus() {
         callScreeningEnabled =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val roleManager = getSystemService(RoleManager::class.java)
@@ -114,11 +126,19 @@ class MainActivity : ComponentActivity() {
             } else {
                 false
             }
+        contactsPermissionGranted = 
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.READ_CONTACTS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
     private fun requestCallScreeningRole() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
         roleRequestLauncher.launch(Intent(this, RoleOnboardingActivity::class.java))
+    }
+
+    private fun requestContactsPermission() {
+        contactsPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
     }
 
     private fun launchProPurchase() {
@@ -191,38 +211,220 @@ private fun AnswerGuardTheme(content: @Composable () -> Unit) {
 @Composable
 private fun AnswerGuardHome(
     callScreeningEnabled: Boolean,
+    contactsPermissionGranted: Boolean,
     onEnable: () -> Unit,
     onRefresh: () -> Unit,
+    onEnableContacts: () -> Unit,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
     proActionInProgress: Boolean,
     proStatusMessage: String?,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(AnswerGuardColors.Background)
-                .padding(24.dp),
-    ) {
-        Column(
+    var showBlocklist by androidx.compose.runtime.remember { mutableStateOf(false) }
+
+    if (showBlocklist) {
+        BlocklistScreen(onBack = { showBlocklist = false })
+    } else {
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                    .background(AnswerGuardColors.Background)
+                    .padding(24.dp),
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Header()
-            StatusCard(callScreeningEnabled = callScreeningEnabled, onEnable = onEnable, onRefresh = onRefresh)
-            ProCard(
-                onUpgrade = onUpgrade,
-                onRestore = onRestore,
-                actionInProgress = proActionInProgress,
-                statusMessage = proStatusMessage,
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Header()
+                StatusCard(callScreeningEnabled = callScreeningEnabled, onEnable = onEnable, onRefresh = onRefresh)
+                ContactsCard(permissionGranted = contactsPermissionGranted, onEnable = onEnableContacts)
+                BlocklistCard(onClick = { showBlocklist = true })
+                ProCard(
+                    onUpgrade = onUpgrade,
+                    onRestore = onRestore,
+                    actionInProgress = proActionInProgress,
+                    statusMessage = proStatusMessage,
+                )
+                HowItWorks()
+                PrivacyCard()
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlocklistCard(onClick: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = "Personal Blocklist",
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
             )
-            HowItWorks()
-            PrivacyCard()
+            Text(
+                text = "Manually block specific numbers. These calls will be rejected immediately.",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(
+                onClick = onClick,
+                colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = "Manage Blocklist",
+                    color = AnswerGuardColors.TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlocklistScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var numbers by androidx.compose.runtime.remember { mutableStateOf(com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()) }
+    var newNumber by androidx.compose.runtime.remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AnswerGuardColors.Background)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted)) {
+                Text("Back")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text("Your Blocklist", color = AnswerGuardColors.TextPrimary, style = MaterialTheme.typography.headlineSmall)
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.material3.TextField(
+                value = newNumber,
+                onValueChange = { newNumber = it },
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Enter number") },
+                singleLine = true,
+                colors = androidx.compose.material3.TextFieldDefaults.colors(
+                    unfocusedContainerColor = AnswerGuardColors.Surface,
+                    focusedContainerColor = AnswerGuardColors.Surface
+                )
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    if (newNumber.isNotBlank()) {
+                        com.igorganapolsky.answerguard.screening.UserBlocklist.add(newNumber.filter { it.isDigit() })
+                        numbers = com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()
+                        newNumber = ""
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary)
+            ) {
+                Text("Add", color = Color(0xFF06211E))
+            }
+        }
+
+        androidx.compose.foundation.lazy.LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(numbers.size) { index ->
+                val number = numbers[index]
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(number, color = AnswerGuardColors.TextPrimary, modifier = Modifier.weight(1f))
+                        Button(
+                            onClick = {
+                                com.igorganapolsky.answerguard.screening.UserBlocklist.remove(number)
+                                numbers = com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.2f))
+                        ) {
+                            Text("Remove", color = Color.Red)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContactsCard(
+    permissionGranted: Boolean,
+    onEnable: () -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StatusDot(enabled = permissionGranted)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Contact Identification",
+                        color = AnswerGuardColors.TextPrimary,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = if (permissionGranted) "Active" else "Recommended",
+                        color = if (permissionGranted) AnswerGuardColors.Primary else AnswerGuardColors.Warning,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+            
+            Text(
+                text = "Allows AnswerGuard to identify your contacts so they are never accidentally silenced or blocked.",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+
+            if (!permissionGranted) {
+                Button(
+                    onClick = onEnable,
+                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "Allow Contacts Access",
+                        color = Color(0xFF06211E),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
         }
     }
 }
@@ -259,7 +461,7 @@ private fun ProCard(
                     onClick = onUpgrade,
                     enabled = !actionInProgress,
                     colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).testTag("home_pro_upgrade_button"),
                 ) {
                     Text(
                         text = "Upgrade",
@@ -271,7 +473,7 @@ private fun ProCard(
                     onClick = onRestore,
                     enabled = !actionInProgress,
                     colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).testTag("home_pro_restore_button"),
                 ) {
                     Text(
                         text = "Restore",
@@ -285,6 +487,7 @@ private fun ProCard(
                     text = statusMessage,
                     color = AnswerGuardColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag("home_pro_status_message"),
                 )
             }
         }
@@ -337,6 +540,7 @@ private fun StatusCard(
                         text = if (callScreeningEnabled) "Active" else "Not enabled",
                         color = if (callScreeningEnabled) AnswerGuardColors.Primary else AnswerGuardColors.Warning,
                         style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.testTag("home_call_screening_status"),
                     )
                 }
             }
@@ -344,7 +548,7 @@ private fun StatusCard(
             Button(
                 onClick = if (callScreeningEnabled) onRefresh else onEnable,
                 colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("home_enable_call_screening_button"),
             ) {
                 Text(
                     text = if (callScreeningEnabled) "Refresh Status" else "Enable Call Screening",

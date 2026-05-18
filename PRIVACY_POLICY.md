@@ -1,6 +1,6 @@
 # Privacy Policy for AnswerGuard
 
-**Last updated: May 5, 2026**
+**Last updated: May 18, 2026**
 
 ## Overview
 
@@ -8,13 +8,14 @@ AnswerGuard ("the App") is developed by Igor Ganapolsky. This privacy policy exp
 
 ## Data Collection
 
-The App does **not** require an account and does not collect your name, email, address, contacts, or call history.
+The App does **not** require an account and does not collect or upload your name, email, address, contacts, or call history.
 The App may send limited diagnostics and usage data through the services listed below.
 
 - **No account required** — the App works without sign-up or login
 - **No location data** — the App does not access your location
 - **No advertising** — the App contains no ads and no advertising ID usage
 - **No call history upload** — call screening decisions are evaluated on device
+- **Local contact evaluation** — If granted, the App checks your contacts locally to prevent blocking known callers. Your contacts are never uploaded, shared, or sold.
 
 ## Call Screening
 

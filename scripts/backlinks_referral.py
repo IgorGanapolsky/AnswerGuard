@@ -15,7 +15,7 @@ import json
 import datetime as dt
 import zlib
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 REFERRAL_PATH = "marketing/data/referral_campaigns.json"
 CONTENT_TEMPLATES_PATH = "marketing/referral_content"

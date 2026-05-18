@@ -13,7 +13,6 @@ Requires:
     - google-api-python-client, google-auth
 """
 
-import json
 import os
 import sys
 from pathlib import Path

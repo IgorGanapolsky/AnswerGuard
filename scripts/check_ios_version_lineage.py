@@ -205,7 +205,7 @@ def evaluate_lineage(
     remote_app_store_versions: dict[str, str],
     remote_builds_by_version: dict[str, list[int]],
 ) -> LineageReport:
-    highest_remote_pre_release_version = _highest_semver(remote_versions)
+    _highest_semver(remote_versions)
     highest_remote_app_store_version, highest_remote_app_store_state = _highest_version_by_state(
         remote_app_store_versions
     )

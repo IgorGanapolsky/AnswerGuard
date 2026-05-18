@@ -1,5 +1,7 @@
+import java.math.BigDecimal
 import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
@@ -46,7 +48,7 @@ android {
         minSdk = 26
         targetSdk = ciTargetSdk ?: 35
         versionCode = ciVersionCode ?: 1773360000
-        versionName = "1.2.6"
+        versionName = "1.2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -224,4 +226,32 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
             include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
         }
     )
+}
+
+// Coverage ratchet: measured INSTRUCTION coverage is 6.72% (520/7740) as of 2026-05-18
+// after BlocklistScreen + ContactsAllowlist added ~2200 uncovered Compose UI instructions.
+// Threshold sits at 6% (~0.7 pts below actual) — raise once MainActivity Composables get
+// Compose UI tests or Robolectric coverage. Top uncovered: MainActivityKt (2124),
+// ProManager (1041), AnalyticsService (835).
+tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
+    dependsOn("jacocoDebugUnitTestReport")
+
+    val reportTask = tasks.named<JacocoReport>("jacocoDebugUnitTestReport").get()
+    classDirectories.setFrom(reportTask.classDirectories)
+    sourceDirectories.setFrom(reportTask.sourceDirectories)
+    executionData.setFrom(reportTask.executionData)
+
+    violationRules {
+        rule {
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = BigDecimal("0.06")
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("jacocoCoverageVerification")
 }

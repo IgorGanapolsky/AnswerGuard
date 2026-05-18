@@ -1,0 +1,1 @@
+{"id":"audit_1779133977858_om6u4g","timestamp":"2026-05-18T19:52:57.858Z","toolName":"run_harness","toolInput":{"harness":"verification"},"decision":"allow","gateId":null,"message":null,"severity":null,"latencyMs":null,"source":"gates-engine"}

@@ -19,7 +19,7 @@ class AnswerGuardScreeningService : CallScreeningService() {
         val handle = callDetails.handle?.schemeSpecificPart ?: ""
         Log.d(tag, "Screening call from: $handle")
 
-        val verdict = SpamVerdictEngine.evaluate(handle)
+        val verdict = SpamVerdictEngine.evaluate(this, handle)
         Log.i(tag, "Verdict for $handle: $verdict")
 
         val response = CallResponse.Builder().apply {

@@ -15,7 +15,7 @@ import json
 import datetime as dt
 import zlib
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 # Top 5 markets by revenue for timer/fitness apps
 TOP_MARKETS = {
