@@ -2,7 +2,6 @@
 """Complete Google Play Console App Content declarations via CDP connection to existing Chrome."""
 
 import time
-import json
 from playwright.sync_api import sync_playwright
 from play_artifacts import ARTIFACTS_DIR, screenshot_path
 

@@ -2,8 +2,8 @@
 """Compute the North Star metric and enforce paid attribution guardrails.
 
 North Star Metric (NSM):
-  Weekly Qualified Training Users (WQTU) =
-  distinct users with >= 3 timer_completed events in trailing 7 days.
+  Weekly Qualified Identification Users (WQTU) =
+  distinct users with >= 3 call_screened events in trailing 7 days.
 
 Guardrail:
   If any paid campaign is marked active, paid-attributed users over trailing
@@ -123,11 +123,11 @@ def _empty_payload(lookback_days: int, wqtu_window_days: int, reason: str = "") 
         "lookback_days": lookback_days,
         "wqtu_window_days": wqtu_window_days,
         "north_star": {
-            "name": "Weekly Qualified Training Users",
+            "name": "Weekly Qualified Identification Users",
             "key": "WQTU",
-            "definition": "distinct users with >=3 timer_completed events in trailing 7 days",
+            "definition": "distinct users with >=3 call_screened events in trailing 7 days",
             "wqtu_7d": 0,
-            "timer_completed_7d": 0,
+            "call_screened_7d": 0,
             "completed_users_7d": 0,
             "sessions_per_completed_user_7d": 0.0,
             "targets": {"checkpoint_2026_03_31": 8, "quarter_2026_06_30": 25},
@@ -240,7 +240,7 @@ def run(
         FROM (
           SELECT person_id
           FROM events
-          WHERE event = 'timer_completed'
+          WHERE event = 'call_screened'
             AND timestamp > now() - interval {wqtu_window_days} day
             AND {LIVE_EVENTS_PREDICATE}
           GROUP BY person_id
@@ -255,7 +255,7 @@ def run(
         f"""
         SELECT count()
         FROM events
-        WHERE event = 'timer_completed'
+        WHERE event = 'call_screened'
           AND timestamp > now() - interval {wqtu_window_days} day
           AND {LIVE_EVENTS_PREDICATE}
         """,
@@ -267,7 +267,7 @@ def run(
         f"""
         SELECT count(DISTINCT person_id)
         FROM events
-        WHERE event = 'timer_completed'
+        WHERE event = 'call_screened'
           AND timestamp > now() - interval {wqtu_window_days} day
           AND {LIVE_EVENTS_PREDICATE}
         """,
@@ -310,7 +310,7 @@ def run(
 
     payload["status"] = "ok" if not errors else "degraded"
     payload["north_star"]["wqtu_7d"] = wqtu
-    payload["north_star"]["timer_completed_7d"] = completions_7d
+    payload["north_star"]["call_screened_7d"] = completions_7d
     payload["north_star"]["completed_users_7d"] = completed_users_7d
     payload["north_star"]["sessions_per_completed_user_7d"] = sessions_per_user
     payload["north_star"]["on_track_checkpoint"] = wqtu >= checkpoint_target
@@ -378,7 +378,7 @@ def run(
         {
             "timestamp": payload["generated_at"],
             "wqtu_7d": wqtu,
-            "timer_completed_7d": completions_7d,
+            "call_screened_7d": completions_7d,
             "completed_users_7d": completed_users_7d,
             "paid_distinct_users_30d": paid_distinct_users_30d,
             "active_campaign_count": len(active),
@@ -392,7 +392,7 @@ def run(
         "status": payload["status"],
         "output": str(output_path),
         "wqtu_7d": wqtu,
-        "timer_completed_7d": completions_7d,
+        "call_screened_7d": completions_7d,
         "completed_users_7d": completed_users_7d,
         "paid_distinct_users_30d": paid_distinct_users_30d,
         "active_campaign_count": len(active),

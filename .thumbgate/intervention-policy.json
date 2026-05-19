@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "modelType": "multinomial_naive_bayes",
+  "labels": [
+    "allow",
+    "recall",
+    "verify",
+    "warn",
+    "deny"
+  ],
+  "exampleCount": 5,
+  "labelCounts": {
+    "allow": 1,
+    "recall": 4,
+    "verify": 0,
+    "warn": 0,
+    "deny": 0
+  },
+  "labelTokenTotals": {
+    "allow": 4,
+    "recall": 28,
+    "verify": 0,
+    "warn": 0,
+    "deny": 0
+  },
+  "labelTokenCounts": {
+    "allow": {
+      "kind_audit": 1,
+      "decision_allow": 1,
+      "tool_run_harness": 1,
+      "source_gates-engine": 1
+    },
+    "recall": {
+      "kind_feedback": 4,
+      "signal_negative": 4,
+      "tool_unknown": 4,
+      "cmdtok_down": 4,
+      "tag_claude-history-sync": 4,
+      "tag_auto-capture-fallback": 4,
+      "text_down": 4
+    },
+    "verify": {},
+    "warn": {},
+    "deny": {}
+  },
+  "vocabularySize": 11,
+  "metrics": {
+    "trainingAccuracy": 0.8,
+    "holdoutAccuracy": 0,
+    "holdoutSize": 0,
+    "trainingExamples": 5
+  },
+  "sourceCounts": {
+    "feedback": 4,
+    "audit": 1,
+    "diagnostic": 0,
+    "decision": 0
+  },
+  "updatedAt": "2026-05-19T16:27:00.628Z",
+  "labelMetrics": {
+    "allow": {
+      "total": 1,
+      "correct": 0,
+      "accuracy": 0
+    },
+    "recall": {
+      "total": 4,
+      "correct": 4,
+      "accuracy": 1
+    },
+    "verify": {
+      "total": 0,
+      "correct": 0,
+      "accuracy": 0
+    },
+    "warn": {
+      "total": 0,
+      "correct": 0,
+      "accuracy": 0
+    },
+    "deny": {
+      "total": 0,
+      "correct": 0,
+      "accuracy": 0
+    }
+  },
+  "topTokens": {
+    "allow": [
+      {
+        "token": "decision_allow",
+        "count": 1
+      },
+      {
+        "token": "kind_audit",
+        "count": 1
+      },
+      {
+        "token": "source_gates-engine",
+        "count": 1
+      },
+      {
+        "token": "tool_run_harness",
+        "count": 1
+      }
+    ],
+    "recall": [
+      {
+        "token": "cmdtok_down",
+        "count": 4
+      },
+      {
+        "token": "kind_feedback",
+        "count": 4
+      },
+      {
+        "token": "signal_negative",
+        "count": 4
+      },
+      {
+        "token": "tag_auto-capture-fallback",
+        "count": 4
+      }
+    ],
+    "verify": [],
+    "warn": [],
+    "deny": []
+  }
+}

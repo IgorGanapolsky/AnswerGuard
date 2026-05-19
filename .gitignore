@@ -110,3 +110,7 @@ native-ios/RandomTimer.app.dSYM.zip
 apple_*.png
 artifacts_*.png
 apple_status.json
+
+# ThumbGate local feedback data
+.thumbgate/feedback-log.jsonl
+.thumbgate/memory-log.jsonl

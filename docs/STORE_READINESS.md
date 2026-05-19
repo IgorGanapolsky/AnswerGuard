@@ -1,6 +1,6 @@
 # AnswerGuard Store Readiness
 
-Status as of 2026-05-05: Android now builds as an AnswerGuard call-screening app for internal distribution. iOS TestFlight distribution infrastructure is working, but production App Store submission still requires completing the iOS Call Directory extension target and store assets.
+Status as of 2026-05-05: Android now builds as an AnswerGuard call-screening app for internal distribution. iOS TestFlight distribution infrastructure is working. The iOS Call Directory extension target (`com.igorganapolsky.answerguard.calldirectory`) is now wired into the Xcode project and shares state with the main app via App Group `group.com.igorganapolsky.answerguard`; production App Store submission still requires the matching Developer Portal bundle ID + provisioning profile and the store assets refresh.
 
 ## Local Gates
 
@@ -94,11 +94,25 @@ Apple App Review guideline 2.5.12 also requires CallKit/SMS fraud apps to block 
 
 Required production work:
 
-- Add an iOS Call Directory extension target.
-- Implement `CXCallDirectoryProvider` with a verified spam/allow/label data source.
-- Add in-app controls for enabling, refreshing, and explaining the Call Directory list.
-- Add tests for sorted phone-number entries, duplicate handling, extension reload failure, and empty/offline datasets.
-- Update App Store metadata, screenshots, privacy policy, and review notes to describe real call-identification behavior.
+- ~~Add an iOS Call Directory extension target.~~ Done — target `CallDirectoryExtension` (`com.igorganapolsky.answerguard.calldirectory`) wired into `native-ios/AnswerGuard.xcodeproj` with App Group entitlement, sources, embed-extension build phase, and target dependency from the main app.
+- ~~Implement `CXCallDirectoryProvider` with a verified spam/allow/label data source.~~ Done — `native-ios/CallDirectoryExtension/CallDirectoryHandler.swift` handles full and incremental requests via the shared `SpamDatabase`.
+- ~~Add in-app controls for enabling, refreshing, and explaining the Call Directory list.~~ Done — `AnswerGuardHomeScreen` plus `CallDirectoryManager.block(_:)` / `unblock(_:)` / `reloadExtension()` / `refreshStatus()`.
+- ~~Add tests for sorted phone-number entries, duplicate handling, extension reload failure, and empty/offline datasets.~~ Done at the data-source level in `native-ios/AnswerGuardTests/SpamDatabaseTests.swift` (sort, dedup, add/remove, incremental deltas, empty list).
+- Update App Store metadata, screenshots, privacy policy, and review notes to describe real call-identification behavior. (Still pending — copy/screenshots task.)
+
+App Group / bundle identifiers in use:
+
+- App Group: `group.com.igorganapolsky.answerguard`
+- Main app: `com.igorganapolsky.answerguard`
+- Widget extension: `com.igorganapolsky.answerguard.widget`
+- Call Directory extension: `com.igorganapolsky.answerguard.calldirectory`
+
+Manual Xcode / Apple Developer Portal steps still required:
+
+- Register the bundle ID `com.igorganapolsky.answerguard.calldirectory` in the Apple Developer Portal with the App Groups capability and assign it to the App Group `group.com.igorganapolsky.answerguard`.
+- Create matching App Store provisioning profiles via fastlane match so the `match AppStore com.igorganapolsky.answerguard` profile includes App Groups and the `match AppStore com.igorganapolsky.answerguard.calldirectory` profile referenced in the target build settings resolves.
+- Ensure the App Group is enabled on the main app's primary App ID `com.igorganapolsky.answerguard`; the 2026-05-19 internal distribution run failed because the main App Store profile did not include `com.apple.security.application-groups` / `group.com.igorganapolsky.answerguard`.
+- `native-ios/AnswerGuardTests/SpamDatabaseTests.swift` and `ContactsServiceTests.swift` are now members of the `AnswerGuardTests` target in the `.xcodeproj`. Local execution of `make verify-ios` still requires a full Xcode install/selection.
 
 Official references:
 
@@ -119,11 +133,15 @@ Completed for internal Android builds:
 - Manifest service registration with `BIND_SCREENING_SERVICE`.
 - RoleManager request flow for `ROLE_CALL_SCREENING`.
 - Local-first spam verdict engine that responds synchronously.
+- `ContactsAllowlist` short-circuits the spam engine when the caller matches the user's contacts (requires `READ_CONTACTS`, declared in `AndroidManifest.xml`).
+- In-app `BlocklistScreen` for managing the user-maintained block list, plus `ContactsCard` for requesting contacts permission.
+- `RoleOnboardingTest` instrumentation test (Espresso/UIAutomator) for the role request dialog — staged but not yet running in CI (no instrumentation job exists).
 
 Required production work:
 
-- Add device/emulator tests for role onboarding, unknown caller handling, contacts behavior, block/allow decisions, and no-permission fallback.
-- Complete Play Console App Content: Data safety, privacy policy, sensitive permission declarations if applicable, target API, content rating, ads, and closed testing.
+- Add Play Console privacy-policy disclosure for `READ_CONTACTS` (on-device matching only, never uploaded).
+- Add device/emulator tests for role onboarding, unknown caller handling, contacts behavior, block/allow decisions, and no-permission fallback. Some Maestro flows now exist in `.maestro/` covering content render, deep link, pro upgrade attempts, and pro restore; expand as testTags are added across the Compose tree.
+- Complete Play Console App Content: Data safety, privacy policy, sensitive permission declarations (incl. `READ_CONTACTS`), target API, content rating, ads, and closed testing.
 
 Official references:
 
@@ -148,6 +166,6 @@ Already ported:
 
 Remaining store blockers:
 
-- iOS Call Directory extension files exist but still need to be wired into the Xcode project as an app extension target and provisioned.
+- iOS Call Directory extension target is now wired into the Xcode project (`CallDirectoryExtension` target, bundle ID `com.igorganapolsky.answerguard.calldirectory`, embed-extension build phase, App Group entitlement). Still pending: Apple Developer Portal bundle-ID registration with App Groups capability, main-app App Group profile refresh, and a matching match-provisioned App Store profile.
 - Store screenshots still need to show the caller-screening experience.
 - Play Console App Content and closed-testing evidence still need credentialed verification before production rollout.

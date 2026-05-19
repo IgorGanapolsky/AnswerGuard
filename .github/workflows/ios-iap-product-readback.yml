@@ -1,0 +1,54 @@
+name: iOS IAP Product Readback
+
+# Read-only App Store Connect health check for AnswerGuard's paid products.
+# AnswerGuard ships two paid SKUs (iOS bundle: com.igorganapolsky.answerguard):
+#   - com.igorganapolsky.answerguard.pro   (non-consumable, base Pro unlock)
+#   - com.igorganapolsky.answerguard.elite (annual subscription, family plan)
+# App-version readiness can pass while these are missing/blocked at ASC, so
+# this gate runs independently before any production submission.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-ios-iap-products:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ASC client dependencies
+        run: python -m pip install --upgrade requests pyjwt cryptography
+
+      - name: Run unit tests
+        run: |
+          if [ -f scripts/tests/test_asc_verify_iap_products.py ]; then
+            PYTHONPATH=. python scripts/tests/test_asc_verify_iap_products.py
+          else
+            echo "::notice::scripts/tests/test_asc_verify_iap_products.py not present; skipping unit test step."
+          fi
+
+      - name: Read back App Store Connect product states
+        run: |
+          python scripts/asc_verify_iap_products.py \
+            --bundle-id com.igorganapolsky.answerguard \
+            --expected-product-id com.igorganapolsky.answerguard.pro \
+            --expected-product-id com.igorganapolsky.answerguard.elite \
+            --json-out ios-iap-product-readback.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-iap-product-readback
+          path: ios-iap-product-readback.json
+          if-no-files-found: ignore

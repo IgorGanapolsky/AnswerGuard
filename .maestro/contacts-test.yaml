@@ -1,0 +1,10 @@
+appId: com.igorganapolsky.answerguard
+# Project: AnswerGuard
+---
+- launchApp
+- assertVisible: "Contact Identification"
+- assertVisible: "Allow Contacts Access"
+- tapOn: "Allow Contacts Access"
+# Maestro cannot interact with the system permission dialog directly easily 
+# without knowing the specific button text, but we can assert we don't crash.
+- assertVisible: "Contact Identification"

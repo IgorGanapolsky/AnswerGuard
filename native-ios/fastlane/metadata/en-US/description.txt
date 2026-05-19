@@ -11,3 +11,9 @@ Why AnswerGuard:
 - Built for fewer missed real calls
 
 AnswerGuard does not sell your data or use call protection data for advertising.
+
+SUBSCRIPTION INFO
+AnswerGuard Pro is offered as auto-renewable subscriptions. Payment is charged to your Apple ID account at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period. Manage subscriptions in Settings > Apple ID > Subscriptions.
+
+Privacy Policy: https://github.com/IgorGanapolsky/AnswerGuard/blob/main/PRIVACY_POLICY.md
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/

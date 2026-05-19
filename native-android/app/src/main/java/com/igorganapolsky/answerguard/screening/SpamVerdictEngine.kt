@@ -32,7 +32,7 @@ object SpamVerdictEngine {
         Regex("""^(\+?1)?900\d+$"""),                          // 900 premium
     )
 
-    fun evaluate(rawNumber: String): SpamVerdict {
+    fun evaluate(context: android.content.Context, rawNumber: String): SpamVerdict {
         val digits = rawNumber.filter { it.isDigit() }
 
         if (digits.isBlank()) {
@@ -40,7 +40,13 @@ object SpamVerdictEngine {
             return SpamVerdict.SILENCE
         }
 
-        // 1. User blocklist (SharedPreferences-backed)
+        // 1. User contacts (Requires READ_CONTACTS)
+        if (ContactsAllowlist.isContact(context, digits)) {
+            Log.d(tag, "$digits found in contacts — allowing")
+            return SpamVerdict.ALLOW
+        }
+
+        // 2. User blocklist (SharedPreferences-backed)
         if (UserBlocklist.contains(digits)) {
             Log.d(tag, "$digits found in user blocklist")
             return SpamVerdict.BLOCK

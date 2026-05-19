@@ -25,7 +25,7 @@ class AbandonRateReportTests(unittest.TestCase):
                 "query_rows",
                 side_effect=[
                     [["Timer Setup", 120], ["Active Timer", 80]],
-                    [["timer_started", 100], ["timer_completed", 40]],
+                    [["call_screened", 100], ["spam_call_blocked", 40]],
                     [["live", 1000], ["dev", 250]],
                 ],
             ):
@@ -36,8 +36,8 @@ class AbandonRateReportTests(unittest.TestCase):
         payload = json.loads(out.getvalue())
         canonical_success_query = scalar_mock.call_args_list[5].args[0]
         issued_queries = "\n".join(call.args[0] for call in scalar_mock.call_args_list)
-        self.assertEqual(payload["abandon_metrics"]["timer_started_30d"], 100)
-        self.assertEqual(payload["abandon_metrics"]["timer_completed_30d"], 40)
+        self.assertEqual(payload["abandon_metrics"]["call_screened_30d"], 100)
+        self.assertEqual(payload["abandon_metrics"]["spam_call_blocked_30d"], 40)
         self.assertEqual(payload["abandon_metrics"]["abandon_rate_percent"], 60.0)
         self.assertEqual(payload["monetization_metrics"]["paywall_viewed_30d"], 12)
         self.assertEqual(payload["monetization_metrics"]["paywall_purchase_success_30d"], 3)
@@ -67,7 +67,7 @@ class AbandonRateReportTests(unittest.TestCase):
                 "query_rows",
                 side_effect=[
                     [["Timer Setup", 120], ["Active Timer", 80]],
-                    [["timer_started", 100], ["timer_completed", 40]],
+                    [["call_screened", 100], ["spam_call_blocked", 40]],
                     [["live", 1000], ["dev", 250]],
                 ],
             ):

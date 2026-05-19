@@ -84,7 +84,11 @@ platform :ios do
       # with match-managed App Store profiles for deterministic archives.
       match(
         type: "appstore",
-        app_identifier: ["com.igorganapolsky.answerguard", "com.igorganapolsky.answerguard.widget"],
+        app_identifier: [
+          "com.igorganapolsky.answerguard",
+          "com.igorganapolsky.answerguard.widget",
+          "com.igorganapolsky.answerguard.calldirectory"
+        ],
         readonly: true,
         api_key: defined?(api_key) ? api_key : nil
       )
@@ -93,6 +97,8 @@ platform :ios do
                     "match AppStore com.igorganapolsky.answerguard"
       widget_profile = ENV["sigh_com.igorganapolsky.answerguard.widget_appstore_profile-name"] ||
                        "match AppStore com.igorganapolsky.answerguard.widget"
+      call_directory_profile = ENV["sigh_com.igorganapolsky.answerguard.calldirectory_appstore_profile-name"] ||
+                               "match AppStore com.igorganapolsky.answerguard.calldirectory"
 
       update_code_signing_settings(
         path: "AnswerGuard.xcodeproj",
@@ -110,6 +116,14 @@ platform :ios do
         profile_name: widget_profile
       )
 
+      update_code_signing_settings(
+        path: "AnswerGuard.xcodeproj",
+        use_automatic_signing: false,
+        targets: ["CallDirectoryExtension"],
+        code_sign_identity: "Apple Distribution",
+        profile_name: call_directory_profile
+      )
+
       build_opts = {
         scheme: "AnswerGuard",
         export_method: "app-store",
@@ -119,7 +133,8 @@ platform :ios do
           signingStyle: "manual",
           provisioningProfiles: {
             "com.igorganapolsky.answerguard" => app_profile,
-            "com.igorganapolsky.answerguard.widget" => widget_profile
+            "com.igorganapolsky.answerguard.widget" => widget_profile,
+            "com.igorganapolsky.answerguard.calldirectory" => call_directory_profile
           }
         }
       }
@@ -169,7 +184,8 @@ platform :ios do
             signingStyle: "manual",
             provisioningProfiles: {
               "com.igorganapolsky.answerguard" => app_profile,
-              "com.igorganapolsky.answerguard.widget" => widget_profile
+              "com.igorganapolsky.answerguard.widget" => widget_profile,
+              "com.igorganapolsky.answerguard.calldirectory" => call_directory_profile
             }
           }
         }
@@ -333,7 +349,11 @@ platform :ios do
       # Distribution profiles for App Store export
       match(
         type: "appstore",
-        app_identifier: ["com.igorganapolsky.answerguard", "com.igorganapolsky.answerguard.widget"],
+        app_identifier: [
+          "com.igorganapolsky.answerguard",
+          "com.igorganapolsky.answerguard.widget",
+          "com.igorganapolsky.answerguard.calldirectory"
+        ],
         readonly: true,
         api_key: api_key
       )

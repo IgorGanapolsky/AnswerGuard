@@ -1,0 +1,8 @@
+{
+  "version": "1.19.0",
+  "apiUrl": "http://localhost:3000",
+  "logPath": ".thumbgate/feedback-log.jsonl",
+  "memoryPath": ".thumbgate/memory-log.jsonl",
+  "installId": "6d88a3ef-f206-490a-b749-b8ec1ebb784e",
+  "createdAt": "2026-05-18T19:40:25.788Z"
+}

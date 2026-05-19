@@ -1,0 +1,28 @@
+appId: com.igorganapolsky.answerguard
+---
+# Pro upgrade cancel path. Tap Upgrade to launch the billing flow, then press
+# Back (mirrors user cancelling the Play purchase sheet). Verify the home
+# screen is intact, both Upgrade and Restore buttons remain available, and
+# entitlement was NOT silently promoted (no "Pro purchase restored" message).
+# Independent of the success-path test because the cancel branch was previously
+# uncovered.
+# TODO: needs testTag("pro_upgrade_button") and testTag("pro_status_message").
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'AnswerGuard Pro'
+    timeout: 30000
+
+- tapOn: 'Upgrade'
+- waitForAnimationToEnd
+
+- pressKey: Back
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible: 'AnswerGuard Pro'
+    timeout: 15000
+
+- assertVisible: 'Upgrade'
+- assertVisible: 'Restore'
+- assertNotVisible: 'Pro purchase restored.'

@@ -160,7 +160,7 @@ def main():
                 try:
                     file_input = page.locator("input[type='file']").first
                     file_input.set_input_files(AAB_PATH)
-                    print(f"  Uploaded AAB via button")
+                    print("  Uploaded AAB via button")
                     time.sleep(30)
                 except Exception as e2:
                     print(f"  Upload failed: {e2}")

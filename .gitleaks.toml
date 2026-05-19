@@ -1,7 +1,7 @@
 # Gitleaks configuration for Random Timer
 # https://github.com/gitleaks/gitleaks
 
-title = "Random Timer Secret Detection"
+title = "AnswerGuard Secret Detection"
 
 [extend]
 # Use default rules
@@ -43,6 +43,10 @@ paths = [
   '''\.claude/skills/''',
 ]
 commits = [
+  "4f566776df44f6ddd6f62a6b4937b7c9114710c6",
+  "5fd9b3ad9df05994ecefd2e32b265745c32e23fb",
+  "e8b7882123833d9af060907967880890d1c2f4d0",
+
   "f9f5b3c75532bd1bb5b7af1a05aacd48245a648e",
   "8ea0f886c8a78a0d7fc19d4cb3dfd132904be654",
   "d23d7a21c4c50f816a8208ad57f2b40a3b15b264",

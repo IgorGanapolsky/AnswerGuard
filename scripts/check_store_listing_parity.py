@@ -8,8 +8,6 @@ and marketing creative quality. Runs in CI to prevent listing drift.
 from __future__ import annotations
 
 import argparse
-import os
-import sys
 from pathlib import Path
 
 IOS_META = "native-ios/fastlane/metadata/en-US"
@@ -147,7 +145,7 @@ def check_screenshot_dimensions(root: Path) -> list[str]:
         (1242, 2688),  # iPhone 6.5" (11 Pro Max)
     }
     # Valid Android phone dimensions (common)
-    valid_android_widths = range(1080, 1440 + 1)
+    range(1080, 1440 + 1)
 
     ios_dir = root / IOS_SCREENSHOTS
     if ios_dir.exists():

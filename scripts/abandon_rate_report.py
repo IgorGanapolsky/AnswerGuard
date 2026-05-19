@@ -27,12 +27,12 @@ def run():
 
     errors = []
     
-    # 1. Abandon Rate (timer_started vs timer_completed) - Live audience only
+    # 1. Abandon Rate (call_screened vs spam_call_blocked) - Live audience only
     started = query_scalar(
         f"""
         SELECT count()
         FROM events
-        WHERE event = 'timer_started'
+        WHERE event = 'call_screened'
           AND timestamp > now() - interval 30 day
           AND {LIVE_EVENTS_PREDICATE}
         """,
@@ -44,7 +44,7 @@ def run():
         f"""
         SELECT count()
         FROM events
-        WHERE event = 'timer_completed'
+        WHERE event = 'spam_call_blocked'
           AND timestamp > now() - interval 30 day
           AND {LIVE_EVENTS_PREDICATE}
         """,
@@ -56,7 +56,7 @@ def run():
         f"""
         SELECT count(DISTINCT person_id)
         FROM events
-        WHERE event = 'timer_started'
+        WHERE event = 'call_screened'
           AND timestamp > now() - interval 30 day
           AND {LIVE_EVENTS_PREDICATE}
         """,
@@ -191,8 +191,8 @@ def run():
 
     report = {
         "abandon_metrics": {
-            "timer_started_30d": started,
-            "timer_completed_30d": completed,
+            "call_screened_30d": started,
+            "spam_call_blocked_30d": completed,
             "unique_started_users_30d": unique_users,
             "abandon_rate_percent": round(abandon_rate, 2)
         },

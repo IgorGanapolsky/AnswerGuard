@@ -1,15 +1,18 @@
+import java.math.BigDecimal
+import java.util.Properties
 import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.services) apply false
-    alias(libs.plugins.firebase.crashlytics) apply false
+    alias(libs.plugins.googleServices) apply false
+    alias(libs.plugins.firebaseCrashlytics) apply false
     jacoco
 }
 
@@ -46,12 +49,31 @@ android {
         minSdk = 26
         targetSdk = ciTargetSdk ?: 35
         versionCode = ciVersionCode ?: 1773360000
-        versionName = "1.2.6"
+        versionName = "1.2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // PostHog Analytics - from gradle.properties or CI secret
-        buildConfigField("String", "POSTHOG_API_KEY", "\"${System.getenv("POSTHOG_API_KEY") ?: project.findProperty("POSTHOG_API_KEY") ?: ""}\"")
+        // PostHog Analytics - from local.properties, gradle.properties or CI secret
+        val posthogApiKey = (System.getenv("POSTHOG_API_KEY")
+            ?: project.findProperty("POSTHOG_API_KEY")
+            ?: run {
+                val props = Properties()
+                val localPropsFile = project.rootProject.file("local.properties")
+                if (localPropsFile.exists()) {
+                    localPropsFile.inputStream().use { props.load(it) }
+                }
+                props.getProperty("POSTHOG_API_KEY")
+            } ?: "").toString()
+        buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
+
+        // Short git SHA for in-app build verification. Honors $GITHUB_SHA when
+        // set by GitHub Actions, falls back to `git rev-parse` for local builds.
+        val gitSha: String = (System.getenv("GITHUB_SHA")?.take(7))
+            ?: try {
+                Runtime.getRuntime().exec(arrayOf("git", "rev-parse", "--short=7", "HEAD"))
+                    .inputStream.bufferedReader().readText().trim()
+            } catch (_: Exception) { "unknown" }
+        buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
     }
 
     signingConfigs {
@@ -147,6 +169,7 @@ dependencies {
 
     // Analytics
     implementation(libs.posthog)
+    implementation(libs.sentry)
 
     // In-App Review
     implementation(libs.play.review)
@@ -158,6 +181,12 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)
+
+    // Firebase App Distribution — self-prompts testers to install new builds.
+    // Production builds via Play Store should use the api-only stub; we ship
+    // the full SDK across all variants because every current AnswerGuard build
+    // is distributed via Firebase App Distribution.
+    implementation(libs.firebase.appdistribution)
 
     // Media Session (Bluetooth/Android Auto alarm dismiss)
     implementation(libs.androidx.media)
@@ -210,6 +239,12 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
         "android/**/*.*",
         "**/*\$Lambda$*.*",
         "**/*\$inlined$*.*",
+        // Compose UI surface — not unit-testable without Compose UI test framework
+        // or Robolectric. ProManager / AnalyticsService stay in the metric to
+        // drive future tests; only the Activity + its generated Composable
+        // lambdas are excluded.
+        "**/MainActivity*.*",
+        "**/*ComposableSingletons*.*",
     )
 
     val buildDirFile = layout.buildDirectory.get().asFile
@@ -224,4 +259,31 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
             include("outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec")
         }
     )
+}
+
+// Coverage ratchet. MainActivity Composables are excluded (not unit-testable).
+// ProManager (~1041 instructions) and AnalyticsService (~835) are intentionally
+// IN the metric — they're production logic that should drive future tests.
+// Raise threshold as those classes get covered.
+tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
+    dependsOn("jacocoDebugUnitTestReport")
+
+    val reportTask = tasks.named<JacocoReport>("jacocoDebugUnitTestReport").get()
+    classDirectories.setFrom(reportTask.classDirectories)
+    sourceDirectories.setFrom(reportTask.sourceDirectories)
+    executionData.setFrom(reportTask.executionData)
+
+    violationRules {
+        rule {
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = BigDecimal("0.07")
+            }
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("jacocoCoverageVerification")
 }

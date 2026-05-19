@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 
 from scripts.asc_client import ASCClient, AscClientError
 from scripts.asc_submit_for_review import die, first, get_app, get_version_state, info, wait_for_state

@@ -13,13 +13,13 @@ Requires:
     - google-api-python-client, google-auth
 """
 
-import json
 import os
 import sys
 from pathlib import Path
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 PACKAGE_NAME = "com.igorganapolsky.answerguard"
 METADATA_ROOT = Path(__file__).resolve().parent.parent / "native-android" / "fastlane" / "metadata" / "android"
@@ -84,6 +84,63 @@ def main():
         ).execute()
         updated.append(api_lang)
         print(f"  Updated listing for {api_lang}: title={'yes' if title else 'no'}, short={'yes' if short_desc else 'no'}, full={'yes' if full_desc else 'no'}")
+
+        # Sync Icon and Feature Graphic
+        if api_lang == "en-US":
+            print("  Syncing images for en-US...")
+            icon_path = METADATA_ROOT / "en-US" / "images" / "icon.png"
+            if icon_path.exists():
+                media = MediaFileUpload(str(icon_path), mimetype="image/png")
+                edits.images().upload(
+                    packageName=PACKAGE_NAME,
+                    editId=edit_id,
+                    language=api_lang,
+                    imageType="icon",
+                    media_body=media
+                ).execute()
+                print("    ✓ Uploaded icon")
+
+            fg_dir = METADATA_ROOT / "en-US" / "images" / "featureGraphic"
+            if fg_dir.exists():
+                fg_files = list(fg_dir.glob("*.png"))
+                if fg_files:
+                    media = MediaFileUpload(str(fg_files[0]), mimetype="image/png")
+                    edits.images().upload(
+                        packageName=PACKAGE_NAME,
+                        editId=edit_id,
+                        language=api_lang,
+                        imageType="featureGraphic",
+                        media_body=media
+                    ).execute()
+                    print(f"    ✓ Uploaded feature graphic: {fg_files[0].name}")
+
+            # Sync Screenshots
+            print("  Syncing screenshots for en-US...")
+            screenshot_dir = METADATA_ROOT / "en-US" / "images" / "phoneScreenshots"
+            if screenshot_dir.exists():
+                screenshot_files = sorted(list(screenshot_dir.glob("*.png")))
+                if screenshot_files:
+                    # Clear existing screenshots first to avoid duplicates
+                    try:
+                        edits.images().deleteall(
+                            packageName=PACKAGE_NAME,
+                            editId=edit_id,
+                            language=api_lang,
+                            imageType="phoneScreenshots"
+                        ).execute()
+                    except Exception:
+                        pass
+
+                    for ss in screenshot_files:
+                        media = MediaFileUpload(str(ss), mimetype="image/png")
+                        edits.images().upload(
+                            packageName=PACKAGE_NAME,
+                            editId=edit_id,
+                            language=api_lang,
+                            imageType="phoneScreenshots",
+                            media_body=media
+                        ).execute()
+                        print(f"    ✓ Uploaded screenshot: {ss.name}")
 
     if not updated:
         print("No metadata to upload. Discarding edit.")

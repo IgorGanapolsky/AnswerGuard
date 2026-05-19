@@ -8,6 +8,9 @@
     <!-- In-App Billing for Pro upgrade -->
     <uses-permission android:name="com.android.vending.BILLING" />
 
+    <!-- Allow identification of contacts to avoid blocking them -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <!-- Remove AD_ID permission added by dependencies (Firebase/PostHog) — app does not use advertising ID -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
 
@@ -54,6 +57,9 @@
                 <data android:scheme="answerguard" android:host="open" />
             </intent-filter>
         </activity>
+
+        <!-- Disable Sentry auto-init to prevent crash without DSN -->
+        <meta-data android:name="io.sentry.auto-init" android:value="false" />
 
         <!-- Call Screening Service -->
         <service

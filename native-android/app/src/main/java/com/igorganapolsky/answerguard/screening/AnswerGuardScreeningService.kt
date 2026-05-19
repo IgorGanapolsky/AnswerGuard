@@ -1,5 +1,6 @@
 package com.igorganapolsky.answerguard.screening
 
+import android.os.Build
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.util.Log
@@ -19,27 +20,40 @@ class AnswerGuardScreeningService : CallScreeningService() {
         val handle = callDetails.handle?.schemeSpecificPart ?: ""
         Log.d(tag, "Screening call from: $handle")
 
-        val verdict = SpamVerdictEngine.evaluate(handle)
-        Log.i(tag, "Verdict for $handle: $verdict")
+        if (PauseState.isPaused(this)) {
+            Log.i(tag, "Paused — allowing all calls through")
+            respondToCall(callDetails, CallResponse.Builder().build())
+            return
+        }
 
+        val verdict = SpamVerdictEngine.evaluate(this, handle)
+        Log.i(tag, "Verdict for $handle: $verdict")
+        
+        // Record the screened call in local history
+        ScreeningLog.record(ScreenedCall(number = handle, verdict = verdict))
+
+        // setSilenceCall is API 29+. Service only binds via ROLE_CALL_SCREENING
+        // (API 29+) in practice, but guard defensively so a legacy binder on
+        // 26-28 degrades gracefully instead of crashing with NoSuchMethodError.
+        val canSilence = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
         val response = CallResponse.Builder().apply {
             when (verdict) {
                 SpamVerdict.BLOCK -> {
                     setRejectCall(true)
                     setDisallowCall(true)
-                    setSilenceCall(true)
+                    if (canSilence) setSilenceCall(true)
                     setSkipNotification(true)
                 }
                 SpamVerdict.SILENCE -> {
                     setRejectCall(false)
                     setDisallowCall(false)
-                    setSilenceCall(true)
+                    if (canSilence) setSilenceCall(true)
                     setSkipNotification(false)
                 }
                 SpamVerdict.ALLOW -> {
                     setRejectCall(false)
                     setDisallowCall(false)
-                    setSilenceCall(false)
+                    if (canSilence) setSilenceCall(false)
                 }
             }
         }.build()

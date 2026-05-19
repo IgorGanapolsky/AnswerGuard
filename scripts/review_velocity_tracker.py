@@ -14,7 +14,7 @@ import argparse
 import json
 import datetime as dt
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 HISTORY_PATH = "marketing/data/review_velocity.json"
@@ -214,8 +214,8 @@ def build_report(result: Dict[str, Any]) -> str:
         f"**Date:** {result['snapshot']['timestamp']}",
         "",
         "## Current Snapshot",
-        f"| Platform | Total Reviews | Avg Rating | Recent (7d) |",
-        f"|----------|--------------|------------|-------------|",
+        "| Platform | Total Reviews | Avg Rating | Recent (7d) |",
+        "|----------|--------------|------------|-------------|",
         f"| iOS | {result['snapshot']['ios_total']} | {result['snapshot']['ios_rating']} | {result['snapshot']['ios_recent_7d']} |",
         f"| Android | {result['snapshot']['android_total']} | {result['snapshot']['android_rating']} | {result['snapshot']['android_recent_7d']} |",
         "",

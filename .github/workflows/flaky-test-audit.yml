@@ -1,0 +1,246 @@
+name: Flaky Test Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 10 * * 1"
+
+concurrency:
+  group: flaky-test-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-flaky-audit:
+    name: Python Flaky Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest==8.4.2 pytest-cov==7.0.0 pillow==11.3.0 google-auth==2.43.0 requests==2.32.5 PyYAML==6.0.2
+
+      - name: Run Python tests three times
+        id: audit
+        run: |
+          set +e
+          mkdir -p /tmp/flaky-junit/python
+          failed=0
+          for run in 1 2 3; do
+            echo "Python flaky audit run ${run}/3"
+            python -m pytest scripts/tests/ -q --junitxml="/tmp/flaky-junit/python/run-${run}.xml"
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              failed=1
+            fi
+          done
+          echo "failed=${failed}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Summarize Python flaky evidence
+        if: always()
+        run: |
+          python - <<'PYEOF'
+          import glob, json, os, sys, xml.etree.ElementTree as ET
+          paths = sorted(glob.glob("/tmp/flaky-junit/python/*.xml"))
+          if not paths:
+              print("No junit xml found", file=sys.stderr)
+              sys.exit(0)
+          # test_id -> list of outcomes per run ("pass"|"fail"|"error"|"skip")
+          runs = {}
+          for run_idx, p in enumerate(paths):
+              try:
+                  tree = ET.parse(p)
+              except ET.ParseError as exc:
+                  print(f"::warning::Could not parse {p}: {exc}")
+                  continue
+              for tc in tree.iter("testcase"):
+                  tid = f"{tc.attrib.get('classname','')}::{tc.attrib.get('name','')}"
+                  if tc.find("failure") is not None:
+                      outcome = "fail"
+                  elif tc.find("error") is not None:
+                      outcome = "error"
+                  elif tc.find("skipped") is not None:
+                      outcome = "skip"
+                  else:
+                      outcome = "pass"
+                  runs.setdefault(tid, ["pass"] * len(paths))
+                  runs[tid][run_idx] = outcome
+          # A flaky test = at least one fail/error and at least one pass across runs.
+          flaky = {
+              tid: outcomes for tid, outcomes in runs.items()
+              if "pass" in outcomes and (("fail" in outcomes) or ("error" in outcomes))
+          }
+          summary = {
+              "runs": len(paths),
+              "total_tests": len(runs),
+              "flaky_count": len(flaky),
+              "flaky_tests": [
+                  {"test": tid, "outcomes": outcomes}
+                  for tid, outcomes in sorted(flaky.items())
+              ],
+          }
+          os.makedirs("/tmp", exist_ok=True)
+          with open("/tmp/python-flaky-summary.json", "w") as f:
+              json.dump(summary, f, indent=2)
+          with open("/tmp/python-flaky-summary.md", "w") as f:
+              f.write(f"# Python flaky audit\n\n")
+              f.write(f"- Runs: {summary['runs']}\n")
+              f.write(f"- Total unique tests: {summary['total_tests']}\n")
+              f.write(f"- Flaky tests: {summary['flaky_count']}\n\n")
+              if flaky:
+                  f.write("| Test | Outcomes per run |\n|---|---|\n")
+                  for item in summary["flaky_tests"]:
+                      f.write(f"| `{item['test']}` | {' / '.join(item['outcomes'])} |\n")
+                      print(f"::warning title=Flaky test::{item['test']} -> {item['outcomes']}")
+          step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if step_summary:
+              with open(step_summary, "a") as f, open("/tmp/python-flaky-summary.md") as src:
+                  f.write(src.read())
+          PYEOF
+
+      - name: Upload Python flaky evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-flaky-evidence
+          path: |
+            /tmp/flaky-junit/python
+            /tmp/python-flaky-summary.json
+            /tmp/python-flaky-summary.md
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Fail on Python flaky audit failures
+        if: steps.audit.outputs.failed != '0'
+        run: exit 1
+
+  android-flaky-audit:
+    name: Android Flaky Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission
+        run: chmod +x native-android/gradlew
+
+      - name: Create dummy google-services.json for CI
+        run: |
+          cat > native-android/app/google-services.json << 'GSEOF'
+          {
+            "project_info": { "project_number": "000000000000", "project_id": "answerguard-ci", "storage_bucket": "answerguard-ci.appspot.com" },
+            "client": [{ "client_info": { "mobilesdk_app_id": "1:000000000000:android:0000000000000000", "android_client_info": { "package_name": "com.igorganapolsky.answerguard" } }, "api_key": [{ "current_key": "CI_PLACEHOLDER" }] }],
+            "configuration_version": "1"
+          }
+          GSEOF
+
+      - name: Run Android unit tests three times
+        id: audit
+        working-directory: native-android
+        run: |
+          set +e
+          failed=0
+          for run in 1 2 3; do
+            echo "Android flaky audit run ${run}/3"
+            ./gradlew testDebugUnitTest --no-daemon
+            status=$?
+            mkdir -p "/tmp/flaky-junit/android/run-${run}"
+            cp -R app/build/test-results/testDebugUnitTest/. "/tmp/flaky-junit/android/run-${run}/" 2>/dev/null || true
+            if [ "$status" -ne 0 ]; then
+              failed=1
+            fi
+          done
+          echo "failed=${failed}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Summarize Android flaky evidence
+        if: always()
+        run: |
+          python - <<'PYEOF'
+          import glob, json, os, sys, xml.etree.ElementTree as ET
+          run_dirs = sorted(glob.glob("/tmp/flaky-junit/android/run-*"))
+          if not run_dirs:
+              print("No android run dirs found", file=sys.stderr)
+              sys.exit(0)
+          runs = {}
+          run_count = len(run_dirs)
+          for run_idx, run_dir in enumerate(run_dirs):
+              for p in sorted(glob.glob(os.path.join(run_dir, "**", "*.xml"), recursive=True)):
+                  try:
+                      tree = ET.parse(p)
+                  except ET.ParseError as exc:
+                      print(f"::warning::Could not parse {p}: {exc}")
+                      continue
+                  for tc in tree.iter("testcase"):
+                      tid = f"{tc.attrib.get('classname','')}::{tc.attrib.get('name','')}"
+                      if tc.find("failure") is not None:
+                          outcome = "fail"
+                      elif tc.find("error") is not None:
+                          outcome = "error"
+                      elif tc.find("skipped") is not None:
+                          outcome = "skip"
+                      else:
+                          outcome = "pass"
+                      runs.setdefault(tid, ["pass"] * run_count)
+                      runs[tid][run_idx] = outcome
+          flaky = {
+              tid: outcomes for tid, outcomes in runs.items()
+              if "pass" in outcomes and (("fail" in outcomes) or ("error" in outcomes))
+          }
+          summary = {
+              "runs": run_count,
+              "total_tests": len(runs),
+              "flaky_count": len(flaky),
+              "flaky_tests": [
+                  {"test": tid, "outcomes": outcomes}
+                  for tid, outcomes in sorted(flaky.items())
+              ],
+          }
+          with open("/tmp/android-flaky-summary.json", "w") as f:
+              json.dump(summary, f, indent=2)
+          with open("/tmp/android-flaky-summary.md", "w") as f:
+              f.write("# Android flaky audit\n\n")
+              f.write(f"- Runs: {summary['runs']}\n")
+              f.write(f"- Total unique tests: {summary['total_tests']}\n")
+              f.write(f"- Flaky tests: {summary['flaky_count']}\n\n")
+              if flaky:
+                  f.write("| Test | Outcomes per run |\n|---|---|\n")
+                  for item in summary["flaky_tests"]:
+                      f.write(f"| `{item['test']}` | {' / '.join(item['outcomes'])} |\n")
+                      print(f"::warning title=Flaky test::{item['test']} -> {item['outcomes']}")
+          step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if step_summary:
+              with open(step_summary, "a") as f, open("/tmp/android-flaky-summary.md") as src:
+                  f.write(src.read())
+          PYEOF
+
+      - name: Upload Android flaky evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-flaky-evidence
+          path: |
+            /tmp/flaky-junit/android
+            /tmp/android-flaky-summary.json
+            /tmp/android-flaky-summary.md
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Fail on Android flaky audit failures
+        if: steps.audit.outputs.failed != '0'
+        run: exit 1

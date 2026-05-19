@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-05-18T19:54:52+00:00",
+  "source": "posthog",
+  "status": "skipped",
+  "status_reason": "missing POSTHOG_PERSONAL_API_KEY/POSTHOG_API_KEY or POSTHOG_PROJECT_ID",
+  "lookback_days": 30,
+  "wqtu_window_days": 7,
+  "north_star": {
+    "name": "Weekly Qualified Training Users",
+    "key": "WQTU",
+    "definition": "distinct users with >=3 timer_completed events in trailing 7 days",
+    "wqtu_7d": 0,
+    "timer_completed_7d": 0,
+    "completed_users_7d": 0,
+    "sessions_per_completed_user_7d": 0.0,
+    "targets": {
+      "checkpoint_2026_03_31": 8,
+      "quarter_2026_06_30": 25
+    },
+    "on_track_checkpoint": false,
+    "on_track_quarter": false
+  },
+  "paid": {
+    "paid_distinct_users_30d": 0,
+    "paid_events_by_source_30d": [],
+    "active_campaigns": [],
+    "active_campaign_count": 0,
+    "active_statuses": [
+      "active",
+      "enabled",
+      "live",
+      "on",
+      "running",
+      "serving"
+    ],
+    "campaign_grace_days": 7,
+    "active_campaigns_outside_grace_count": 0,
+    "paid_traffic_signal": false,
+    "paid_traffic_signal_detail": "",
+    "guardrail_violated": false,
+    "guardrail_reason": "",
+    "no_scale_lock": {
+      "active": false,
+      "reasons": [],
+      "enforceable_status": "not_applicable"
+    }
+  },
+  "query_diagnostics": {
+    "errors": []
+  },
+  "snapshots": []
+}

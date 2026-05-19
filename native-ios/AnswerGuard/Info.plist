@@ -68,5 +68,7 @@
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>
+	<key>NSContactsUsageDescription</key>
+	<string>AnswerGuard uses your contacts to ensure known callers are never accidentally blocked or silenced.</string>
 </dict>
 </plist>

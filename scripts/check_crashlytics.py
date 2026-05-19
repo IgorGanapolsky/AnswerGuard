@@ -20,7 +20,6 @@ import subprocess
 import sys
 import urllib.request
 import ssl
-from datetime import datetime, timedelta, timezone
 
 
 PROJECT_ID = "answerguard-486213"

@@ -1,0 +1,30 @@
+appId: com.igorganapolsky.answerguard
+---
+# Verify Restore Purchases flow surfaces a status message and re-enables the
+# button afterward. On CI (no Play Store account, no prior purchase) the
+# expected terminal state is "No active Pro purchase" or a billing error.
+# We accept either to keep the test CI-safe; both prove the restore handler
+# completed without crashing.
+# TODO: needs testTag("pro_restore_button") and testTag("pro_status_message").
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'AnswerGuard Pro'
+    timeout: 30000
+
+- assertVisible: 'Restore'
+- tapOn: 'Restore'
+- waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      text: '.*(No active Pro purchase|Could not restore|Checking Google Play).*'
+    timeout: 15000
+
+- extendedWaitUntil:
+    visible:
+      text: '.*(No active Pro purchase|Could not restore|Pro purchase restored).*'
+    timeout: 15000
+
+- assertVisible: 'Upgrade'
+- assertVisible: 'Restore'

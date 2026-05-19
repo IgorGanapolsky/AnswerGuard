@@ -1,0 +1,54 @@
+name: Play Data Safety Sync
+
+# Tier A: machine-authenticated Data Safety CSV via androidpublisher API.
+#
+# AnswerGuard is a call-screening / spam blocker app. Data Safety declarations
+# MUST reflect the runtime permissions the app actually requests:
+#   - INTERNET           (analytics + signed spam intelligence updates)
+#   - com.android.vending.BILLING (Play Billing for Pro upgrade)
+#   - READ_CONTACTS      (identify saved contacts so they are never blocked)
+#   - AD_ID              (removed via tools:node="remove"; do NOT declare)
+#   - BIND_SCREENING_SERVICE (call-screening role binding, no user data)
+#
+# CSV source order:
+#   1. secret PLAY_DATA_SAFETY_CSV (full file body)
+#   2. committed marketing/compliance/play_data_safety.csv
+#
+# Generate/refresh the CSV in Play Console: App content → Data safety →
+# Export to CSV, then commit the file or set the secret.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install google-api-python-client google-auth google-auth-httplib2
+
+      - name: Resolve CSV and upload
+        env:
+          GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+          PLAY_DATA_SAFETY_CSV: ${{ secrets.PLAY_DATA_SAFETY_CSV }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PLAY_DATA_SAFETY_CSV:-}" ]; then
+            printf '%s\n' "$PLAY_DATA_SAFETY_CSV" > /tmp/play_data_safety.csv
+          elif [ -f marketing/compliance/play_data_safety.csv ]; then
+            cp marketing/compliance/play_data_safety.csv /tmp/play_data_safety.csv
+          else
+            echo "::error::Provide secret PLAY_DATA_SAFETY_CSV or commit marketing/compliance/play_data_safety.csv"
+            exit 1
+          fi
+          python3 scripts/play_data_safety_upload.py --csv-path /tmp/play_data_safety.csv --json-stdout

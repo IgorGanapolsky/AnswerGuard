@@ -127,7 +127,6 @@ final class ProManager: ObservableObject {
 
     private func updateEntitlement(for productID: String) {
         let newLevel = levelFor(productID: productID)
-        // Only upgrade, don't downgrade via this path (downgrades handled by restore/currentEntitlements)
         if newLevel == .elite {
             entitlementLevel = .elite
         } else if newLevel == .base && entitlementLevel == .none {
@@ -152,23 +151,18 @@ final class ProManager: ObservableObject {
         }
     }
 
-    // MARK: - Feature Gates
-
-    static let maxSecondsFree = 300
-    static let maxSecondsPro = 3600
-
-    var maxSecondsLimit: Int {
-        isPro ? Self.maxSecondsPro : Self.maxSecondsFree
-    }
-
-    var availableSounds: [SoundType] {
-        isPro ? SoundType.allCases : SoundType.freeSounds
-    }
-
     func unlockProForDebug() {
         entitlementLevel = .base
         Self.log.notice("Developer override enabled: Pro unlocked via hidden hold gesture")
     }
+}
+
+enum EntitlementLevel: String, Codable {
+    case none
+    case base
+    case elite
+
+    var isPro: Bool { self != .none }
 }
 
 enum StoreError: Error {

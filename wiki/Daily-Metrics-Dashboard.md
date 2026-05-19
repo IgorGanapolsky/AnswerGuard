@@ -30,7 +30,7 @@
 | Metric                         | Value |
 | ------------------------------ | ----- |
 | WQTU (7d)                      | 0     |
-| Timer Completed (7d)           | 0     |
+| Spam Call Blocked (7d)           | 0     |
 | Completed Users (7d)           | 0     |
 | Sessions/Completed User (7d)   | 0.0   |
 | Checkpoint Target (2026-03-31) | 0     |

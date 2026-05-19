@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-import importlib
 import sys
 
 # Support both `python scripts/growth_content_pipeline.py` and `python -m scripts.growth_content_pipeline`

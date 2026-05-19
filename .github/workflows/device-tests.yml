@@ -75,4 +75,30 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1080x2340
           disable-animations: false
           emulator-boot-timeout: 300
-          script: sh scripts/device-tests/ci-maestro.sh
+          script: |
+            sh scripts/device-tests/ci-maestro.sh
+            # Extended Maestro flows. Billing-related flows are CI-safe because
+            # they accept both success and failure terminal states (Play Billing
+            # is unavailable in CI). The role-onboarding cancel flow is kept
+            # local-only because RoleOnboardingActivity bounces immediately on
+            # emulators without telephony, making the Back press exit the app.
+            export PATH="$HOME/.maestro/bin:$PATH"
+            EXTENDED_FAIL=0
+            for flow in \
+              .maestro/home-content-render.yaml \
+              .maestro/deep-link-open-home.yaml \
+              .maestro/pro-upgrade-cancel-returns-home.yaml \
+              .maestro/pro-upgrade-tap-shows-status.yaml \
+              .maestro/pro-restore-no-purchase.yaml
+            do
+              echo "== Extended flow: $flow =="
+              adb shell am force-stop com.igorganapolsky.answerguard 2>/dev/null || true
+              sleep 2
+              if maestro test "$flow"; then
+                echo "PASSED: $flow"
+              else
+                echo "FAILED: $flow"
+                EXTENDED_FAIL=$((EXTENDED_FAIL + 1))
+              fi
+            done
+            [ "$EXTENDED_FAIL" -eq 0 ]

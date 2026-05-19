@@ -1,0 +1,14 @@
+appId: com.igorganapolsky.answerguard
+---
+- launchApp
+- assertVisible: "Personal Blocklist"
+- tapOn: "Manage Blocklist"
+- assertVisible: "Your Blocklist"
+- tapOn: "Enter number"
+- inputText: "1234567890"
+- tapOn: "Add"
+- assertVisible: "1234567890"
+- tapOn: "Remove"
+- assertNotVisible: "1234567890"
+- tapOn: "Back"
+- assertVisible: "AnswerGuard"

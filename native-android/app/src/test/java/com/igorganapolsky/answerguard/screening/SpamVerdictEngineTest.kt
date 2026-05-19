@@ -6,6 +6,9 @@ import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -23,6 +26,9 @@ class SpamVerdictEngineTest {
         editor = mockk()
         storedNumbers = emptySet()
 
+        mockkObject(ContactsAllowlist)
+        every { ContactsAllowlist.isContact(any(), any()) } returns false
+
         every {
             context.getSharedPreferences("answerguard_blocklist", Context.MODE_PRIVATE)
         } returns prefs
@@ -37,40 +43,45 @@ class SpamVerdictEngineTest {
         UserBlocklist.init(context)
     }
 
+    @After
+    fun tearDown() {
+        unmockkObject(ContactsAllowlist)
+    }
+
     @Test
     fun `allows normal local number`() {
-        assertEquals(SpamVerdict.ALLOW, SpamVerdictEngine.evaluate("16175550100"))
+        assertEquals(SpamVerdict.ALLOW, SpamVerdictEngine.evaluate(context, "16175550100"))
     }
 
     @Test
     fun `silences blank private number`() {
-        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate(""))
+        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate(context, ""))
     }
 
     @Test
     fun `silences known spam prefix`() {
-        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate("18005550199"))
+        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate(context, "18005550199"))
     }
 
     @Test
     fun `silences toll-free scam pattern`() {
-        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate("18005551234"))
+        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate(context, "18005551234"))
     }
 
     @Test
     fun `silences 900 premium number`() {
-        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate("19005551234"))
+        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate(context, "19005551234"))
     }
 
     @Test
     fun `silences 900 premium number without country code`() {
-        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate("9005551234"))
+        assertEquals(SpamVerdict.SILENCE, SpamVerdictEngine.evaluate(context, "9005551234"))
     }
 
     @Test
     fun `handles plus-prefixed international format`() {
         // +1 stripped → evaluate digits only
-        val result = SpamVerdictEngine.evaluate("+16175550100")
+        val result = SpamVerdictEngine.evaluate(context, "+16175550100")
         assertEquals(SpamVerdict.ALLOW, result)
     }
 
@@ -78,6 +89,13 @@ class SpamVerdictEngineTest {
     fun `blocks numbers from user blocklist before heuristic allow`() {
         UserBlocklist.add("16175550100")
 
-        assertEquals(SpamVerdict.BLOCK, SpamVerdictEngine.evaluate("+1 (617) 555-0100"))
+        assertEquals(SpamVerdict.BLOCK, SpamVerdictEngine.evaluate(context, "+1 (617) 555-0100"))
+    }
+
+    @Test
+    fun `allows contacts even if they match spam heuristics`() {
+        every { ContactsAllowlist.isContact(any(), "18005550199") } returns true
+
+        assertEquals(SpamVerdict.ALLOW, SpamVerdictEngine.evaluate(context, "18005550199"))
     }
 }
