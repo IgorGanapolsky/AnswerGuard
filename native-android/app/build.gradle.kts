@@ -212,6 +212,12 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
         "android/**/*.*",
         "**/*\$Lambda$*.*",
         "**/*\$inlined$*.*",
+        // Compose UI surface — not unit-testable without Compose UI test framework
+        // or Robolectric. ProManager / AnalyticsService stay in the metric to
+        // drive future tests; only the Activity + its generated Composable
+        // lambdas are excluded.
+        "**/MainActivity*.*",
+        "**/*ComposableSingletons*.*",
     )
 
     val buildDirFile = layout.buildDirectory.get().asFile
@@ -228,11 +234,10 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
     )
 }
 
-// Coverage ratchet: measured INSTRUCTION coverage is 6.72% (520/7740) as of 2026-05-18
-// after BlocklistScreen + ContactsAllowlist added ~2200 uncovered Compose UI instructions.
-// Threshold sits at 6% (~0.7 pts below actual) — raise once MainActivity Composables get
-// Compose UI tests or Robolectric coverage. Top uncovered: MainActivityKt (2124),
-// ProManager (1041), AnalyticsService (835).
+// Coverage ratchet. MainActivity Composables are excluded (not unit-testable).
+// ProManager (~1041 instructions) and AnalyticsService (~835) are intentionally
+// IN the metric — they're production logic that should drive future tests.
+// Raise threshold as those classes get covered.
 tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
     dependsOn("jacocoDebugUnitTestReport")
 
@@ -246,7 +251,7 @@ tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = BigDecimal("0.06")
+                minimum = BigDecimal("0.07")
             }
         }
     }

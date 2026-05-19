@@ -1,5 +1,6 @@
 package com.igorganapolsky.answerguard.screening
 
+import android.os.Build
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.util.Log
@@ -22,24 +23,28 @@ class AnswerGuardScreeningService : CallScreeningService() {
         val verdict = SpamVerdictEngine.evaluate(this, handle)
         Log.i(tag, "Verdict for $handle: $verdict")
 
+        // setSilenceCall is API 29+. Service only binds via ROLE_CALL_SCREENING
+        // (API 29+) in practice, but guard defensively so a legacy binder on
+        // 26-28 degrades gracefully instead of crashing with NoSuchMethodError.
+        val canSilence = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
         val response = CallResponse.Builder().apply {
             when (verdict) {
                 SpamVerdict.BLOCK -> {
                     setRejectCall(true)
                     setDisallowCall(true)
-                    setSilenceCall(true)
+                    if (canSilence) setSilenceCall(true)
                     setSkipNotification(true)
                 }
                 SpamVerdict.SILENCE -> {
                     setRejectCall(false)
                     setDisallowCall(false)
-                    setSilenceCall(true)
+                    if (canSilence) setSilenceCall(true)
                     setSkipNotification(false)
                 }
                 SpamVerdict.ALLOW -> {
                     setRejectCall(false)
                     setDisallowCall(false)
-                    setSilenceCall(false)
+                    if (canSilence) setSilenceCall(false)
                 }
             }
         }.build()

@@ -110,9 +110,9 @@ App Group / bundle identifiers in use:
 Manual Xcode / Apple Developer Portal steps still required:
 
 - Register the bundle ID `com.igorganapolsky.answerguard.calldirectory` in the Apple Developer Portal with the App Groups capability and assign it to the App Group `group.com.igorganapolsky.answerguard`.
-- Create a matching App Store provisioning profile via fastlane match (`match appstore -a com.igorganapolsky.answerguard.calldirectory`) so the `match AppStore com.igorganapolsky.answerguard.calldirectory` profile referenced in the target build settings resolves.
-- Ensure the App Group is enabled on the main app's primary App ID `com.igorganapolsky.answerguard` (it should already be, since the entitlement was previously declared but is now actually wired via `CODE_SIGN_ENTITLEMENTS` for the first time).
-- The test files `native-ios/AnswerGuardTests/SpamDatabaseTests.swift`, `AIVoiceCalloutServiceTests.swift`, and `NotificationServiceMediaSessionTests.swift` already exist on disk but are not yet members of the `AnswerGuardTests` target in the `.xcodeproj`. Drag them into the test target in Xcode (or add them via `File > Add Files`) so they run as part of `make verify-ios`.
+- Create matching App Store provisioning profiles via fastlane match so the `match AppStore com.igorganapolsky.answerguard` profile includes App Groups and the `match AppStore com.igorganapolsky.answerguard.calldirectory` profile referenced in the target build settings resolves.
+- Ensure the App Group is enabled on the main app's primary App ID `com.igorganapolsky.answerguard`; the 2026-05-19 internal distribution run failed because the main App Store profile did not include `com.apple.security.application-groups` / `group.com.igorganapolsky.answerguard`.
+- `native-ios/AnswerGuardTests/SpamDatabaseTests.swift` and `ContactsServiceTests.swift` are now members of the `AnswerGuardTests` target in the `.xcodeproj`. Local execution of `make verify-ios` still requires a full Xcode install/selection.
 
 Official references:
 
@@ -166,6 +166,6 @@ Already ported:
 
 Remaining store blockers:
 
-- iOS Call Directory extension target is now wired into the Xcode project (`CallDirectoryExtension` target, bundle ID `com.igorganapolsky.answerguard.calldirectory`, embed-extension build phase, App Group entitlement). Still pending: Apple Developer Portal bundle-ID registration with App Groups capability and a matching match-provisioned App Store profile.
+- iOS Call Directory extension target is now wired into the Xcode project (`CallDirectoryExtension` target, bundle ID `com.igorganapolsky.answerguard.calldirectory`, embed-extension build phase, App Group entitlement). Still pending: Apple Developer Portal bundle-ID registration with App Groups capability, main-app App Group profile refresh, and a matching match-provisioned App Store profile.
 - Store screenshots still need to show the caller-screening experience.
 - Play Console App Content and closed-testing evidence still need credentialed verification before production rollout.

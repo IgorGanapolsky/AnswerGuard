@@ -34,6 +34,8 @@
 		CD011001000000000000A003 /* SpamDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD011001000000000000B001 /* SpamDatabase.swift */; };
 		CD011001000000000000A010 /* CallDirectoryExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CD011001000000000000A006 /* CallDirectoryExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CD011001000000000000B002 /* SpamDatabase.swift in Sources (app) */ = {isa = PBXBuildFile; fileRef = CD011001000000000000B001 /* SpamDatabase.swift */; };
+		CD011001000000000000B003 /* SpamDatabaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD011001000000000000B004 /* SpamDatabaseTests.swift */; };
+		CD011001000000000000B005 /* ContactsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD011001000000000000B006 /* ContactsServiceTests.swift */; };
 		AAGH00112233445566778801 /* AnswerGuardHomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAGH00112233445566778802 /* AnswerGuardHomeScreen.swift */; };
 		AABB001122334455DEADBEE0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABB001122334455DEADBEEF /* Assets.xcassets */; };
 		BC2E89FF69ECC3F835BB9D9D /* AnswerGuardWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 05CD46A1911192043939F56F /* AnswerGuardWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -118,6 +120,8 @@
 		CD011001000000000000A005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CD011001000000000000A006 /* CallDirectoryExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = CallDirectoryExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD011001000000000000B001 /* SpamDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpamDatabase.swift; sourceTree = "<group>"; };
+		CD011001000000000000B004 /* SpamDatabaseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpamDatabaseTests.swift; sourceTree = "<group>"; };
+		CD011001000000000000B006 /* ContactsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsServiceTests.swift; sourceTree = "<group>"; };
 		AAGH00112233445566778802 /* AnswerGuardHomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardHomeScreen.swift; sourceTree = "<group>"; };
 		AABB001122334455DEADBEEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = AnswerGuard/Resources/Assets.xcassets; sourceTree = "<group>"; };
 		B346A5600C70703BAB7FB9E6 /* siren.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = siren.mp3; sourceTree = "<group>"; };
@@ -166,6 +170,8 @@
 		4A083F7CAA823D4930153B06 /* AnswerGuardTests */ = {
 			isa = PBXGroup;
 			children = (
+				CD011001000000000000B006 /* ContactsServiceTests.swift */,
+				CD011001000000000000B004 /* SpamDatabaseTests.swift */,
 			);
 			path = AnswerGuardTests;
 			sourceTree = "<group>";
@@ -546,6 +552,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CD011001000000000000B005 /* ContactsServiceTests.swift in Sources */,
+				CD011001000000000000B003 /* SpamDatabaseTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -2,9 +2,5 @@
 <resources>
     <string name="app_name">AnswerGuard</string>
     <string name="launcher_label">AnswerGuard</string>
-    <string name="timer_running">Timer Running</string>
-    <string name="times_up">Time\'s Up!</string>
-    <string name="dismiss">Stop</string>
     <string name="cancel">Cancel</string>
-    <string name="start_timer">Start Timer</string>
 </resources>
