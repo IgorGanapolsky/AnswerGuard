@@ -1,4 +1,4 @@
-name: Play Data Safety upload
+name: Play Data Safety Sync
 
 # Tier A: machine-authenticated Data Safety CSV via androidpublisher API.
 #
