@@ -29,11 +29,18 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +68,11 @@ class MainActivity : ComponentActivity() {
     private var contactsPermissionGranted by mutableStateOf(false)
     private var proActionInProgress by mutableStateOf(false)
     private var proStatusMessage by mutableStateOf<String?>(null)
+    private var transientFeedback by mutableStateOf<Pair<Long, String>?>(null)
+
+    private fun emitFeedback(message: String) {
+        transientFeedback = System.currentTimeMillis() to message
+    }
 
     private val roleRequestLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -68,6 +80,9 @@ class MainActivity : ComponentActivity() {
             if (callScreeningEnabled) {
                 analyticsService.track(AnalyticsEvents.CALL_SCREENING_ENABLED)
                 analyticsService.trackFirstProtectionEnabledIfNeeded()
+                emitFeedback("Call screening enabled")
+            } else {
+                emitFeedback("Call screening was not enabled")
             }
         }
 
@@ -76,6 +91,9 @@ class MainActivity : ComponentActivity() {
             contactsPermissionGranted = isGranted
             if (isGranted) {
                 analyticsService.track("contacts_permission_granted")
+                emitFeedback("Contacts access granted")
+            } else {
+                emitFeedback("Contacts access denied - enable it in Settings")
             }
         }
 
@@ -101,6 +119,7 @@ class MainActivity : ComponentActivity() {
                         onRestore = ::restorePurchases,
                         proActionInProgress = proActionInProgress,
                         proStatusMessage = proStatusMessage,
+                        transientFeedback = transientFeedback,
                     )
                 }
             }
@@ -219,39 +238,89 @@ private fun AnswerGuardHome(
     onRestore: () -> Unit,
     proActionInProgress: Boolean,
     proStatusMessage: String?,
+    transientFeedback: Pair<Long, String>? = null,
 ) {
-    var showBlocklist by androidx.compose.runtime.remember { mutableStateOf(false) }
+    var showBlocklist by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarScope = rememberCoroutineScope()
+    val showSnackbar: (String) -> Unit = { msg ->
+        snackbarScope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar(message = msg, duration = SnackbarDuration.Short)
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(transientFeedback) {
+        transientFeedback?.let { (_, msg) -> showSnackbar(msg) }
+    }
 
-    if (showBlocklist) {
-        BlocklistScreen(onBack = { showBlocklist = false })
-    } else {
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(AnswerGuardColors.Background)
-                    .padding(24.dp),
-        ) {
-            Column(
+    Scaffold(
+        containerColor = AnswerGuardColors.Background,
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.testTag("home_snackbar_host"),
+            ) { data ->
+                Snackbar(
+                    snackbarData = data,
+                    containerColor = AnswerGuardColors.SurfaceMuted,
+                    contentColor = AnswerGuardColors.TextPrimary,
+                )
+            }
+        },
+    ) { innerPadding ->
+        if (showBlocklist) {
+            BlocklistScreen(
+                onBack = { showBlocklist = false },
+                showSnackbar = showSnackbar,
+                modifier = Modifier.padding(innerPadding),
+            )
+        } else {
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                        .padding(innerPadding)
+                        .background(AnswerGuardColors.Background)
+                        .padding(24.dp),
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Header()
-                StatusCard(callScreeningEnabled = callScreeningEnabled, onEnable = onEnable, onRefresh = onRefresh)
-                ContactsCard(permissionGranted = contactsPermissionGranted, onEnable = onEnableContacts)
-                BlocklistCard(onClick = { showBlocklist = true })
-                ProCard(
-                    onUpgrade = onUpgrade,
-                    onRestore = onRestore,
-                    actionInProgress = proActionInProgress,
-                    statusMessage = proStatusMessage,
-                )
-                HowItWorks()
-                PrivacyCard()
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Header()
+                    StatusCard(
+                        callScreeningEnabled = callScreeningEnabled,
+                        onEnable = onEnable,
+                        onRefresh = {
+                            onRefresh()
+                            showSnackbar(
+                                if (callScreeningEnabled) {
+                                    "Status refreshed - call screening is active"
+                                } else {
+                                    "Status refreshed - call screening is not enabled"
+                                },
+                            )
+                        },
+                    )
+                    ContactsCard(
+                        permissionGranted = contactsPermissionGranted,
+                        onEnable = onEnableContacts,
+                    )
+                    BlocklistCard(onClick = { showBlocklist = true })
+                    ProCard(
+                        onUpgrade = onUpgrade,
+                        onRestore = onRestore,
+                        actionInProgress = proActionInProgress,
+                        statusMessage = proStatusMessage,
+                        showSnackbar = showSnackbar,
+                    )
+                    HowItWorks()
+                    PrivacyCard()
+                }
             }
         }
     }
@@ -295,13 +364,16 @@ private fun BlocklistCard(onClick: () -> Unit) {
 }
 
 @Composable
-private fun BlocklistScreen(onBack: () -> Unit) {
-    val context = LocalContext.current
-    var numbers by androidx.compose.runtime.remember { mutableStateOf(com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()) }
-    var newNumber by androidx.compose.runtime.remember { mutableStateOf("") }
+private fun BlocklistScreen(
+    onBack: () -> Unit,
+    showSnackbar: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    var numbers by remember { mutableStateOf(com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()) }
+    var newNumber by remember { mutableStateOf("") }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(AnswerGuardColors.Background)
             .padding(24.dp),
@@ -330,10 +402,14 @@ private fun BlocklistScreen(onBack: () -> Unit) {
             Spacer(modifier = Modifier.width(8.dp))
             Button(
                 onClick = {
-                    if (newNumber.isNotBlank()) {
-                        com.igorganapolsky.answerguard.screening.UserBlocklist.add(newNumber.filter { it.isDigit() })
+                    val digits = newNumber.filter { it.isDigit() }
+                    if (digits.isBlank()) {
+                        showSnackbar("Enter a phone number first")
+                    } else {
+                        com.igorganapolsky.answerguard.screening.UserBlocklist.add(digits)
                         numbers = com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()
                         newNumber = ""
+                        showSnackbar("Blocked $digits")
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary)
@@ -361,6 +437,7 @@ private fun BlocklistScreen(onBack: () -> Unit) {
                             onClick = {
                                 com.igorganapolsky.answerguard.screening.UserBlocklist.remove(number)
                                 numbers = com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()
+                                showSnackbar("Removed $number from blocklist")
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.2f))
                         ) {
@@ -435,7 +512,13 @@ private fun ProCard(
     onRestore: () -> Unit,
     actionInProgress: Boolean,
     statusMessage: String?,
+    showSnackbar: (String) -> Unit,
 ) {
+    androidx.compose.runtime.LaunchedEffect(statusMessage) {
+        if (!statusMessage.isNullOrBlank()) {
+            showSnackbar(statusMessage)
+        }
+    }
     Card(
         colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
         shape = RoundedCornerShape(8.dp),
