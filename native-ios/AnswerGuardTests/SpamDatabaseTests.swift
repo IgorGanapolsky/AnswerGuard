@@ -8,7 +8,7 @@ final class SpamDatabaseTests: XCTestCase {
         super.setUp()
         // Reset state
         SpamDatabase.shared.setBlockedNumbers([])
-        SpamDatabase.shared.setIdentificationEntries([])
+        SpamDatabase.shared.clearIdentificationEntries()
         SpamDatabase.shared.clearPendingBlockedDeltas()
     }
 

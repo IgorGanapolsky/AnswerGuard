@@ -145,6 +145,12 @@ public final class SpamDatabase: @unchecked Sendable {
         logger.info("Updated identification list: \(entries.count) entries")
     }
 
+    /// Removes all stored identification entries, reverting to built-in seeds.
+    public func clearIdentificationEntries() {
+        lock.lock(); defer { lock.unlock() }
+        defaults.removeObject(forKey: identifiedKey)
+    }
+
     // MARK: - Seed data (built-in known spam prefixes for demo/bootstrap)
 
     private func defaultSpamSeeds() -> [IdentificationEntry] {
