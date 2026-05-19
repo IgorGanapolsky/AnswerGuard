@@ -724,16 +724,6 @@ private fun StatusCard(
                         textAlign = TextAlign.Center,
                     )
                 }
-                TextButton(
-                    onClick = onSwitchApp,
-                    modifier = Modifier.align(Alignment.End).testTag("home_switch_caller_id_app_link"),
-                ) {
-                    Text(
-                        text = "Switch default caller ID app",
-                        color = AnswerGuardColors.TextSecondary,
-                        style = MaterialTheme.typography.labelSmall,
-                    )
-                }
             }
         }
     }
