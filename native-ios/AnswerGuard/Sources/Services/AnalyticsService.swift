@@ -175,7 +175,7 @@ final class AnalyticsService {
         }
         var params: [String: Any] = [:]
         for key in utmKeys {
-            if let value = components.queryItems?.first(where: { /bin/bash.name == key })?.value,
+            if let value = components.queryItems?.first(where: { $0.name == key })?.value,
                !value.isEmpty {
                 params[key] = value
             }

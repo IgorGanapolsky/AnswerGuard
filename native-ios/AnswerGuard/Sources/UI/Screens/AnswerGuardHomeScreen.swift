@@ -261,21 +261,6 @@ struct BlocklistManagementView: View {
                 } footer: {
                     Text("These numbers will be rejected immediately.")
                 }
-// ... (rest of body)
-            }
-            .alert("Block Contact?", isPresented: $showingContactWarning) {
-                Button("Block Anyway", role: .destructive) {
-                    if let val = pendingNumber {
-                        performAddNumber(val)
-                    }
-                }
-                Button("Cancel", role: .cancel) {
-                    pendingNumber = nil
-                }
-            } message: {
-                Text("This number is in your contacts. Are you sure you want to block it?")
-            }
-// ...
 
                 Section("Blocked Numbers") {
                     if numbers.isEmpty {
@@ -300,6 +285,18 @@ struct BlocklistManagementView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .alert("Block Contact?", isPresented: $showingContactWarning) {
+                Button("Block Anyway", role: .destructive) {
+                    if let val = pendingNumber {
+                        performAddNumber(val)
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingNumber = nil
+                }
+            } message: {
+                Text("This number is in your contacts. Are you sure you want to block it?")
             }
             .onAppear {
                 refresh()
