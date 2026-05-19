@@ -84,6 +84,35 @@ def main():
         updated.append(api_lang)
         print(f"  Updated listing for {api_lang}: title={'yes' if title else 'no'}, short={'yes' if short_desc else 'no'}, full={'yes' if full_desc else 'no'}")
 
+        # Sync Icon and Feature Graphic
+        if api_lang == "en-US":
+            print("  Syncing images for en-US...")
+            icon_path = METADATA_ROOT / "en-US" / "images" / "icon.png"
+            if icon_path.exists():
+                with open(icon_path, "rb") as f:
+                    edits.images().upload(
+                        packageName=PACKAGE_NAME,
+                        editId=edit_id,
+                        language=api_lang,
+                        imageType="icon",
+                        media_body=f.read()
+                    ).execute()
+                print("    ✓ Uploaded icon")
+
+            fg_dir = METADATA_ROOT / "en-US" / "images" / "featureGraphic"
+            if fg_dir.exists():
+                fg_files = list(fg_dir.glob("*.png"))
+                if fg_files:
+                    with open(fg_files[0], "rb") as f:
+                        edits.images().upload(
+                            packageName=PACKAGE_NAME,
+                            editId=edit_id,
+                            language=api_lang,
+                            imageType="featureGraphic",
+                            media_body=f.read()
+                        ).execute()
+                    print(f"    ✓ Uploaded feature graphic: {fg_files[0].name}")
+
     if not updated:
         print("No metadata to upload. Discarding edit.")
         edits.delete(packageName=PACKAGE_NAME, editId=edit_id).execute()
