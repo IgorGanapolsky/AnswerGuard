@@ -28,6 +28,9 @@ class AnswerGuardScreeningService : CallScreeningService() {
 
         val verdict = SpamVerdictEngine.evaluate(this, handle)
         Log.i(tag, "Verdict for $handle: $verdict")
+        
+        // Record the screened call in local history
+        ScreeningLog.record(ScreenedCall(number = handle, verdict = verdict))
 
         // setSilenceCall is API 29+. Service only binds via ROLE_CALL_SCREENING
         // (API 29+) in practice, but guard defensively so a legacy binder on

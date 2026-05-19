@@ -11,6 +11,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +28,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +64,13 @@ import com.igorganapolsky.answerguard.BuildConfig
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
 import com.igorganapolsky.answerguard.billing.ProManager
+import com.igorganapolsky.answerguard.review.StoreReviewManager
+import com.igorganapolsky.answerguard.billing.EntitlementLevel
+import com.igorganapolsky.answerguard.screening.ScreenedCall
+import com.igorganapolsky.answerguard.screening.ScreeningLog
+import com.igorganapolsky.answerguard.screening.SpamVerdict
+import com.igorganapolsky.answerguard.ui.screens.PaywallSheet
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.igorganapolsky.answerguard.screening.PauseState
 import com.igorganapolsky.answerguard.screening.RoleOnboardingActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -70,13 +82,16 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     @Inject lateinit var analyticsService: AnalyticsService
     @Inject lateinit var proManager: ProManager
+    @Inject lateinit var storeReviewManager: StoreReviewManager
 
     private var callScreeningEnabled by mutableStateOf(false)
     private var screeningPaused by mutableStateOf(false)
     private var contactsPermissionGranted by mutableStateOf(false)
+    private var recentCalls by mutableStateOf<List<ScreenedCall>>(emptyList())
     private var proActionInProgress by mutableStateOf(false)
     private var proStatusMessage by mutableStateOf<String?>(null)
     private var transientFeedback by mutableStateOf<Pair<Long, String>?>(null)
+    private var showDisableInstruction by mutableStateOf(false)
     private var pendingDisableCheck = false
 
     private fun emitFeedback(message: String) {
@@ -114,8 +129,10 @@ class MainActivity : ComponentActivity() {
         // Firebase App Distribution: check for tester updates on each launch.
         // Self-prompts user to install latest internal build. No-op for users
         // who installed via Play Store (no FAD tester credentials).
-        FirebaseAppDistribution.getInstance().updateIfNewReleaseAvailable()
-            .addOnFailureListener { /* silent — non-tester user or no update */ }
+        runCatching {
+            FirebaseAppDistribution.getInstance().updateIfNewReleaseAvailable()
+                .addOnFailureListener { /* silent — non-tester user or no update */ }
+        }
 
         setContent {
             AnswerGuardTheme {
@@ -128,18 +145,30 @@ class MainActivity : ComponentActivity() {
                         screeningPaused = screeningPaused,
                         contactsPermissionGranted = contactsPermissionGranted,
                         onEnable = ::requestCallScreeningRole,
-                        onRefresh = {
-                            refreshStatus()
-                            emitFeedback("Status updated")
-                        },
                         onTogglePause = ::togglePause,
-                        onSwitchApp = ::requestDisableCallScreening,
+                        onSwitchApp = { showDisableInstruction = true },
                         onEnableContacts = ::requestContactsPermission,
                         onUpgrade = ::launchProPurchase,
                         onRestore = ::restorePurchases,
+                        recentCalls = recentCalls,
+                        onRefreshCalls = {
+                            refreshStatus()
+                            emitFeedback("Activity updated")
+                        },
                         proActionInProgress = proActionInProgress,
                         proStatusMessage = proStatusMessage,
                         transientFeedback = transientFeedback,
+                        proManager = proManager,
+                        onSecretUnlock = {
+                            proManager.forcePro()
+                            emitFeedback("Backdoor activated: Entitlement changed")
+                        },
+                        showDisableInstruction = showDisableInstruction,
+                        onDismissDisableInstruction = { showDisableInstruction = false },
+                        onConfirmDisable = {
+                            showDisableInstruction = false
+                            requestDisableCallScreening()
+                        },
                     )
                 }
             }
@@ -155,6 +184,13 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         val wasEnabled = callScreeningEnabled
         refreshStatus()
+        
+        // 2026 Best Practice: Silent entitlement sync on every resume
+        restorePurchasesSilently()
+        
+        // Check if eligible for review prompt
+        storeReviewManager.requestReview(this)
+
         if (pendingDisableCheck) {
             pendingDisableCheck = false
             if (callScreeningEnabled) {
@@ -170,6 +206,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun refreshStatus() {
+        storeReviewManager.recordAction()
         callScreeningEnabled =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val roleManager = getSystemService(RoleManager::class.java)
@@ -183,6 +220,7 @@ class MainActivity : ComponentActivity() {
             androidx.core.content.ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.READ_CONTACTS
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        recentCalls = ScreeningLog.getRecent()
     }
 
     private fun togglePause() {
@@ -277,6 +315,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun restorePurchasesSilently() {
+        lifecycleScope.launch {
+            try {
+                proManager.restorePurchasesFromPaywall(entryPoint = "auto_resume_sync")
+            } catch (_: Exception) { }
+        }
+    }
+
     private fun handleDeepLink(intent: Intent?) {
         val uri = intent?.data ?: return
         analyticsService.trackDeepLink(uri)
@@ -298,25 +344,36 @@ private fun AnswerGuardTheme(content: @Composable () -> Unit) {
     MaterialTheme(content = content)
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun AnswerGuardHome(
     callScreeningEnabled: Boolean,
     screeningPaused: Boolean,
     contactsPermissionGranted: Boolean,
     onEnable: () -> Unit,
-    onRefresh: () -> Unit,
     onTogglePause: () -> Unit,
     onSwitchApp: () -> Unit,
     onEnableContacts: () -> Unit,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
+    recentCalls: List<ScreenedCall>,
+    onRefreshCalls: () -> Unit,
     proActionInProgress: Boolean,
     proStatusMessage: String?,
     transientFeedback: Pair<Long, String>? = null,
+    proManager: ProManager,
+    onSecretUnlock: () -> Unit,
+    showDisableInstruction: Boolean,
+    onDismissDisableInstruction: () -> Unit,
+    onConfirmDisable: () -> Unit,
 ) {
     var showBlocklist by remember { mutableStateOf(false) }
+    var showPaywall by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
+    
+    val entitlementLevel by proManager.entitlementLevel.collectAsStateWithLifecycle()
+    
     val showSnackbar: (String) -> Unit = { msg ->
         snackbarScope.launch {
             snackbarHostState.currentSnackbarData?.dismiss()
@@ -349,48 +406,101 @@ private fun AnswerGuardHome(
                 modifier = Modifier.padding(innerPadding),
             )
         } else {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .background(AnswerGuardColors.Background)
-                        .padding(24.dp),
+            PullToRefreshBox(
+                isRefreshing = false, // We use transient feedback/emitFeedback for status
+                onRefresh = onRefreshCalls,
+                state = rememberPullToRefreshState(),
+                modifier = Modifier.fillMaxSize()
             ) {
-                Column(
+                Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                            .padding(innerPadding)
+                            .background(AnswerGuardColors.Background)
+                            .padding(24.dp),
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Header()
-                    StatusCard(
-                        callScreeningEnabled = callScreeningEnabled,
-                        screeningPaused = screeningPaused,
-                        onEnable = onEnable,
-                        onRefresh = onRefresh,
-                        onTogglePause = onTogglePause,
-                        onSwitchApp = onSwitchApp,
-                    )
-                    ContactsCard(
-                        permissionGranted = contactsPermissionGranted,
-                        onEnable = onEnableContacts,
-                    )
-                    BlocklistCard(onClick = { showBlocklist = true })
-                    ProCard(
-                        onUpgrade = onUpgrade,
-                        onRestore = onRestore,
-                        actionInProgress = proActionInProgress,
-                        statusMessage = proStatusMessage,
-                        showSnackbar = showSnackbar,
-                    )
-                    HowItWorks()
-                    PrivacyCard()
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Header(onSecretUnlock = onSecretUnlock)
+                        StatusCard(
+                            callScreeningEnabled = callScreeningEnabled,
+                            screeningPaused = screeningPaused,
+                            onEnable = onEnable,
+                            onTogglePause = onTogglePause,
+                            onSwitchApp = onSwitchApp,
+                        )
+                        ContactsCard(
+                            permissionGranted = contactsPermissionGranted,
+                            onEnable = onEnableContacts,
+                        )
+                        RecentActivityCard(calls = recentCalls)
+                        BlocklistCard(onClick = { showBlocklist = true })
+                        ProCard(
+                            entitlementLevel = entitlementLevel,
+                            onUpgrade = { showPaywall = true },
+                            onRestore = onRestore,
+                            actionInProgress = proActionInProgress,
+                            statusMessage = proStatusMessage,
+                            showSnackbar = showSnackbar,
+                        )
+                        HowItWorks()
+                        PrivacyCard()
+                    }
                 }
             }
         }
+    }
+
+    if (showDisableInstruction) {
+        AlertDialog(
+            onDismissRequest = onDismissDisableInstruction,
+            containerColor = AnswerGuardColors.Surface,
+            titleContentColor = AnswerGuardColors.TextPrimary,
+            textContentColor = AnswerGuardColors.TextSecondary,
+            title = { Text("How to Turn Off") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Android requires you to manually change the default app in System Settings.")
+                    Text("1. Tap 'Go to Settings' below.")
+                    Text("2. Find 'Caller ID & spam app'.")
+                    Text("3. Select 'None' or another app.")
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = onConfirmDisable,
+                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary)
+                ) {
+                    Text("Go to Settings", color = Color(0xFF06211E))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissDisableInstruction) {
+                    Text("Cancel", color = AnswerGuardColors.TextSecondary)
+                }
+            }
+        )
+    }
+
+    if (showPaywall) {
+        PaywallSheet(
+            onPurchase = { _ ->
+                showPaywall = false
+                onUpgrade() 
+            },
+            onRestore = {
+                showPaywall = false
+                onRestore()
+            },
+            onDismiss = { showPaywall = false }
+        )
     }
 }
 
@@ -576,6 +686,7 @@ private fun ContactsCard(
 
 @Composable
 private fun ProCard(
+    entitlementLevel: EntitlementLevel,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
     actionInProgress: Boolean,
@@ -596,43 +707,79 @@ private fun ProCard(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            val title = when (entitlementLevel) {
+                EntitlementLevel.FAMILY -> "AnswerGuard Family"
+                EntitlementLevel.PRO -> "AnswerGuard Pro"
+                else -> "AnswerGuard Pro"
+            }
+            
+            val description = when (entitlementLevel) {
+                EntitlementLevel.FAMILY -> "Advanced protection active across your devices. Gemini-powered intent analysis enabled."
+                EntitlementLevel.PRO -> "Premium protection active. Upgrade to Family for voice biometrics and multi-device support."
+                else -> "Unlock advanced spam rules and family protection as they roll out."
+            }
+
             Text(
-                text = "AnswerGuard Pro",
+                text = title,
                 color = AnswerGuardColors.TextPrimary,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Unlock advanced spam rules and family protection as they roll out.",
+                text = description,
                 color = AnswerGuardColors.TextSecondary,
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(
-                    onClick = onUpgrade,
-                    enabled = !actionInProgress,
-                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
-                    modifier = Modifier.weight(1f).testTag("home_pro_upgrade_button"),
-                ) {
-                    Text(
-                        text = "Upgrade",
-                        color = Color(0xFF06211E),
-                        fontWeight = FontWeight.Bold,
-                    )
+            
+            if (entitlementLevel != EntitlementLevel.FAMILY) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = onUpgrade,
+                        enabled = !actionInProgress,
+                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                        modifier = Modifier.weight(1f).testTag("home_pro_upgrade_button"),
+                    ) {
+                        Text(
+                            text = if (entitlementLevel == EntitlementLevel.PRO) "Upgrade to Family" else "Upgrade",
+                            color = Color(0xFF06211E),
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    if (entitlementLevel == EntitlementLevel.NONE) {
+                        Button(
+                            onClick = onRestore,
+                            enabled = !actionInProgress,
+                            colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                            modifier = Modifier.weight(1f).testTag("home_pro_restore_button"),
+                        ) {
+                            Text(
+                                text = "Restore",
+                                color = AnswerGuardColors.TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
                 }
+            } else {
+                // 2026 Policy Requirement: Link to manage subscriptions
+                val context = LocalContext.current
+                val uriHandler = LocalUriHandler.current
                 Button(
-                    onClick = onRestore,
-                    enabled = !actionInProgress,
+                    onClick = {
+                        val packageName = context.packageName
+                        uriHandler.openUri("https://play.google.com/store/account/subscriptions?package=$packageName")
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
-                    modifier = Modifier.weight(1f).testTag("home_pro_restore_button"),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Restore",
+                        text = "Manage Subscription",
                         color = AnswerGuardColors.TextPrimary,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
+
             if (!statusMessage.isNullOrBlank()) {
                 Text(
                     text = statusMessage,
@@ -646,13 +793,19 @@ private fun ProCard(
 }
 
 @Composable
-private fun Header() {
+private fun Header(onSecretUnlock: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = "AnswerGuard",
             color = AnswerGuardColors.TextPrimary,
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
+            modifier = Modifier.combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+                onLongClick = onSecretUnlock
+            )
         )
         Text(
             text = "Spam and scam call protection that runs locally on your phone.",
@@ -667,7 +820,6 @@ private fun StatusCard(
     callScreeningEnabled: Boolean,
     screeningPaused: Boolean,
     onEnable: () -> Unit,
-    onRefresh: () -> Unit,
     onTogglePause: () -> Unit,
     onSwitchApp: () -> Unit,
 ) {
@@ -708,17 +860,6 @@ private fun StatusCard(
                         modifier = Modifier.testTag("home_call_screening_status"),
                     )
                 }
-
-                TextButton(
-                    onClick = onRefresh,
-                    modifier = Modifier.testTag("home_refresh_status_button")
-                ) {
-                    Text(
-                        text = "Refresh",
-                        color = AnswerGuardColors.Primary,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
             }
 
             if (!callScreeningEnabled) {
@@ -751,12 +892,12 @@ private fun StatusCard(
                         )
                     }
                     Button(
-                        onClick = onRefresh,
+                        onClick = onSwitchApp,
                         colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
-                        modifier = Modifier.weight(1f).testTag("home_refresh_status_button"),
+                        modifier = Modifier.weight(1f).testTag("home_turn_off_button"),
                     ) {
                         Text(
-                            text = "Refresh",
+                            text = "Turn Off",
                             color = AnswerGuardColors.TextPrimary,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
@@ -820,6 +961,84 @@ private fun Step(number: String, text: String) {
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+@Composable
+private fun RecentActivityCard(calls: List<ScreenedCall>) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = "Recent Activity",
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            
+            if (calls.isEmpty()) {
+                Text(
+                    text = "No calls screened yet. Blocked or suspicious calls will appear here.",
+                    color = AnswerGuardColors.TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    calls.take(5).forEach { call ->
+                        ActivityRow(call = call)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityRow(call: ScreenedCall) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = call.number,
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(call.timestamp))
+            Text(
+                text = time,
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+        
+        val (label, color) = when (call.verdict) {
+            SpamVerdict.BLOCK -> "Blocked" to Color.Red
+            SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
+            SpamVerdict.ALLOW -> "Allowed" to AnswerGuardColors.Primary
+        }
+        
+        Box(
+            modifier = Modifier
+                .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = label,
+                color = color,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 

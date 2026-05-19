@@ -1,17 +1,18 @@
 import java.math.BigDecimal
+import java.util.Properties
 import org.gradle.api.tasks.testing.Test
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.google.services) apply false
-    alias(libs.plugins.firebase.crashlytics) apply false
+    alias(libs.plugins.googleServices) apply false
+    alias(libs.plugins.firebaseCrashlytics) apply false
     jacoco
 }
 
@@ -52,8 +53,18 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // PostHog Analytics - from gradle.properties or CI secret
-        buildConfigField("String", "POSTHOG_API_KEY", "\"${System.getenv("POSTHOG_API_KEY") ?: project.findProperty("POSTHOG_API_KEY") ?: ""}\"")
+        // PostHog Analytics - from local.properties, gradle.properties or CI secret
+        val posthogApiKey = (System.getenv("POSTHOG_API_KEY")
+            ?: project.findProperty("POSTHOG_API_KEY")
+            ?: run {
+                val props = Properties()
+                val localPropsFile = project.rootProject.file("local.properties")
+                if (localPropsFile.exists()) {
+                    localPropsFile.inputStream().use { props.load(it) }
+                }
+                props.getProperty("POSTHOG_API_KEY")
+            } ?: "").toString()
+        buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKey\"")
 
         // Short git SHA for in-app build verification. Honors $GITHUB_SHA when
         // set by GitHub Actions, falls back to `git rev-parse` for local builds.
@@ -158,6 +169,7 @@ dependencies {
 
     // Analytics
     implementation(libs.posthog)
+    implementation(libs.sentry)
 
     // In-App Review
     implementation(libs.play.review)

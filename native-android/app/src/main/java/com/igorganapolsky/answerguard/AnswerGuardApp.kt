@@ -15,6 +15,7 @@ class AnswerGuardApp : Application() {
     override fun onCreate() {
         super.onCreate()
         UserBlocklist.init(this)
+        com.igorganapolsky.answerguard.screening.ScreeningLog.init(this)
 
         // PostHog is our source of truth for product analytics.
         // Disable Firebase Analytics event collection to avoid duplicate telemetry streams.

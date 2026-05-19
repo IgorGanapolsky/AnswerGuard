@@ -58,6 +58,9 @@
             </intent-filter>
         </activity>
 
+        <!-- Disable Sentry auto-init to prevent crash without DSN -->
+        <meta-data android:name="io.sentry.auto-init" android:value="false" />
+
         <!-- Call Screening Service -->
         <service
             android:name=".screening.AnswerGuardScreeningService"
