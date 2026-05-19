@@ -63,6 +63,8 @@ play-billing = { group = "com.android.billingclient", name = "billing-ktx", vers
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+firebase-appdistribution = { group = "com.google.firebase", name = "firebase-appdistribution", version = "16.0.0-beta14" }
+firebase-appdistribution-api = { group = "com.google.firebase", name = "firebase-appdistribution-api-ktx", version = "16.0.0-beta14" }
 androidx-media = { group = "androidx.media", name = "media", version.ref = "media" }
 
 [plugins]

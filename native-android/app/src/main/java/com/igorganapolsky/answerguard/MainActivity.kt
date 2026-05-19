@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.google.firebase.appdistribution.FirebaseAppDistribution
 import com.igorganapolsky.answerguard.BuildConfig
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
@@ -110,6 +111,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         handleDeepLink(intent)
         refreshStatus()
+        // Firebase App Distribution: check for tester updates on each launch.
+        // Self-prompts user to install latest internal build. No-op for users
+        // who installed via Play Store (no FAD tester credentials).
+        FirebaseAppDistribution.getInstance().updateIfNewReleaseAvailable()
+            .addOnFailureListener { /* silent — non-tester user or no update */ }
 
         setContent {
             AnswerGuardTheme {
@@ -122,6 +128,10 @@ class MainActivity : ComponentActivity() {
                         screeningPaused = screeningPaused,
                         contactsPermissionGranted = contactsPermissionGranted,
                         onEnable = ::requestCallScreeningRole,
+                        onRefresh = {
+                            refreshStatus()
+                            emitFeedback("Status updated")
+                        },
                         onTogglePause = ::togglePause,
                         onSwitchApp = ::requestDisableCallScreening,
                         onEnableContacts = ::requestContactsPermission,
@@ -294,6 +304,7 @@ private fun AnswerGuardHome(
     screeningPaused: Boolean,
     contactsPermissionGranted: Boolean,
     onEnable: () -> Unit,
+    onRefresh: () -> Unit,
     onTogglePause: () -> Unit,
     onSwitchApp: () -> Unit,
     onEnableContacts: () -> Unit,
@@ -359,6 +370,7 @@ private fun AnswerGuardHome(
                         callScreeningEnabled = callScreeningEnabled,
                         screeningPaused = screeningPaused,
                         onEnable = onEnable,
+                        onRefresh = onRefresh,
                         onTogglePause = onTogglePause,
                         onSwitchApp = onSwitchApp,
                     )
@@ -655,6 +667,7 @@ private fun StatusCard(
     callScreeningEnabled: Boolean,
     screeningPaused: Boolean,
     onEnable: () -> Unit,
+    onRefresh: () -> Unit,
     onTogglePause: () -> Unit,
     onSwitchApp: () -> Unit,
 ) {
@@ -695,6 +708,17 @@ private fun StatusCard(
                         modifier = Modifier.testTag("home_call_screening_status"),
                     )
                 }
+
+                TextButton(
+                    onClick = onRefresh,
+                    modifier = Modifier.testTag("home_refresh_status_button")
+                ) {
+                    Text(
+                        text = "Refresh",
+                        color = AnswerGuardColors.Primary,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
             }
 
             if (!callScreeningEnabled) {
@@ -711,19 +735,33 @@ private fun StatusCard(
                     )
                 }
             } else {
-                Button(
-                    onClick = onTogglePause,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (screeningPaused) AnswerGuardColors.Primary else AnswerGuardColors.SurfaceMuted,
-                    ),
-                    modifier = Modifier.fillMaxWidth().testTag("home_pause_resume_button"),
-                ) {
-                    Text(
-                        text = if (screeningPaused) "Resume" else "Pause",
-                        color = if (screeningPaused) Color(0xFF06211E) else AnswerGuardColors.TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = onTogglePause,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (screeningPaused) AnswerGuardColors.Primary else AnswerGuardColors.SurfaceMuted,
+                        ),
+                        modifier = Modifier.weight(1f).testTag("home_pause_resume_button"),
+                    ) {
+                        Text(
+                            text = if (screeningPaused) "Resume" else "Pause",
+                            color = if (screeningPaused) Color(0xFF06211E) else AnswerGuardColors.TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    Button(
+                        onClick = onRefresh,
+                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                        modifier = Modifier.weight(1f).testTag("home_refresh_status_button"),
+                    ) {
+                        Text(
+                            text = "Refresh",
+                            color = AnswerGuardColors.TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
         }

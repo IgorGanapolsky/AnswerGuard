@@ -170,6 +170,12 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)
 
+    // Firebase App Distribution — self-prompts testers to install new builds.
+    // Production builds via Play Store should use the api-only stub; we ship
+    // the full SDK across all variants because every current AnswerGuard build
+    // is distributed via Firebase App Distribution.
+    implementation(libs.firebase.appdistribution)
+
     // Media Session (Bluetooth/Android Auto alarm dismiss)
     implementation(libs.androidx.media)
 
