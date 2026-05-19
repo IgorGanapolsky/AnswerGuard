@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,6 +39,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -319,16 +321,6 @@ private fun AnswerGuardHome(
                     StatusCard(
                         callScreeningEnabled = callScreeningEnabled,
                         onEnable = onEnable,
-                        onRefresh = {
-                            onRefresh()
-                            showSnackbar(
-                                if (callScreeningEnabled) {
-                                    "Status refreshed - call screening is active"
-                                } else {
-                                    "Status refreshed - call screening is not enabled"
-                                },
-                            )
-                        },
                         onDisable = onDisable,
                     )
                     ContactsCard(
@@ -623,7 +615,6 @@ private fun Header() {
 private fun StatusCard(
     callScreeningEnabled: Boolean,
     onEnable: () -> Unit,
-    onRefresh: () -> Unit,
     onDisable: () -> Unit,
 ) {
     Card(
@@ -654,32 +645,51 @@ private fun StatusCard(
                 }
             }
 
+            var showDisableDialog by remember { mutableStateOf(false) }
+            if (showDisableDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDisableDialog = false },
+                    containerColor = AnswerGuardColors.Surface,
+                    titleContentColor = AnswerGuardColors.TextPrimary,
+                    textContentColor = AnswerGuardColors.TextSecondary,
+                    title = { Text("Disable AnswerGuard") },
+                    text = {
+                        Text(
+                            "Android does not let an app turn itself off. " +
+                                "On the next screen, tap \"Caller ID & spam app\" and " +
+                                "switch to a different app (or \"None\").",
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                showDisableDialog = false
+                                onDisable()
+                            },
+                            modifier = Modifier.testTag("home_disable_confirm_button"),
+                        ) {
+                            Text("Open Settings", color = AnswerGuardColors.Primary)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDisableDialog = false }) {
+                            Text("Cancel", color = AnswerGuardColors.TextSecondary)
+                        }
+                    },
+                )
+            }
             if (callScreeningEnabled) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = onRefresh,
-                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
-                        modifier = Modifier.weight(1f).testTag("home_enable_call_screening_button"),
-                    ) {
-                        Text(
-                            text = "Refresh Status",
-                            color = Color(0xFF06211E),
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                    Button(
-                        onClick = onDisable,
-                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
-                        modifier = Modifier.weight(1f).testTag("home_disable_call_screening_button"),
-                    ) {
-                        Text(
-                            text = "Disable in Settings",
-                            color = AnswerGuardColors.TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+                Button(
+                    onClick = { showDisableDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                    modifier = Modifier.fillMaxWidth().testTag("home_disable_call_screening_button"),
+                ) {
+                    Text(
+                        text = "Disable Call Screening",
+                        color = AnswerGuardColors.TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             } else {
                 Button(
