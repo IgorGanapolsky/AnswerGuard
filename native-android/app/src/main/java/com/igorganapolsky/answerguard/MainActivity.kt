@@ -73,6 +73,7 @@ class MainActivity : ComponentActivity() {
     private var proActionInProgress by mutableStateOf(false)
     private var proStatusMessage by mutableStateOf<String?>(null)
     private var transientFeedback by mutableStateOf<Pair<Long, String>?>(null)
+    private var pendingDisableCheck = false
 
     private fun emitFeedback(message: String) {
         transientFeedback = System.currentTimeMillis() to message
@@ -138,7 +139,20 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        val wasEnabled = callScreeningEnabled
         refreshStatus()
+        if (pendingDisableCheck) {
+            pendingDisableCheck = false
+            if (callScreeningEnabled) {
+                emitFeedback(
+                    "Still active. In Settings: Default apps > Caller ID & spam app > None",
+                )
+            } else {
+                emitFeedback("AnswerGuard is now off")
+            }
+        } else if (wasEnabled && !callScreeningEnabled) {
+            emitFeedback("AnswerGuard is now off")
+        }
     }
 
     private fun refreshStatus() {
@@ -168,6 +182,8 @@ class MainActivity : ComponentActivity() {
     private fun requestDisableCallScreening() {
         // Android does not let an app revoke its own RoleManager role. Open the
         // system Default Apps screen so the user can switch away from AnswerGuard.
+        // A Toast (LENGTH_LONG ~3.5s) reinforces the dialog instructions because
+        // the dialog dismisses when Settings opens.
         val intents = listOf(
             Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
@@ -176,7 +192,12 @@ class MainActivity : ComponentActivity() {
         for (intent in intents) {
             try {
                 startActivity(intent)
-                emitFeedback("Switch the Caller ID & spam app to disable AnswerGuard")
+                android.widget.Toast.makeText(
+                    this,
+                    "Tap \"Caller ID & spam app\", then choose another app or None",
+                    android.widget.Toast.LENGTH_LONG,
+                ).show()
+                pendingDisableCheck = true
                 return
             } catch (_: Exception) {
                 // try next fallback
@@ -652,12 +673,13 @@ private fun StatusCard(
                     containerColor = AnswerGuardColors.Surface,
                     titleContentColor = AnswerGuardColors.TextPrimary,
                     textContentColor = AnswerGuardColors.TextSecondary,
-                    title = { Text("Disable AnswerGuard") },
+                    title = { Text("Switch caller ID app") },
                     text = {
                         Text(
-                            "Android does not let an app turn itself off. " +
-                                "On the next screen, tap \"Caller ID & spam app\" and " +
-                                "switch to a different app (or \"None\").",
+                            "Android opens its Settings screen for this. Three taps:\n\n" +
+                                "1.  Tap \"Caller ID & spam app\"\n" +
+                                "2.  Pick \"None\" (or another app)\n" +
+                                "3.  Come back here — status will update",
                         )
                     },
                     confirmButton = {
@@ -685,7 +707,7 @@ private fun StatusCard(
                     modifier = Modifier.fillMaxWidth().testTag("home_disable_call_screening_button"),
                 ) {
                     Text(
-                        text = "Disable Call Screening",
+                        text = "Switch caller ID app",
                         color = AnswerGuardColors.TextPrimary,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
