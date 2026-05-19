@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
 import com.igorganapolsky.answerguard.billing.ProManager
+import com.igorganapolsky.answerguard.screening.PauseState
 import com.igorganapolsky.answerguard.screening.RoleOnboardingActivity
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var proManager: ProManager
 
     private var callScreeningEnabled by mutableStateOf(false)
+    private var screeningPaused by mutableStateOf(false)
     private var contactsPermissionGranted by mutableStateOf(false)
     private var proActionInProgress by mutableStateOf(false)
     private var proStatusMessage by mutableStateOf<String?>(null)
@@ -116,10 +118,11 @@ class MainActivity : ComponentActivity() {
                 ) {
                     AnswerGuardHome(
                         callScreeningEnabled = callScreeningEnabled,
+                        screeningPaused = screeningPaused,
                         contactsPermissionGranted = contactsPermissionGranted,
                         onEnable = ::requestCallScreeningRole,
-                        onRefresh = ::refreshStatus,
-                        onDisable = ::requestDisableCallScreening,
+                        onTogglePause = ::togglePause,
+                        onSwitchApp = ::requestDisableCallScreening,
                         onEnableContacts = ::requestContactsPermission,
                         onUpgrade = ::launchProPurchase,
                         onRestore = ::restorePurchases,
@@ -164,10 +167,21 @@ class MainActivity : ComponentActivity() {
             } else {
                 false
             }
-        contactsPermissionGranted = 
+        screeningPaused = PauseState.isPaused(this)
+        contactsPermissionGranted =
             androidx.core.content.ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.READ_CONTACTS
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun togglePause() {
+        val nowPaused = !screeningPaused
+        PauseState.setPaused(this, nowPaused)
+        screeningPaused = nowPaused
+        analyticsService.track(
+            if (nowPaused) "screening_paused" else "screening_resumed",
+        )
+        emitFeedback(if (nowPaused) "Paused. No calls will be screened." else "Resumed. Screening is active.")
     }
 
     private fun requestCallScreeningRole() {
@@ -276,10 +290,11 @@ private fun AnswerGuardTheme(content: @Composable () -> Unit) {
 @Composable
 private fun AnswerGuardHome(
     callScreeningEnabled: Boolean,
+    screeningPaused: Boolean,
     contactsPermissionGranted: Boolean,
     onEnable: () -> Unit,
-    onRefresh: () -> Unit,
-    onDisable: () -> Unit,
+    onTogglePause: () -> Unit,
+    onSwitchApp: () -> Unit,
     onEnableContacts: () -> Unit,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
@@ -341,8 +356,10 @@ private fun AnswerGuardHome(
                     Header()
                     StatusCard(
                         callScreeningEnabled = callScreeningEnabled,
+                        screeningPaused = screeningPaused,
                         onEnable = onEnable,
-                        onDisable = onDisable,
+                        onTogglePause = onTogglePause,
+                        onSwitchApp = onSwitchApp,
                     )
                     ContactsCard(
                         permissionGranted = contactsPermissionGranted,
@@ -635,9 +652,22 @@ private fun Header() {
 @Composable
 private fun StatusCard(
     callScreeningEnabled: Boolean,
+    screeningPaused: Boolean,
     onEnable: () -> Unit,
-    onDisable: () -> Unit,
+    onTogglePause: () -> Unit,
+    onSwitchApp: () -> Unit,
 ) {
+    val active = callScreeningEnabled && !screeningPaused
+    val statusText = when {
+        !callScreeningEnabled -> "Not enabled"
+        screeningPaused -> "Paused"
+        else -> "Active"
+    }
+    val statusColor = when {
+        active -> AnswerGuardColors.Primary
+        else -> AnswerGuardColors.Warning
+    }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
         shape = RoundedCornerShape(8.dp),
@@ -648,7 +678,7 @@ private fun StatusCard(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusDot(enabled = callScreeningEnabled)
+                StatusDot(enabled = active)
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -658,62 +688,15 @@ private fun StatusCard(
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = if (callScreeningEnabled) "Active" else "Not enabled",
-                        color = if (callScreeningEnabled) AnswerGuardColors.Primary else AnswerGuardColors.Warning,
+                        text = statusText,
+                        color = statusColor,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.testTag("home_call_screening_status"),
                     )
                 }
             }
 
-            var showDisableDialog by remember { mutableStateOf(false) }
-            if (showDisableDialog) {
-                AlertDialog(
-                    onDismissRequest = { showDisableDialog = false },
-                    containerColor = AnswerGuardColors.Surface,
-                    titleContentColor = AnswerGuardColors.TextPrimary,
-                    textContentColor = AnswerGuardColors.TextSecondary,
-                    title = { Text("Switch caller ID app") },
-                    text = {
-                        Text(
-                            "Android opens its Settings screen for this. Three taps:\n\n" +
-                                "1.  Tap \"Caller ID & spam app\"\n" +
-                                "2.  Pick \"None\" (or another app)\n" +
-                                "3.  Come back here — status will update",
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                showDisableDialog = false
-                                onDisable()
-                            },
-                            modifier = Modifier.testTag("home_disable_confirm_button"),
-                        ) {
-                            Text("Open Settings", color = AnswerGuardColors.Primary)
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDisableDialog = false }) {
-                            Text("Cancel", color = AnswerGuardColors.TextSecondary)
-                        }
-                    },
-                )
-            }
-            if (callScreeningEnabled) {
-                Button(
-                    onClick = { showDisableDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
-                    modifier = Modifier.fillMaxWidth().testTag("home_disable_call_screening_button"),
-                ) {
-                    Text(
-                        text = "Switch caller ID app",
-                        color = AnswerGuardColors.TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            } else {
+            if (!callScreeningEnabled) {
                 Button(
                     onClick = onEnable,
                     colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
@@ -724,6 +707,31 @@ private fun StatusCard(
                         color = Color(0xFF06211E),
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onTogglePause,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (screeningPaused) AnswerGuardColors.Primary else AnswerGuardColors.SurfaceMuted,
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("home_pause_resume_button"),
+                ) {
+                    Text(
+                        text = if (screeningPaused) "Resume" else "Pause",
+                        color = if (screeningPaused) Color(0xFF06211E) else AnswerGuardColors.TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                TextButton(
+                    onClick = onSwitchApp,
+                    modifier = Modifier.align(Alignment.End).testTag("home_switch_caller_id_app_link"),
+                ) {
+                    Text(
+                        text = "Switch default caller ID app",
+                        color = AnswerGuardColors.TextSecondary,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }

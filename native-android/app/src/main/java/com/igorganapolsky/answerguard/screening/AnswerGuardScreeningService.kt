@@ -20,6 +20,12 @@ class AnswerGuardScreeningService : CallScreeningService() {
         val handle = callDetails.handle?.schemeSpecificPart ?: ""
         Log.d(tag, "Screening call from: $handle")
 
+        if (PauseState.isPaused(this)) {
+            Log.i(tag, "Paused — allowing all calls through")
+            respondToCall(callDetails, CallResponse.Builder().build())
+            return
+        }
+
         val verdict = SpamVerdictEngine.evaluate(this, handle)
         Log.i(tag, "Verdict for $handle: $verdict")
 
