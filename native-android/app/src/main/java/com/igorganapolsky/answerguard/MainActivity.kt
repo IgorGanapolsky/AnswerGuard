@@ -3,8 +3,10 @@ package com.igorganapolsky.answerguard
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -114,6 +116,7 @@ class MainActivity : ComponentActivity() {
                         contactsPermissionGranted = contactsPermissionGranted,
                         onEnable = ::requestCallScreeningRole,
                         onRefresh = ::refreshStatus,
+                        onDisable = ::requestDisableCallScreening,
                         onEnableContacts = ::requestContactsPermission,
                         onUpgrade = ::launchProPurchase,
                         onRestore = ::restorePurchases,
@@ -158,6 +161,26 @@ class MainActivity : ComponentActivity() {
 
     private fun requestContactsPermission() {
         contactsPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+    }
+
+    private fun requestDisableCallScreening() {
+        // Android does not let an app revoke its own RoleManager role. Open the
+        // system Default Apps screen so the user can switch away from AnswerGuard.
+        val intents = listOf(
+            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.fromParts("package", packageName, null)),
+        )
+        for (intent in intents) {
+            try {
+                startActivity(intent)
+                emitFeedback("Switch the Caller ID & spam app to disable AnswerGuard")
+                return
+            } catch (_: Exception) {
+                // try next fallback
+            }
+        }
+        emitFeedback("Could not open system settings")
     }
 
     private fun launchProPurchase() {
@@ -233,6 +256,7 @@ private fun AnswerGuardHome(
     contactsPermissionGranted: Boolean,
     onEnable: () -> Unit,
     onRefresh: () -> Unit,
+    onDisable: () -> Unit,
     onEnableContacts: () -> Unit,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
@@ -305,6 +329,7 @@ private fun AnswerGuardHome(
                                 },
                             )
                         },
+                        onDisable = onDisable,
                     )
                     ContactsCard(
                         permissionGranted = contactsPermissionGranted,
@@ -599,6 +624,7 @@ private fun StatusCard(
     callScreeningEnabled: Boolean,
     onEnable: () -> Unit,
     onRefresh: () -> Unit,
+    onDisable: () -> Unit,
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
@@ -628,17 +654,46 @@ private fun StatusCard(
                 }
             }
 
-            Button(
-                onClick = if (callScreeningEnabled) onRefresh else onEnable,
-                colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
-                modifier = Modifier.fillMaxWidth().testTag("home_enable_call_screening_button"),
-            ) {
-                Text(
-                    text = if (callScreeningEnabled) "Refresh Status" else "Enable Call Screening",
-                    color = Color(0xFF06211E),
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                )
+            if (callScreeningEnabled) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(
+                        onClick = onRefresh,
+                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                        modifier = Modifier.weight(1f).testTag("home_enable_call_screening_button"),
+                    ) {
+                        Text(
+                            text = "Refresh Status",
+                            color = Color(0xFF06211E),
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    Button(
+                        onClick = onDisable,
+                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                        modifier = Modifier.weight(1f).testTag("home_disable_call_screening_button"),
+                    ) {
+                        Text(
+                            text = "Disable in Settings",
+                            color = AnswerGuardColors.TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            } else {
+                Button(
+                    onClick = onEnable,
+                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                    modifier = Modifier.fillMaxWidth().testTag("home_enable_call_screening_button"),
+                ) {
+                    Text(
+                        text = "Enable Call Screening",
+                        color = Color(0xFF06211E),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }
