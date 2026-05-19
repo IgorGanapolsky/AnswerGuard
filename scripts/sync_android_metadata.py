@@ -114,6 +114,34 @@ def main():
                     ).execute()
                     print(f"    ✓ Uploaded feature graphic: {fg_files[0].name}")
 
+            # Sync Screenshots
+            print("  Syncing screenshots for en-US...")
+            screenshot_dir = METADATA_ROOT / "en-US" / "images" / "phoneScreenshots"
+            if screenshot_dir.exists():
+                screenshot_files = sorted(list(screenshot_dir.glob("*.png")))
+                if screenshot_files:
+                    # Clear existing screenshots first to avoid duplicates
+                    try:
+                        edits.images().deleteall(
+                            packageName=PACKAGE_NAME,
+                            editId=edit_id,
+                            language=api_lang,
+                            imageType="phoneScreenshots"
+                        ).execute()
+                    except Exception:
+                        pass
+
+                    for ss in screenshot_files:
+                        media = MediaFileUpload(str(ss), mimetype="image/png")
+                        edits.images().upload(
+                            packageName=PACKAGE_NAME,
+                            editId=edit_id,
+                            language=api_lang,
+                            imageType="phoneScreenshots",
+                            media_body=media
+                        ).execute()
+                        print(f"    ✓ Uploaded screenshot: {ss.name}")
+
     if not updated:
         print("No metadata to upload. Discarding edit.")
         edits.delete(packageName=PACKAGE_NAME, editId=edit_id).execute()
