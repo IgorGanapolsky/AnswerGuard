@@ -54,6 +54,15 @@ android {
 
         // PostHog Analytics - from gradle.properties or CI secret
         buildConfigField("String", "POSTHOG_API_KEY", "\"${System.getenv("POSTHOG_API_KEY") ?: project.findProperty("POSTHOG_API_KEY") ?: ""}\"")
+
+        // Short git SHA for in-app build verification. Honors $GITHUB_SHA when
+        // set by GitHub Actions, falls back to `git rev-parse` for local builds.
+        val gitSha: String = (System.getenv("GITHUB_SHA")?.take(7))
+            ?: try {
+                Runtime.getRuntime().exec(arrayOf("git", "rev-parse", "--short=7", "HEAD"))
+                    .inputStream.bufferedReader().readText().trim()
+            } catch (_: Exception) { "unknown" }
+        buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
     }
 
     signingConfigs {

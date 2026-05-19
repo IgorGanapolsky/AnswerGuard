@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.igorganapolsky.answerguard.BuildConfig
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
 import com.igorganapolsky.answerguard.billing.ProManager
@@ -806,6 +807,12 @@ private fun PrivacyCard() {
                 text = "AnswerGuard does not upload your call history. Screening decisions happen on-device.",
                 color = AnswerGuardColors.TextSecondary,
                 style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "v${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})  ${BuildConfig.GIT_SHA}",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.testTag("home_build_info"),
             )
             Text(
                 text = "Package: ${context.packageName}",
