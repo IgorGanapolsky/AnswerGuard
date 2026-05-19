@@ -59,22 +59,3 @@ extension Color {
         )
     }
 }
-
-// MARK: - Timer Status Color Extension
-
-extension TimerStatus {
-    var color: Color {
-        switch self {
-        case .idle:
-            return .textSecondary
-        case .running:
-            return .timerActive
-        case .warning, .danger:
-            return .timerWarning
-        case .complete, .alarm:
-            return .timerComplete
-        case .paused:
-            return .textSecondary
-        }
-    }
-}
