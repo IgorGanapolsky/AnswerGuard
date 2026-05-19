@@ -7,23 +7,18 @@ from playwright.sync_api import sync_playwright
 from play_artifacts import ARTIFACTS_DIR, screenshot_path
 
 DEV = "8239620436488925047"
-APP = "4976249162120849673"
+APP = "4975394319223159909"
 BASE = f"https://play.google.com/console/u/0/developers/{DEV}/app/{APP}"
 
 FGS_JUSTIFICATION = (
-    "AnswerGuard uses a foreground service to run countdown timers that must "
-    "continue when the app is in the background. Users set a random timer and "
-    "need to be notified precisely when time expires, even if the app is not "
-    "in the foreground. The foreground service displays a persistent notification "
-    "showing the remaining time."
+    "AnswerGuard is a call screening utility. While we do not currently use "
+    "a foreground service, we declare BIND_SCREENING_SERVICE to allow the system "
+    "to bind to our screening service to protect users from spam and fraudulent calls "
+    "in real-time entirely on-device."
 )
 
 ALARM_JUSTIFICATION = (
-    "AnswerGuard uses exact alarms to schedule precise notifications when a "
-    "countdown timer completes. Users expect the timer to fire at the exact "
-    "moment it reaches zero, which requires USE_EXACT_ALARM permission. "
-    "Without exact alarms, timer notifications could be delayed by minutes, "
-    "defeating the purpose of a timer app."
+    "AnswerGuard does not currently require exact alarms."
 )
 
 

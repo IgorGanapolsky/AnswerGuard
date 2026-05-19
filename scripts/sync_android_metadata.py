@@ -19,6 +19,7 @@ from pathlib import Path
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 PACKAGE_NAME = "com.igorganapolsky.answerguard"
 METADATA_ROOT = Path(__file__).resolve().parent.parent / "native-android" / "fastlane" / "metadata" / "android"
@@ -89,28 +90,28 @@ def main():
             print("  Syncing images for en-US...")
             icon_path = METADATA_ROOT / "en-US" / "images" / "icon.png"
             if icon_path.exists():
-                with open(icon_path, "rb") as f:
-                    edits.images().upload(
-                        packageName=PACKAGE_NAME,
-                        editId=edit_id,
-                        language=api_lang,
-                        imageType="icon",
-                        media_body=f.read()
-                    ).execute()
+                media = MediaFileUpload(str(icon_path), mimetype="image/png")
+                edits.images().upload(
+                    packageName=PACKAGE_NAME,
+                    editId=edit_id,
+                    language=api_lang,
+                    imageType="icon",
+                    media_body=media
+                ).execute()
                 print("    ✓ Uploaded icon")
 
             fg_dir = METADATA_ROOT / "en-US" / "images" / "featureGraphic"
             if fg_dir.exists():
                 fg_files = list(fg_dir.glob("*.png"))
                 if fg_files:
-                    with open(fg_files[0], "rb") as f:
-                        edits.images().upload(
-                            packageName=PACKAGE_NAME,
-                            editId=edit_id,
-                            language=api_lang,
-                            imageType="featureGraphic",
-                            media_body=f.read()
-                        ).execute()
+                    media = MediaFileUpload(str(fg_files[0]), mimetype="image/png")
+                    edits.images().upload(
+                        packageName=PACKAGE_NAME,
+                        editId=edit_id,
+                        language=api_lang,
+                        imageType="featureGraphic",
+                        media_body=media
+                    ).execute()
                     print(f"    ✓ Uploaded feature graphic: {fg_files[0].name}")
 
     if not updated:
