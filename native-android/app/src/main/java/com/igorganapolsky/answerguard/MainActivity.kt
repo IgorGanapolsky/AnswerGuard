@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
@@ -69,6 +70,7 @@ import com.igorganapolsky.answerguard.billing.EntitlementLevel
 import com.igorganapolsky.answerguard.screening.ScreenedCall
 import com.igorganapolsky.answerguard.screening.ScreeningLog
 import com.igorganapolsky.answerguard.screening.SpamVerdict
+import com.igorganapolsky.answerguard.screening.UserBlocklist
 import com.igorganapolsky.answerguard.ui.screens.PaywallSheet
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.igorganapolsky.answerguard.screening.PauseState
@@ -155,6 +157,8 @@ class MainActivity : ComponentActivity() {
                             refreshStatus()
                             emitFeedback("Activity updated")
                         },
+                        onBlockNumber = ::blockNumber,
+                        onUnblockNumber = ::unblockNumber,
                         proActionInProgress = proActionInProgress,
                         proStatusMessage = proStatusMessage,
                         transientFeedback = transientFeedback,
@@ -327,6 +331,24 @@ class MainActivity : ComponentActivity() {
         val uri = intent?.data ?: return
         analyticsService.trackDeepLink(uri)
     }
+
+    private fun blockNumber(number: String) {
+        val digits = number.filter { it.isDigit() }
+        if (digits.isEmpty()) return
+        UserBlocklist.add(digits)
+        analyticsService.track("number_blocked_from_log", mapOf("number_length" to digits.length))
+        refreshStatus()
+        emitFeedback("Number blocked")
+    }
+
+    private fun unblockNumber(number: String) {
+        val digits = number.filter { it.isDigit() }
+        if (digits.isEmpty()) return
+        UserBlocklist.remove(digits)
+        analyticsService.track("number_unblocked_from_log", mapOf("number_length" to digits.length))
+        refreshStatus()
+        emitFeedback("Number unblocked")
+    }
 }
 
 private object AnswerGuardColors {
@@ -358,6 +380,8 @@ private fun AnswerGuardHome(
     onRestore: () -> Unit,
     recentCalls: List<ScreenedCall>,
     onRefreshCalls: () -> Unit,
+    onBlockNumber: (String) -> Unit,
+    onUnblockNumber: (String) -> Unit,
     proActionInProgress: Boolean,
     proStatusMessage: String?,
     transientFeedback: Pair<Long, String>? = null,
@@ -440,7 +464,11 @@ private fun AnswerGuardHome(
                             permissionGranted = contactsPermissionGranted,
                             onEnable = onEnableContacts,
                         )
-                        RecentActivityCard(calls = recentCalls)
+                        RecentActivityCard(
+                            calls = recentCalls,
+                            onBlock = onBlockNumber,
+                            onUnblock = onUnblockNumber
+                        )
                         BlocklistCard(onClick = { showBlocklist = true })
                         ProCard(
                             entitlementLevel = entitlementLevel,
@@ -547,7 +575,7 @@ private fun BlocklistScreen(
     showSnackbar: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var numbers by remember { mutableStateOf(com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()) }
+    var numbers by remember { mutableStateOf(UserBlocklist.getAll().toList()) }
     var newNumber by remember { mutableStateOf("") }
 
     Column(
@@ -965,7 +993,11 @@ private fun Step(number: String, text: String) {
 }
 
 @Composable
-private fun RecentActivityCard(calls: List<ScreenedCall>) {
+private fun RecentActivityCard(
+    calls: List<ScreenedCall>,
+    onBlock: (String) -> Unit,
+    onUnblock: (String) -> Unit,
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
         shape = RoundedCornerShape(8.dp),
@@ -991,7 +1023,11 @@ private fun RecentActivityCard(calls: List<ScreenedCall>) {
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     calls.take(5).forEach { call ->
-                        ActivityRow(call = call)
+                        ActivityRow(
+                            call = call,
+                            onBlock = { onBlock(call.number) },
+                            onUnblock = { onUnblock(call.number) }
+                        )
                     }
                 }
             }
@@ -1000,7 +1036,14 @@ private fun RecentActivityCard(calls: List<ScreenedCall>) {
 }
 
 @Composable
-private fun ActivityRow(call: ScreenedCall) {
+private fun ActivityRow(
+    call: ScreenedCall,
+    onBlock: () -> Unit,
+    onUnblock: () -> Unit,
+) {
+    val digits = call.number.filter { it.isDigit() }
+    val isCurrentlyBlocked = UserBlocklist.contains(digits)
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -1021,15 +1064,22 @@ private fun ActivityRow(call: ScreenedCall) {
             )
         }
         
-        val (label, color) = when (call.verdict) {
-            SpamVerdict.BLOCK -> "Blocked" to Color.Red
-            SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
-            SpamVerdict.ALLOW -> "Allowed" to AnswerGuardColors.Primary
+        val (label, color) = when {
+            isCurrentlyBlocked -> "Blocked" to Color.Red
+            call.verdict == SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
+            else -> "Allowed" to AnswerGuardColors.Primary
         }
         
         Box(
             modifier = Modifier
                 .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                .clickable {
+                    if (isCurrentlyBlocked) {
+                        onUnblock()
+                    } else {
+                        onBlock()
+                    }
+                }
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Text(
