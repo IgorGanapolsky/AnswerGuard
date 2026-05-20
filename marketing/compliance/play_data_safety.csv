@@ -1,4 +1,3 @@
-"Data type","Collected","Shared","Ephemeral","Required","Purposes"
-"Financial info > Purchase history","Yes","No","No","Yes","App functionality"
-"App info and performance > Crash logs","Yes","No","No","Yes","Analytics"
-"App info and performance > Diagnostics","Yes","No","No","Yes","Analytics"
+Data safety
+"Data collection and security",""
+"Does your app collect or share any of the required user data types?","No"
