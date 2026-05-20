@@ -30,39 +30,39 @@ class CreativeText:
 
 CREATIVE_COPY: Dict[str, CreativeText] = {
     "1_setup.png": CreativeText(
-        title="SHARPEN YOUR DRAW",
-        subtitle="Randomized signals for dry-fire and target acquisition.",
-        badge="REACTION SPEED",
+        title="AI CALL SCREENING",
+        subtitle="Gemini Nano analyzes intent on-device before you answer.",
+        badge="GEMINI POWERED",
     ),
     "2_active.png": CreativeText(
-        title="STOP PREDICTING",
-        subtitle="Unpredictable intervals ensure you stay honest under stress.",
-        badge="ELIMINATE RHYTHM",
+        title="ZERO-KNOWLEDGE PRIVACY",
+        subtitle="Call screening and contact matching that never leaves your phone.",
+        badge="100% PRIVATE",
     ),
     "3_alarm.png": CreativeText(
-        title="RANGE COMMANDS",
-        subtitle="High-intensity audio arsenal designed for the noise of the gym.",
-        badge="SIGNAL HIT",
+        title="VOICE DEEPFAKE DEFENSE",
+        subtitle="Detect and block AI-generated voice clones in real-time.",
+        badge="SCAM PROTECTION",
     ),
     "4_running.png": CreativeText(
-        title="BATTLE READY",
-        subtitle="Non-stop automated rounds for boxing, MMA, and HIIT.",
-        badge="RUN DRILLS",
+        title="SMART BLOCKLIST",
+        subtitle="Advanced patterns to stop automated robocall campaigns instantly.",
+        badge="TACTICAL DEFENSE",
     ),
     "5_ipad_setup.png": CreativeText(
-        title="COACH VIEW",
-        subtitle="Class-optimized controls for class-wide reaction stress tests.",
-        badge="PRO UTILITY",
+        title="FAMILY PROTECTION",
+        subtitle="Extend high-fidelity AI screening to your whole household.",
+        badge="FAMILY READY",
     ),
     "6_ipad_running.png": CreativeText(
-        title="VISIBLE BATTLESPACE",
-        subtitle="Large-scale UI ensures every athlete stays synchronized.",
-        badge="MISSION READY",
+        title="REAL-TIME VERDICTS",
+        subtitle="See exactly why a call was blocked with detailed activity logs.",
+        badge="TRANSPARENT AI",
     ),
     "7_ipad_stopped.png": CreativeText(
-        title="RAPID RESET",
-        subtitle="Zero friction between rounds. Adjust and execute immediately.",
-        badge="GO AGAIN",
+        title="ZERO CONFIGURATION",
+        subtitle="Guided setup to become your system-default protector in one tap.",
+        badge="EASY SETUP",
     ),
 }
 
@@ -93,7 +93,7 @@ def _load_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont | Ima
 
 def _render_one(source: Image.Image, text: CreativeText) -> Image.Image:
     w, h = source.size
-    
+
     # Background: Solid high-contrast Tactical Black
     base = Image.new("RGB", (w, h), (10, 12, 18))
     draw = ImageDraw.Draw(base)
@@ -101,13 +101,13 @@ def _render_one(source: Image.Image, text: CreativeText) -> Image.Image:
     # Outcome-First Header Section
     title_font = _load_font(max(72, int(h * 0.045)), bold=True)
     subtitle_font = _load_font(max(32, int(h * 0.018)), bold=False)
-    
+
     title_bbox = draw.textbbox((0, 0), text.title, font=title_font)
     title_w = title_bbox[2] - title_bbox[0]
-    
+
     # Draw large headline
     draw.text(((w - title_w) // 2, int(h * 0.06)), text.title, font=title_font, fill=(255, 255, 255))
-    
+
     # Draw outcome subtitle
     subtitle_bbox = draw.textbbox((0, 0), text.subtitle, font=subtitle_font)
     subtitle_w = subtitle_bbox[2] - subtitle_bbox[0]
@@ -117,12 +117,12 @@ def _render_one(source: Image.Image, text: CreativeText) -> Image.Image:
     badge_font = _load_font(max(28, int(h * 0.015)), bold=True)
     badge_bbox = draw.textbbox((0, 0), text.badge, font=badge_font)
     bw, bh = badge_bbox[2] - badge_bbox[0], badge_bbox[3] - badge_bbox[1]
-    
+
     pad_x, pad_y = 24, 12
     bx1 = (w - (bw + pad_x * 2)) // 2
     by1 = int(h * 0.165)
     bx2, by2 = bx1 + bw + pad_x * 2, by1 + bh + pad_y * 2
-    
+
     # Tactical Red Badge
     draw.rounded_rectangle((bx1, by1, bx2, by2), radius=8, fill=(220, 38, 38))
     draw.text((bx1 + pad_x, by1 + pad_y - 2), text.badge, font=badge_font, fill=(255, 255, 255))
@@ -133,10 +133,10 @@ def _render_one(source: Image.Image, text: CreativeText) -> Image.Image:
     ui_margin = int(w * 0.05)
     target_w = w - (ui_margin * 2)
     target_h = h - ui_top
-    
+
     # Fit source into the remaining space
     ui_frame = ImageOps.fit(source, (target_w, target_h), method=Image.Resampling.LANCZOS)
-    
+
     # Paste directly with sharp high-contrast border
     draw.rectangle((ui_margin - 2, ui_top - 2, w - ui_margin + 2, h + 2), outline=(40, 50, 70), width=2)
     base.paste(ui_frame, (ui_margin, ui_top))
@@ -155,7 +155,7 @@ def generate(repo_root: Path, locale: str) -> Dict[str, object]:
     backup_root = screenshots_dir / "_backup"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     backup_dir = backup_root / timestamp
-    
+
     for filename, text in CREATIVE_COPY.items():
         source_path = screenshots_dir / SOURCE_MAP.get(filename, filename)
         if not source_path.is_file():
@@ -169,7 +169,7 @@ def generate(repo_root: Path, locale: str) -> Dict[str, object]:
 
         source = Image.open(source_path).convert("RGB")
         out = _render_one(source, text)
-        
+
         out.save(target, format="PNG", optimize=True)
         written.append(str(target))
 
@@ -181,7 +181,7 @@ def generate(repo_root: Path, locale: str) -> Dict[str, object]:
         "backup_dir": str(backup_dir) if written else None,
         "report_path": str(screenshots_dir / "report.json")
     }
-    
+
     with open(report["report_path"], "w") as f:
         json.dump(report, f, indent=2)
 
