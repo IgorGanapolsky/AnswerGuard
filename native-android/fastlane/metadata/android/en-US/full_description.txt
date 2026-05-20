@@ -1,17 +1,19 @@
-AnswerGuard is the first AI-native call screening utility built for the 2026 security landscape. It protects you and your family from evolving spam, fraud, and AI-generated voice deepfakes—entirely on-device.
+AnswerGuard is the first AI-native call shield built for the 2026 security landscape. It provides autonomous protection against evolving spam, fraud, and AI-generated voice deepfakes—entirely on-device.
 
-Why AnswerGuard is 2026's Top-Rated Privacy Utility:
+JUNE 2026 SECURITY CORE:
+Our latest update integrates Gemini Nano directly into the call flow, enabling real-time intent analysis without ever sending audio to the cloud.
 
-- ON-DEVICE GEMINI INTELLIGENCE: Leverage Gemini Nano to analyze the intent of unknown callers in real-time. No audio ever leaves your phone.
-- VOICE BIOMETRIC PROTECTION: Detect and block sophisticated voice-cloning scams (grandparent scams) before they reach you.
-- ZERO-KNOWLEDGE PRIVACY: No accounts, no call history uploads, and no data broker connections. Your call log stays yours.
-- PERSONAL & FAMILY BLOCKLISTS: Manually block specific numbers or use advanced wildcard patterns to stop entire ranges of robocallers.
-- REAL-TIME ACTIVITY LOG: See exactly why a call was blocked or silenced with our transparent activity dashboard.
-- SECURE SETUP: Guided role-based onboarding ensuring AnswerGuard is your system-default protector with one tap.
+WHY ANSWERGUARD IS 2026'S TOP-RATED PRIVACY UTILITY:
 
-Monetization & Plans:
-- Basic Tier: Local heuristic screening and personal blocklist.
-- AnswerGuard Pro: Advanced spam rules and premium localized reputation data.
-- AnswerGuard Family: Full AI intent analysis, voice biometrics, and multi-device protection for your entire household.
+- AUTONOMOUS AI SCREENING: Leverage Gemini Nano to analyze the intent of unknown callers in real-time. Detect "urgent" fraud and sales pressure before you even pick up.
+- DEEPFAKE VOICE DEFENSE: Detect and block sophisticated voice-cloning scams (including "grandparent scams") using state-of-the-art voice biometrics.
+- ZERO-KNOWLEDGE ARCHITECTURE: No accounts, no call history uploads, and no data broker connections. Your call screening happens 100% locally.
+- TACTICAL ACTIVITY LOGS: See exactly why a call was blocked or silenced with detailed on-device verdicts.
+- SMART FAMILY BLOCKLISTS: Extend protection to your whole household. Sync blocklist rules privately across devices without compromising individual call privacy.
 
-AnswerGuard is for users who demand the highest level of security without sacrificing their digital privacy. No ads, no tracking, just protection.
+TIERED PROTECTION PLANS:
+- BASIC: Local heuristic screening and personal blocklist.
+- PRO: Advanced Gemini-powered intent analysis and priority spam updates.
+- FAMILY: Full AI shield, deepfake defense, and multi-device coverage for up to 5 household members.
+
+AnswerGuard is for users who demand the absolute highest level of security. No ads, no tracking, no compromises. Just the most advanced AI protection available on Android today.
