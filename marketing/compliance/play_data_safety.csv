@@ -1,4 +1,4 @@
 Section,Data type,Collected,Shared,Ephemeral,Required,Purposes
-"Financial info","Purchase history",Yes,No,No,Yes,"APP_FUNCTIONALITY"
-"App info and performance","Crash logs",Yes,No,No,Yes,"ANALYTICS"
-"App info and performance","Diagnostics",Yes,No,No,Yes,"ANALYTICS"
+"Financial info","Purchase history",Yes,No,No,Yes,"App functionality"
+"App info and performance","Crash logs",Yes,No,No,Yes,"Analytics"
+"App info and performance","Diagnostics",Yes,No,No,Yes,"Analytics"
