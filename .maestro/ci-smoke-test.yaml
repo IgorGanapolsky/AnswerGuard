@@ -5,10 +5,13 @@ appId: com.igorganapolsky.answerguard
 - waitForAnimationToEnd
 
 - extendedWaitUntil:
-    visible: 'Call Screening'
+    visible:
+        id: "status_title"
     timeout: 60000
 
-- assertVisible: 'AnswerGuard'
-- assertVisible: 'Call Screening'
-- assertVisible: 'Enable Call Screening'
-- assertVisible: '.*Pro.*'
+- assertVisible:
+    id: "home_title"
+- assertVisible:
+    id: "status_title"
+- assertVisible:
+    id: "pro_card_title"

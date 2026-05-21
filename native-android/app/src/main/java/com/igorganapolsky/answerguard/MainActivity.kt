@@ -779,12 +779,13 @@ private fun ProCard(
                 else -> "Unlock advanced spam rules and family protection as they roll out."
             }
 
-            Text(
-                text = title,
-                color = AnswerGuardColors.TextPrimary,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
+                Text(
+                    text = title,
+                    color = AnswerGuardColors.TextPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.testTag("pro_card_title")
+                )
             Text(
                 text = description,
                 color = AnswerGuardColors.TextSecondary,
@@ -953,6 +954,7 @@ private fun StatusCard(
                         color = AnswerGuardColors.TextPrimary,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.testTag("status_title")
                     )
                     Text(
                         text = statusText,
