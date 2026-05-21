@@ -1,8 +1,30 @@
 appId: com.igorganapolsky.answerguard
 ---
 # CI smoke test: launch AnswerGuard and verify the stable home surface.
-- launchApp
+- launchApp:
+    clearState: true
 - waitForAnimationToEnd
+
+# Dismiss common emulator system popups if present
+- runFlow:
+    when:
+      visible:
+        text: ".*keeps stopping.*"
+        isRegex: true
+    commands:
+      - tapOn: "Close app"
+- runFlow:
+    when:
+      visible:
+        text: ".*isn't responding.*"
+        isRegex: true
+    commands:
+      - tapOn: "Close app"
+- runFlow:
+    when:
+      visible: "Wait"
+    commands:
+      - tapOn: "Wait"
 
 - extendedWaitUntil:
     visible: 'Call Screening'

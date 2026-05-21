@@ -34,6 +34,24 @@ do
   else
     echo "FAILED: $flow"
     FAIL=$((FAIL + 1))
+    echo "=== DIAGNOSTICS FOR FAILED FLOW: $flow ==="
+    echo "--- ADB DEVICES ---"
+    adb devices
+    echo "--- CURRENT ACTIVITY ---"
+    adb shell dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' || true
+    echo "--- DUMPING UI HIERARCHY ---"
+    adb shell uiautomator dump /sdcard/window_dump.xml || true
+    adb pull /sdcard/window_dump.xml - || true
+    echo "--- LOGCAT (LAST 150 LINES) ---"
+    adb logcat -d | tail -n 150 || true
+    echo "--- MAESTRO REPORT ---"
+    latest_report=$(ls -td ~/.maestro/tests/* 2>/dev/null | head -n 1)
+    if [ -n "$latest_report" ]; then
+      echo "Latest Maestro report folder: $latest_report"
+      ls -la "$latest_report" || true
+      cat "$latest_report"/*.xml 2>/dev/null || true
+    fi
+    echo "=========================================="
   fi
 done
 
