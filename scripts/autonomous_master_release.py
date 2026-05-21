@@ -17,9 +17,10 @@ def log(msg):
 async def run_browser_automation():
     log("Starting Browser Automation (Logged-in Session)...")
     async with async_playwright() as p:
+        # Use portable profile detection
         profiles = [
-            '/Users/igorganapolsky/Library/Application Support/Comet',
-            '/Users/igorganapolsky/Library/Application Support/Google/Chrome Canary/Default'
+            os.path.expanduser('~/Library/Application Support/Comet'),
+            os.path.expanduser('~/Library/Application Support/Google/Chrome Canary/Default')
         ]
         user_data_dir = next((p for p in profiles if os.path.exists(p)), None)
 
@@ -36,7 +37,10 @@ async def run_browser_automation():
         )
 
         page = await context.new_page()
-        base_url = "https://play.google.com/console/u/0/developers/8239620436488925047/app/4975394319223159909"
+        # Use env vars for IDs where possible
+        dev_id = os.environ.get("PLAY_CONSOLE_DEV_ID", "8239620436488925047")
+        app_id = os.environ.get("PLAY_CONSOLE_APP_ID", "4975394319223159909")
+        base_url = f"https://play.google.com/console/u/0/developers/{dev_id}/app/{app_id}"
 
         sections = ["ads", "government-apps", "financial-features", "target-audience"]
         for section in sections:
@@ -65,7 +69,6 @@ async def run_browser_automation():
         # Final Promotion step via UI if API fails
         log("Checking Production rollout status...")
         await page.goto(f"{base_url}/tracks/production", wait_until="networkidle")
-        # Logic to click 'Promote' or 'Create new release' would go here
 
         await context.close()
 
