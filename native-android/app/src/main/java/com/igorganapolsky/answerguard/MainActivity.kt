@@ -1,7 +1,6 @@
 package com.igorganapolsky.answerguard
 
 import android.app.role.RoleManager
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -11,10 +10,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +50,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +75,7 @@ import com.igorganapolsky.answerguard.billing.EntitlementLevel
 import com.igorganapolsky.answerguard.screening.ScreenedCall
 import com.igorganapolsky.answerguard.screening.ScreeningLog
 import com.igorganapolsky.answerguard.screening.SpamVerdict
+import com.igorganapolsky.answerguard.screening.UserBlocklist
 import com.igorganapolsky.answerguard.ui.screens.PaywallSheet
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.igorganapolsky.answerguard.screening.PauseState
@@ -155,6 +162,8 @@ class MainActivity : ComponentActivity() {
                             refreshStatus()
                             emitFeedback("Activity updated")
                         },
+                        onBlockNumber = ::blockNumber,
+                        onUnblockNumber = ::unblockNumber,
                         proActionInProgress = proActionInProgress,
                         proStatusMessage = proStatusMessage,
                         transientFeedback = transientFeedback,
@@ -168,7 +177,7 @@ class MainActivity : ComponentActivity() {
                         onConfirmDisable = {
                             showDisableInstruction = false
                             requestDisableCallScreening()
-                        },
+                        }
                     )
                 }
             }
@@ -327,6 +336,24 @@ class MainActivity : ComponentActivity() {
         val uri = intent?.data ?: return
         analyticsService.trackDeepLink(uri)
     }
+
+    private fun blockNumber(number: String) {
+        val digits = number.filter { it.isDigit() }
+        if (digits.isEmpty()) return
+        UserBlocklist.add(digits)
+        analyticsService.track("number_blocked_from_log", mapOf("number_length" to digits.length))
+        refreshStatus()
+        emitFeedback("Number blocked")
+    }
+
+    private fun unblockNumber(number: String) {
+        val digits = number.filter { it.isDigit() }
+        if (digits.isEmpty()) return
+        UserBlocklist.remove(digits)
+        analyticsService.track("number_unblocked_from_log", mapOf("number_length" to digits.length))
+        refreshStatus()
+        emitFeedback("Number unblocked")
+    }
 }
 
 private object AnswerGuardColors {
@@ -358,6 +385,8 @@ private fun AnswerGuardHome(
     onRestore: () -> Unit,
     recentCalls: List<ScreenedCall>,
     onRefreshCalls: () -> Unit,
+    onBlockNumber: (String) -> Unit,
+    onUnblockNumber: (String) -> Unit,
     proActionInProgress: Boolean,
     proStatusMessage: String?,
     transientFeedback: Pair<Long, String>? = null,
@@ -368,11 +397,14 @@ private fun AnswerGuardHome(
     onConfirmDisable: () -> Unit,
 ) {
     var showBlocklist by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     var showPaywall by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
     
     val entitlementLevel by proManager.entitlementLevel.collectAsStateWithLifecycle()
+    val blockedNumbers by UserBlocklist.blockedNumbers.collectAsStateWithLifecycle()
+    val hvaCount by proManager.hvaCount.collectAsStateWithLifecycle()
     
     val showSnackbar: (String) -> Unit = { msg ->
         snackbarScope.launch {
@@ -399,59 +431,77 @@ private fun AnswerGuardHome(
             }
         },
     ) { innerPadding ->
-        if (showBlocklist) {
-            BlocklistScreen(
-                onBack = { showBlocklist = false },
-                showSnackbar = showSnackbar,
-                modifier = Modifier.padding(innerPadding),
-            )
-        } else {
-            PullToRefreshBox(
-                isRefreshing = false, // We use transient feedback/emitFeedback for status
-                onRefresh = onRefreshCalls,
-                state = rememberPullToRefreshState(),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                            .background(AnswerGuardColors.Background)
-                            .padding(24.dp),
+        when {
+            showBlocklist -> {
+                BlocklistScreen(
+                    onBack = { showBlocklist = false },
+                    showSnackbar = showSnackbar,
+                    modifier = Modifier.padding(innerPadding),
+                )
+            }
+            showSettings -> {
+                SettingsScreen(
+                    onBack = { showSettings = false },
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+            else -> {
+                PullToRefreshBox(
+                    isRefreshing = false, // We use transient feedback/emitFeedback for status
+                    onRefresh = onRefreshCalls,
+                    state = rememberPullToRefreshState(),
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Column(
+                    Box(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                                .padding(innerPadding)
+                                .background(AnswerGuardColors.Background)
+                                .padding(24.dp),
                     ) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Header(onSecretUnlock = onSecretUnlock)
-                        StatusCard(
-                            callScreeningEnabled = callScreeningEnabled,
-                            screeningPaused = screeningPaused,
-                            onEnable = onEnable,
-                            onTogglePause = onTogglePause,
-                            onSwitchApp = onSwitchApp,
-                        )
-                        ContactsCard(
-                            permissionGranted = contactsPermissionGranted,
-                            onEnable = onEnableContacts,
-                        )
-                        RecentActivityCard(calls = recentCalls)
-                        BlocklistCard(onClick = { showBlocklist = true })
-                        ProCard(
-                            entitlementLevel = entitlementLevel,
-                            onUpgrade = { showPaywall = true },
-                            onRestore = onRestore,
-                            actionInProgress = proActionInProgress,
-                            statusMessage = proStatusMessage,
-                            showSnackbar = showSnackbar,
-                        )
-                        HowItWorks()
-                        PrivacyCard()
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(20.dp),
+                        ) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Header(
+                                onSecretUnlock = onSecretUnlock,
+                                onSettingsClick = { showSettings = true }
+                            )
+                            StatusCard(
+                                callScreeningEnabled = callScreeningEnabled,
+                                screeningPaused = screeningPaused,
+                                onEnable = onEnable,
+                                onTogglePause = onTogglePause,
+                                onSwitchApp = onSwitchApp,
+                            )
+                            ContactsCard(
+                                permissionGranted = contactsPermissionGranted,
+                                onEnable = onEnableContacts,
+                            )
+                            RecentActivityCard(
+                                calls = recentCalls,
+                                blockedNumbers = blockedNumbers,
+                                onBlock = { 
+                                    onBlockNumber(it)
+                                    proManager.recordHighValueAction("ai_protection")
+                                },
+                                onUnblock = onUnblockNumber
+                            )
+                            BlocklistCard(onClick = { showBlocklist = true })
+                            ProCard(
+                                entitlementLevel = entitlementLevel,
+                                onUpgrade = { showPaywall = true },
+                                onRestore = onRestore,
+                                actionInProgress = proActionInProgress,
+                                statusMessage = proStatusMessage,
+                                showSnackbar = showSnackbar,
+                            )
+                        }
                     }
                 }
             }
@@ -490,7 +540,10 @@ private fun AnswerGuardHome(
     }
 
     if (showPaywall) {
+        val isFirstTime = hvaCount < 10
         PaywallSheet(
+            entryPoint = if (isFirstTime) "dynamic_hva_intro" else "standard_pro",
+            familyPrice = if (isFirstTime) "$0.99 1st Mo, then $29.99/yr" else "$29.99/yr",
             onPurchase = { _ ->
                 showPaywall = false
                 onUpgrade() 
@@ -501,6 +554,13 @@ private fun AnswerGuardHome(
             },
             onDismiss = { showPaywall = false }
         )
+    }
+    
+    // Dynamic Micro-Paywall Trigger: After 3 high-value actions
+    androidx.compose.runtime.LaunchedEffect(hvaCount) {
+        if (hvaCount == 3 && entitlementLevel == EntitlementLevel.NONE) {
+            showPaywall = true
+        }
     }
 }
 
@@ -547,7 +607,7 @@ private fun BlocklistScreen(
     showSnackbar: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var numbers by remember { mutableStateOf(com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()) }
+    var numbers by remember { mutableStateOf(UserBlocklist.getAll().toList()) }
     var newNumber by remember { mutableStateOf("") }
 
     Column(
@@ -793,22 +853,63 @@ private fun ProCard(
 }
 
 @Composable
-private fun Header(onSecretUnlock: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+private fun Header(
+    onSecretUnlock: () -> Unit,
+    onSettingsClick: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "AnswerGuard",
+                    color = AnswerGuardColors.TextPrimary,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .testTag("home_title")
+                        .combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {},
+                            onLongClick = onSecretUnlock
+                        )
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .background(AnswerGuardColors.Primary.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "ON-DEVICE AI",
+                            color = AnswerGuardColors.Primary,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "100% Private",
+                        color = AnswerGuardColors.TextSecondary,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = AnswerGuardColors.TextSecondary
+                )
+            }
+        }
         Text(
-            text = "AnswerGuard",
-            color = AnswerGuardColors.TextPrimary,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = {},
-                onLongClick = onSecretUnlock
-            )
-        )
-        Text(
-            text = "Spam and scam call protection that runs locally on your phone.",
+            text = "Autonomous protection that runs locally on your phone.",
             color = AnswerGuardColors.TextSecondary,
             style = MaterialTheme.typography.bodyLarge,
         )
@@ -965,7 +1066,12 @@ private fun Step(number: String, text: String) {
 }
 
 @Composable
-private fun RecentActivityCard(calls: List<ScreenedCall>) {
+private fun RecentActivityCard(
+    calls: List<ScreenedCall>,
+    blockedNumbers: Set<String>,
+    onBlock: (String) -> Unit,
+    onUnblock: (String) -> Unit,
+) {
     Card(
         colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
         shape = RoundedCornerShape(8.dp),
@@ -991,7 +1097,13 @@ private fun RecentActivityCard(calls: List<ScreenedCall>) {
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     calls.take(5).forEach { call ->
-                        ActivityRow(call = call)
+                        val digits = call.number.filter { it.isDigit() }
+                        ActivityRow(
+                            call = call,
+                            isBlocked = blockedNumbers.contains(digits),
+                            onBlock = { onBlock(call.number) },
+                            onUnblock = { onUnblock(call.number) }
+                        )
                     }
                 }
             }
@@ -1000,7 +1112,12 @@ private fun RecentActivityCard(calls: List<ScreenedCall>) {
 }
 
 @Composable
-private fun ActivityRow(call: ScreenedCall) {
+private fun ActivityRow(
+    call: ScreenedCall,
+    isBlocked: Boolean,
+    onBlock: () -> Unit,
+    onUnblock: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -1021,15 +1138,23 @@ private fun ActivityRow(call: ScreenedCall) {
             )
         }
         
-        val (label, color) = when (call.verdict) {
-            SpamVerdict.BLOCK -> "Blocked" to Color.Red
-            SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
-            SpamVerdict.ALLOW -> "Allowed" to AnswerGuardColors.Primary
+        val (label, color) = when {
+            isBlocked -> "Blocked" to Color.Red
+            call.verdict == SpamVerdict.BLOCK -> "Blocked" to Color.Red
+            call.verdict == SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
+            else -> "Allowed" to AnswerGuardColors.Primary
         }
         
         Box(
             modifier = Modifier
                 .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
+                .clickable {
+                    if (isBlocked) {
+                        onUnblock()
+                    } else {
+                        onBlock()
+                    }
+                }
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Text(
@@ -1042,6 +1167,41 @@ private fun ActivityRow(call: ScreenedCall) {
     }
 }
 
+@Composable
+private fun SettingsScreen(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AnswerGuardColors.Background)
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onBack) {
+                Text("Back", color = AnswerGuardColors.Primary)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Settings & Info",
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        HowItWorks()
+        PrivacyCard()
+        
+        Spacer(modifier = Modifier.weight(1f))
+    }
+}
 @Composable
 private fun PrivacyCard() {
     val context = LocalContext.current

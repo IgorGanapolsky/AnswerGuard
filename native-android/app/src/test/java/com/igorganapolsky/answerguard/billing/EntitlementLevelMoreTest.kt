@@ -5,14 +5,14 @@ import org.junit.Test
 
 class EntitlementLevelMoreTest {
     @Test
-    fun `enum exposes exactly three levels`() {
-        assertThat(EntitlementLevel.entries).hasSize(3)
+    fun `enum exposes exactly four levels`() {
+        assertThat(EntitlementLevel.entries).hasSize(4)
     }
 
     @Test
     fun `enum entries include the expected names`() {
         assertThat(EntitlementLevel.entries.map { it.name })
-            .containsExactly("NONE", "PRO", "FAMILY")
+            .containsExactly("NONE", "PRO", "FAMILY", "BUSINESS")
     }
 
     @Test
@@ -20,6 +20,7 @@ class EntitlementLevelMoreTest {
         assertThat(EntitlementLevel.valueOf("NONE")).isEqualTo(EntitlementLevel.NONE)
         assertThat(EntitlementLevel.valueOf("PRO")).isEqualTo(EntitlementLevel.PRO)
         assertThat(EntitlementLevel.valueOf("FAMILY")).isEqualTo(EntitlementLevel.FAMILY)
+        assertThat(EntitlementLevel.valueOf("BUSINESS")).isEqualTo(EntitlementLevel.BUSINESS)
     }
 
     @Test

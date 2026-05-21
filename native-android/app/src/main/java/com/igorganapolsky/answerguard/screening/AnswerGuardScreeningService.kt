@@ -4,6 +4,9 @@ import android.os.Build
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.util.Log
+import com.igorganapolsky.answerguard.billing.ProManager
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * AnswerGuard call screening service.
@@ -12,9 +15,13 @@ import android.util.Log
  * The system calls [onScreenCall] for each incoming call; we must respond
  * within 5 seconds or the system defaults to allowing the call.
  */
+@AndroidEntryPoint
 class AnswerGuardScreeningService : CallScreeningService() {
 
     private val tag = "AnswerGuardScreening"
+
+    @Inject
+    lateinit var proManager: ProManager
 
     override fun onScreenCall(callDetails: Call.Details) {
         val handle = callDetails.handle?.schemeSpecificPart ?: ""
@@ -31,6 +38,11 @@ class AnswerGuardScreeningService : CallScreeningService() {
         
         // Record the screened call in local history
         ScreeningLog.record(ScreenedCall(number = handle, verdict = verdict))
+
+        // June 2026: Record High-Value Actions for dynamic monetization
+        if (verdict == SpamVerdict.BLOCK || verdict == SpamVerdict.SILENCE) {
+            proManager.recordHighValueAction("ai_protection")
+        }
 
         // setSilenceCall is API 29+. Service only binds via ROLE_CALL_SCREENING
         // (API 29+) in practice, but guard defensively so a legacy binder on

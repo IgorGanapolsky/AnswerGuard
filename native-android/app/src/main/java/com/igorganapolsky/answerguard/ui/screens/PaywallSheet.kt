@@ -44,25 +44,17 @@ import androidx.compose.ui.unit.dp
 import com.igorganapolsky.answerguard.billing.ProManager
 import com.igorganapolsky.answerguard.billing.EntitlementLevel
 
-internal const val PAYWALL_HEADLINE = "Upgrade to Family Protection"
+internal const val PAYWALL_HEADLINE = "Upgrade to AI Call Shield"
 internal const val PAYWALL_SUBHEADLINE =
-    "Unlock on-device AI intent analysis, voice biometrics, and multi-device coverage for your whole household."
+    "Unlock on-device autonomous intent analysis, voice deepfake defense, and perfectly reliable agentic governance."
 internal const val PAYWALL_PRICING_FOOTER = "Cancel anytime. Subscription auto-renews until cancelled."
-internal val PAYWALL_FEATURE_ROWS =
-    listOf(
-        "Gemini-powered intent analysis of unknown callers",
-        "Voice biometrics to detect AI-generated voice clones",
-        "Multi-device coverage (up to 5 household members)",
-        "Priority updates for local spam reputation data",
-        "Advanced blocklist rules (prefix/wildcard matching)",
-        "Premium support for family security setup",
-    )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaywallSheet(
     entryPoint: String = "unknown",
-    proPrice: String = "$29.99/yr",
+    familyPrice: String = "$29.99/yr",
+    businessPrice: String = "$49.99/yr",
     onPurchase: (String) -> Unit,
     onRestore: () -> Unit,
     onDismiss: () -> Unit,
@@ -87,17 +79,36 @@ fun PaywallSheet(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
-                        onClick = { onPurchase(ProManager.ELITE_PRODUCT_ID) },
+                        onClick = { onPurchase(ProManager.BUSINESS_PRODUCT_ID) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2DD4BF)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "Start Family Plan \u2022 $proPrice",
+                            text = "Start Business Plan \u2022 $businessPrice",
                             color = Color(0xFF06211E),
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
+                    }
+
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { onPurchase(ProManager.ELITE_PRODUCT_ID) },
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, Color(0xFF2DD4BF).copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2DD4BF)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "Family Protection \u2022 $familyPrice",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    TextButton(onClick = { 
+                        uriHandler.openUri("https://igorganapolsky.github.io/AnswerGuard/upgrade/")
+                    }) {
+                        Text("Direct Support (Web Checkout)", color = Color(0xFF2DD4BF), style = MaterialTheme.typography.labelMedium)
                     }
                     
                     Row(
@@ -149,9 +160,11 @@ fun PaywallSheet(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    PAYWALL_FEATURE_ROWS.forEach { feature ->
-                        FeatureRow(text = feature)
-                    }
+                    FeatureRow(title = "Autonomous AI Agents", desc = "On-device Gemini Nano decodes intent in real-time.")
+                    FeatureRow(title = "Deepfake Voice Defense", desc = "Detect AI-cloned voices with local biometrics.")
+                    FeatureRow(title = "Agentic Governance", desc = "Deterministic guardrails to prevent AI hallucinations.")
+                    FeatureRow(title = "Household Security", desc = "Multi-device coverage for up to 5 family members.")
+                    FeatureRow(title = "B2B Compliance", desc = "Priority data safety updates and professional support.")
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -194,7 +207,7 @@ fun PaywallSheet(
 }
 
 @Composable
-private fun FeatureRow(text: String) {
+private fun FeatureRow(title: String, desc: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
@@ -214,10 +227,18 @@ private fun FeatureRow(text: String) {
             )
         }
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFFF8FAFC)
-        )
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFF8FAFC)
+            )
+            Text(
+                text = desc,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFB6C2CC)
+            )
+        }
     }
 }

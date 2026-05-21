@@ -1,0 +1,6 @@
+JUNE 2026 SECURITY CORE UPDATE:
+- Autonomous AI Call Shield: Gemini Nano now analyzes unknown caller intent entirely on-device.
+- Voice Deepfake Defense: New biometric layers to detect and block AI-cloned voices in real-time.
+- Zero-Knowledge History: Activity logs are now 100% private and never leave your device.
+- Household Sync: Pro/Family members can now share blocklists via private encrypted channels.
+- Optimized for Android 17: Full support for the latest system-level call screening APIs.

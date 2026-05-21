@@ -13,5 +13,6 @@ class EntitlementLevelTest {
     fun `paid levels are pro`() {
         assertThat(EntitlementLevel.PRO.isPro).isTrue()
         assertThat(EntitlementLevel.FAMILY.isPro).isTrue()
+        assertThat(EntitlementLevel.BUSINESS.isPro).isTrue()
     }
 }

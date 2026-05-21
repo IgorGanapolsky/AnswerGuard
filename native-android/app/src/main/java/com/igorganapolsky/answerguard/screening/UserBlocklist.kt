@@ -2,6 +2,9 @@ package com.igorganapolsky.answerguard.screening
 
 import android.content.Context
 import androidx.core.content.edit
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Simple SharedPreferences-backed user blocklist.
@@ -13,23 +16,29 @@ object UserBlocklist {
     private const val KEY_NUMBERS = "blocked_numbers"
 
     private var prefs: android.content.SharedPreferences? = null
+    
+    private val _blockedNumbers = MutableStateFlow<Set<String>>(emptySet())
+    val blockedNumbers: StateFlow<Set<String>> = _blockedNumbers.asStateFlow()
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        _blockedNumbers.value = getAll()
     }
 
     fun contains(digits: String): Boolean {
-        return getAll().contains(digits)
+        return _blockedNumbers.value.contains(digits)
     }
 
     fun add(digits: String) {
         val updated = getAll().toMutableSet().also { it.add(digits) }
         save(updated)
+        _blockedNumbers.value = updated
     }
 
     fun remove(digits: String) {
         val updated = getAll().toMutableSet().also { it.remove(digits) }
         save(updated)
+        _blockedNumbers.value = updated
     }
 
     fun getAll(): Set<String> {

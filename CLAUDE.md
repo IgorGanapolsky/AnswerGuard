@@ -8,6 +8,7 @@ This file activates the **Ralph Loop** for Gemini CLI. When Ralph Mode is active
 2.  **Code Coverage**: Ensure critical logic in Android and iOS has high unit test coverage.
 3.  **Publication Readiness**: Validate that v1.2.7 is ready for store submission.
 4.  **ThumbGate Integrity**: Maintain an active and blocking pre-action check environment.
+5.  **Agentic Quality**: Pass the Sonar & Gitar AI Quality Gate on every PR.
 
 ## Execution Loop (The Ralph Loop)
 
