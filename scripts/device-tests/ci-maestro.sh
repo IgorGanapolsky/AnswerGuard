@@ -41,7 +41,7 @@ do
     adb shell dumpsys window | grep -E 'mCurrentFocus|mFocusedApp' || true
     echo "--- DUMPING UI HIERARCHY ---"
     adb shell uiautomator dump /sdcard/window_dump.xml || true
-    adb pull /sdcard/window_dump.xml - || true
+    adb shell cat /sdcard/window_dump.xml || true
     echo "--- LOGCAT (LAST 150 LINES) ---"
     adb logcat -d | tail -n 150 || true
     echo "--- MAESTRO REPORT ---"

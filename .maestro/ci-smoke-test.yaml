@@ -10,14 +10,12 @@ appId: com.igorganapolsky.answerguard
     when:
       visible:
         text: ".*keeps stopping.*"
-        isRegex: true
     commands:
       - tapOn: "Close app"
 - runFlow:
     when:
       visible:
         text: ".*isn't responding.*"
-        isRegex: true
     commands:
       - tapOn: "Close app"
 - runFlow:
