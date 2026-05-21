@@ -24,6 +24,7 @@ COLORS = {
 # Fix root detection
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ANDROID_IMAGES = REPO_ROOT / "native-android" / "fastlane" / "metadata" / "android" / "en-US" / "images"
+IOS_IMAGES = REPO_ROOT / "native-ios" / "fastlane" / "screenshots" / "en-US"
 
 def _load_font(size: int, bold: bool = False):
     font_candidates = [
@@ -89,9 +90,8 @@ def generate_stellar_feature():
     img.save(path)
     print(f"🌟 Generated Stellar Feature Graphic: {path}")
 
-def generate_stellar_screenshots(device="phone", width=1080, height=2340):
-    ss_dir = ANDROID_IMAGES / f"{device}Screenshots"
-    ss_dir.mkdir(parents=True, exist_ok=True)
+def generate_stellar_screenshots(target_dir, device="phone", width=1080, height=2340):
+    target_dir.mkdir(parents=True, exist_ok=True)
     screens = [
         ("01_AI", "AI INTENT ANALYSIS", "Gemini Nano decodes caller intent locally.", "GEMINI READY"),
         ("02_PRIVATE", "ZERO-KNOWLEDGE LOGS", "Call data stays in your hardware enclave.", "100% PRIVATE"),
@@ -109,7 +109,7 @@ def generate_stellar_screenshots(device="phone", width=1080, height=2340):
         f_sub = _load_font(int(height * 0.018))
         draw.text((width*0.1, height*0.18), sub, fill=COLORS["Muted"], font=f_sub)
         draw.rounded_rectangle((width*0.08, height*0.25, width*0.92, height*0.92), radius=60, outline=COLORS["Emerald"], width=6)
-        path = ss_dir / f"{name}.png"
+        path = target_dir / f"{name}.png"
         img.save(path)
         print(f"🌟 Generated {device} Screenshot: {path}")
 
@@ -128,7 +128,18 @@ def generate_release_notes():
 if __name__ == "__main__":
     generate_stellar_icon()
     generate_stellar_feature()
-    generate_stellar_screenshots("phone", 1080, 2340)
-    generate_stellar_screenshots("sevenInch", 1200, 1920)
-    generate_stellar_screenshots("tenInch", 1600, 2560)
+
+    # Android
+    generate_stellar_screenshots(ANDROID_IMAGES / "phoneScreenshots", "phone", 1080, 2340)
+    generate_stellar_screenshots(ANDROID_IMAGES / "sevenInchScreenshots", "sevenInch", 1200, 1920)
+    generate_stellar_screenshots(ANDROID_IMAGES / "tenInchScreenshots", "tenInch", 1600, 2560)
+
+    # iOS
+    if IOS_IMAGES.parent.exists():
+        generate_stellar_screenshots(IOS_IMAGES, "ios-phone", 1242, 2688)
+        # Cleanup old iOS screenshots to ensure parity
+        for old in ["01-home.png", "02-protection.png", "03-pro.png"]:
+            p = IOS_IMAGES / old
+            if p.exists(): p.unlink()
+
     generate_release_notes()

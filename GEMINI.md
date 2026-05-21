@@ -10,6 +10,7 @@ This file contains foundational mandates for Gemini CLI within the AnswerGuard r
   - Android tests: `cd native-android && ./gradlew testDebugUnitTest`
   - iOS tests: `cd native-ios && xcodebuild test -project AnswerGuard.xcodeproj -scheme AnswerGuard`
   - Maestro smoke tests: `maestro test .maestro/ios-smoke-test.yaml` or `maestro test .maestro/smoke-test.yaml`
+  - AI Code Review: Automated via SonarQube & Gitar Agentic Analysis (Quality Gate enforced).
 
 ## Core Workflows
 
