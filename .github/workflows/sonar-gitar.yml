@@ -1,0 +1,37 @@
+name: Sonar & Gitar AI Review
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  sonar-gitar-review:
+    name: SonarQube Agentic Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Essential for accurate blame and AI context (Gitar)
+
+      - name: SonarQube Scan (with Gitar AI)
+        uses: SonarSource/sonarqube-scan-action@v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} # Default is SonarCloud if not set
+        with:
+          args: >
+            -Dsonar.projectKey=IgorGanapolsky_AnswerGuard
+            -Dsonar.ai.verifyAgenticOutput=true
+            -Dsonar.qualitygate.wait=true
+
+      - name: SonarQube Quality Gate Check
+        id: quality-gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
