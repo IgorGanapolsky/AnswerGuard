@@ -53,6 +53,7 @@ class ProManager
         companion object {
             const val BASE_PRODUCT_ID = "answerguard_pro"
             const val ELITE_PRODUCT_ID = "answerguard_family"
+            const val BUSINESS_PRODUCT_ID = "answerguard_business"
             const val PRO_PRODUCT_ID = ELITE_PRODUCT_ID
 
             internal fun canUseDebugUnlock(
@@ -70,7 +71,7 @@ class ProManager
 
         val isElite: StateFlow<Boolean> =
             _entitlementLevel
-                .map { it == EntitlementLevel.FAMILY }
+                .map { it == EntitlementLevel.FAMILY || it == EntitlementLevel.BUSINESS }
                 .stateIn(externalScope, SharingStarted.Eagerly, _entitlementLevel.value == EntitlementLevel.FAMILY)
 
         private var billingClient: BillingClient =
@@ -87,6 +88,8 @@ class ProManager
         private val cachedProductDetails = mutableMapOf<String, com.android.billingclient.api.ProductDetails>()
         private var pendingPurchaseEntryPoint: String? = null
         private var activeConnection: CompletableDeferred<BillingResult>? = null
+
+        private val prefs = context.getSharedPreferences("monetization_prefs", Context.MODE_PRIVATE)
 
         init {
             connectAndRestore()
@@ -177,13 +180,18 @@ class ProManager
                     .build()
             val inAppResult = billingClient.queryPurchasesAsync(inAppParams)
 
-            // Check Subs (ELITE)
+            // Check Subs (FAMILY + BUSINESS)
             val subsParams =
                 QueryPurchasesParams
                     .newBuilder()
                     .setProductType(BillingClient.ProductType.SUBS)
                     .build()
             val subsResult = billingClient.queryPurchasesAsync(subsParams)
+
+            val hasBusiness = subsResult.purchasesList.any { purchase ->
+                purchase.products.contains(BUSINESS_PRODUCT_ID) &&
+                        purchase.purchaseState == Purchase.PurchaseState.PURCHASED
+            }
 
             val hasElite =
                 subsResult.purchasesList.any { purchase ->
@@ -199,6 +207,7 @@ class ProManager
 
             val level =
                 when {
+                    hasBusiness -> EntitlementLevel.BUSINESS
                     hasElite -> EntitlementLevel.FAMILY
                     hasBase -> EntitlementLevel.PRO
                     else -> EntitlementLevel.NONE
@@ -211,8 +220,8 @@ class ProManager
                     success = level.isPro,
                     source = source,
                     entryPoint = entryPoint,
-                    responseCode = if (hasElite) subsResult.billingResult.responseCode else inAppResult.billingResult.responseCode,
-                    debugMessage = if (hasElite) subsResult.billingResult.debugMessage else inAppResult.billingResult.debugMessage,
+                    responseCode = if (hasElite || hasBusiness) subsResult.billingResult.responseCode else inAppResult.billingResult.responseCode,
+                    debugMessage = if (hasElite || hasBusiness) subsResult.billingResult.debugMessage else inAppResult.billingResult.debugMessage,
                 )
             }
             return level.isPro
@@ -251,13 +260,14 @@ class ProManager
             }
             cachedProductDetails[productID] = productDetails
 
+            val isSubscription = productID == ELITE_PRODUCT_ID || productID == BUSINESS_PRODUCT_ID
             val selectedOffer =
-                if (productID == ELITE_PRODUCT_ID) {
+                if (isSubscription) {
                     selectPreferredSubscriptionOffer(productDetails.toSubscriptionOffers())
                 } else {
                     null
                 }
-            if (productID == ELITE_PRODUCT_ID && selectedOffer == null) {
+            if (isSubscription && selectedOffer == null) {
                 trackPurchaseResult(
                     success = false,
                     source = MonetizationSources.PAYWALL,
@@ -305,11 +315,12 @@ class ProManager
         private suspend fun fetchAllProductDetails() {
             fetchProductDetails(BASE_PRODUCT_ID)
             fetchProductDetails(ELITE_PRODUCT_ID)
+            fetchProductDetails(BUSINESS_PRODUCT_ID)
         }
 
         private suspend fun fetchProductDetails(productID: String): com.android.billingclient.api.ProductDetails? {
             val productType =
-                if (productID == ELITE_PRODUCT_ID) {
+                if (productID == ELITE_PRODUCT_ID || productID == BUSINESS_PRODUCT_ID) {
                     BillingClient.ProductType.SUBS
                 } else {
                     BillingClient.ProductType.INAPP
@@ -340,9 +351,13 @@ class ProManager
 
         suspend fun getFormattedPrice(productID: String): String {
             val details = cachedProductDetails[productID] ?: fetchProductDetails(productID)
-            return if (productID == ELITE_PRODUCT_ID) {
+            return if (productID == ELITE_PRODUCT_ID || productID == BUSINESS_PRODUCT_ID) {
                 selectPreferredSubscriptionOffer(details?.toSubscriptionOffers().orEmpty())
-                    ?.displayPrice ?: "$29.99"
+                    ?.displayPrice ?: when(productID) {
+                        ELITE_PRODUCT_ID -> "$29.99"
+                        BUSINESS_PRODUCT_ID -> "$49.99"
+                        else -> "$29.99"
+                    }
             } else {
                 details?.oneTimePurchaseOfferDetails?.formattedPrice ?: "$7.99"
             }
@@ -378,7 +393,9 @@ class ProManager
         }
 
         private fun updateEntitlementFromPurchase(purchase: Purchase) {
-            if (purchase.products.contains(ELITE_PRODUCT_ID)) {
+            if (purchase.products.contains(BUSINESS_PRODUCT_ID)) {
+                _entitlementLevel.value = EntitlementLevel.BUSINESS
+            } else if (purchase.products.contains(ELITE_PRODUCT_ID)) {
                 _entitlementLevel.value = EntitlementLevel.FAMILY
             } else if (purchase.products.contains(BASE_PRODUCT_ID)) {
                 if (_entitlementLevel.value == EntitlementLevel.NONE) {
@@ -458,12 +475,13 @@ class ProManager
         private fun restoreResultValue(success: Boolean): String = if (success) "restored" else "failed"
 
         fun forcePro() {
-            // Cycle: NONE -> PRO -> FAMILY -> NONE
+            // Cycle: NONE -> PRO -> FAMILY -> BUSINESS -> NONE
             val next =
                 when (_entitlementLevel.value) {
                     EntitlementLevel.NONE -> EntitlementLevel.PRO
                     EntitlementLevel.PRO -> EntitlementLevel.FAMILY
-                    EntitlementLevel.FAMILY -> EntitlementLevel.NONE
+                    EntitlementLevel.FAMILY -> EntitlementLevel.BUSINESS
+                    EntitlementLevel.BUSINESS -> EntitlementLevel.NONE
                 }
             _entitlementLevel.value = next
             context
@@ -477,7 +495,20 @@ class ProManager
 
         fun canUseAdvancedRules(level: EntitlementLevel = _entitlementLevel.value): Boolean = level.isPro
 
-        fun canUseFamilyProtection(level: EntitlementLevel = _entitlementLevel.value): Boolean = level == EntitlementLevel.FAMILY
+        fun canUseFamilyProtection(level: EntitlementLevel = _entitlementLevel.value): Boolean = 
+            level == EntitlementLevel.FAMILY || level == EntitlementLevel.BUSINESS
+
+        fun canUseAgenticGovernance(level: EntitlementLevel = _entitlementLevel.value): Boolean =
+            level == EntitlementLevel.BUSINESS
+
+        fun recordHighValueAction(actionType: String) {
+            val key = "hva_$actionType"
+            val count = prefs.getInt(key, 0) + 1
+            prefs.edit().putInt(key, count).apply()
+            analyticsService.track("high_value_action_recorded", mapOf("type" to actionType, "count" to count))
+        }
+
+        fun getHighValueActionCount(actionType: String): Int = prefs.getInt("hva_$actionType", 0)
 
         fun unlockProForDebug(entryPoint: String): Boolean {
             if (!canUseDebugUnlock()) {
