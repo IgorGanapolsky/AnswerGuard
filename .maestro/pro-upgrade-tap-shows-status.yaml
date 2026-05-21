@@ -19,7 +19,7 @@ appId: com.igorganapolsky.answerguard
 
 - extendedWaitUntil:
     visible:
-      text: '.*(Google Play|Could not open|Connecting).*'
+      text: '.*(Google Play|Could not open|Connecting|Could not start|Pro upgrade).*'
     timeout: 15000
 
 - assertVisible: 'AnswerGuard Pro'

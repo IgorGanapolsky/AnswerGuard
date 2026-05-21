@@ -13,8 +13,11 @@ appId: com.igorganapolsky.answerguard
 - assertVisible: 'Call Screening'
 - assertVisible: 'AnswerGuard Pro'
 
-- scroll
-- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: 'How it works'
+    direction: DOWN
+    timeout: 20000
 
 - assertVisible: 'How it works'
 - assertVisible:
@@ -24,8 +27,11 @@ appId: com.igorganapolsky.answerguard
 - assertVisible:
     text: '.*Unknown calls are allowed by default.*'
 
-- scroll
-- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: 'Privacy first'
+    direction: DOWN
+    timeout: 20000
 
 - assertVisible: 'Privacy first'
 - assertVisible:
