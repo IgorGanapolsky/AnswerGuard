@@ -23,6 +23,12 @@ appId: com.igorganapolsky.answerguard
       visible: "Wait"
     commands:
       - tapOn: "Wait"
+- runFlow:
+    when:
+      visible:
+        text: ".*Enable testing features.*"
+    commands:
+      - tapOn: "NOT NOW"
 
 - extendedWaitUntil:
     visible: 'Call Screening'
