@@ -1138,28 +1138,47 @@ private fun ActivityRow(
             )
         }
         
+        // Status badge reflects the number's CURRENT protection state so it
+        // always agrees with the action button beside it: a number on the
+        // blocklist reads "Blocked" (paired with "Unblock"); otherwise it
+        // shows the recent call's verdict (paired with "Block"). Status and
+        // action never contradict each other.
         val (label, color) = when {
             isBlocked -> "Blocked" to Color.Red
-            call.verdict == SpamVerdict.BLOCK -> "Blocked" to Color.Red
             call.verdict == SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
             else -> "Allowed" to AnswerGuardColors.Primary
         }
-        
+
         Box(
             modifier = Modifier
                 .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-                .clickable {
-                    if (isBlocked) {
-                        onUnblock()
-                    } else {
-                        onBlock()
-                    }
-                }
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Text(
                 text = label,
                 color = color,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Separate, explicitly labeled blocklist control — distinct from the
+        // status badge so tapping to block/unblock can't be confused with (or
+        // hidden behind) the call outcome.
+        val actionLabel = if (isBlocked) "Unblock" else "Block"
+        val actionColor = if (isBlocked) AnswerGuardColors.Primary else Color.Red
+
+        Box(
+            modifier = Modifier
+                .background(actionColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                .clickable { if (isBlocked) onUnblock() else onBlock() }
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = actionLabel,
+                color = actionColor,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold
             )

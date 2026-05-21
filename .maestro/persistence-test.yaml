@@ -1,6 +1,9 @@
 appId: com.igorganapolsky.answerguard
 ---
 # Persistence smoke: app launches after a clean stop with the same package.
+# Starts with stopApp so the first launch is a guaranteed cold start — the
+# home surface renders at the top and is not left mid-scroll by a prior flow.
+- stopApp
 - launchApp
 - waitForAnimationToEnd
 - assertVisible: 'AnswerGuard'

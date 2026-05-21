@@ -48,7 +48,7 @@ android {
         applicationId = "com.igorganapolsky.answerguard"
         minSdk = 26
         targetSdk = ciTargetSdk ?: 35
-        versionCode = ciVersionCode ?: 1773360000
+        versionCode = ciVersionCode ?: 1779206548
         versionName = "1.2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

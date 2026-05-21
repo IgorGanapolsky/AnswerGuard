@@ -23,6 +23,10 @@ appId: com.igorganapolsky.answerguard
     rightOf:
       text: "1234567890"
 - assertNotVisible: "1234567890"
+# Dismiss the soft keyboard and let the UI settle before tapping Back —
+# tapping during the post-input recomposition intermittently missed the target.
+- hideKeyboard
+- waitForAnimationToEnd
 - tapOn: "Back"
 # Confirm we left the blocklist screen. The home surface can be left
 # mid-scroll, so assert the blocklist screen is gone rather than asserting
