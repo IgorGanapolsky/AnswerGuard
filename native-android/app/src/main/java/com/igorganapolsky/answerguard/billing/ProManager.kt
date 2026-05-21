@@ -72,7 +72,11 @@ class ProManager
         val isElite: StateFlow<Boolean> =
             _entitlementLevel
                 .map { it == EntitlementLevel.FAMILY || it == EntitlementLevel.BUSINESS }
-                .stateIn(externalScope, SharingStarted.Eagerly, _entitlementLevel.value == EntitlementLevel.FAMILY)
+                .stateIn(
+                    externalScope, 
+                    SharingStarted.Eagerly, 
+                    _entitlementLevel.value == EntitlementLevel.FAMILY || _entitlementLevel.value == EntitlementLevel.BUSINESS
+                )
 
         private var billingClient: BillingClient =
             BillingClient
@@ -90,6 +94,9 @@ class ProManager
         private var activeConnection: CompletableDeferred<BillingResult>? = null
 
         private val prefs = context.getSharedPreferences("monetization_prefs", Context.MODE_PRIVATE)
+        
+        private val _hvaCount = MutableStateFlow(prefs.getInt("hva_ai_protection", 0))
+        val hvaCount: StateFlow<Int> = _hvaCount.asStateFlow()
 
         init {
             connectAndRestore()
@@ -505,6 +512,7 @@ class ProManager
             val key = "hva_$actionType"
             val count = prefs.getInt(key, 0) + 1
             prefs.edit().putInt(key, count).apply()
+            _hvaCount.value = count
             analyticsService.track("high_value_action_recorded", mapOf("type" to actionType, "count" to count))
         }
 

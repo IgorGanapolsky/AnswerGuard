@@ -404,6 +404,7 @@ private fun AnswerGuardHome(
     
     val entitlementLevel by proManager.entitlementLevel.collectAsStateWithLifecycle()
     val blockedNumbers by UserBlocklist.blockedNumbers.collectAsStateWithLifecycle()
+    val hvaCount by proManager.hvaCount.collectAsStateWithLifecycle()
     
     val showSnackbar: (String) -> Unit = { msg ->
         snackbarScope.launch {
@@ -539,7 +540,6 @@ private fun AnswerGuardHome(
     }
 
     if (showPaywall) {
-        val hvaCount = proManager.getHighValueActionCount("ai_protection")
         val isFirstTime = hvaCount < 10
         PaywallSheet(
             entryPoint = if (isFirstTime) "dynamic_hva_intro" else "standard_pro",
@@ -557,7 +557,6 @@ private fun AnswerGuardHome(
     }
     
     // Dynamic Micro-Paywall Trigger: After 3 high-value actions
-    val hvaCount by remember(proManager) { derivedStateOf { proManager.getHighValueActionCount("ai_protection") } }
     androidx.compose.runtime.LaunchedEffect(hvaCount) {
         if (hvaCount == 3 && entitlementLevel == EntitlementLevel.NONE) {
             showPaywall = true
@@ -1139,6 +1138,7 @@ private fun ActivityRow(
         
         val (label, color) = when {
             isBlocked -> "Blocked" to Color.Red
+            call.verdict == SpamVerdict.BLOCK -> "Blocked" to Color.Red
             call.verdict == SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
             else -> "Allowed" to AnswerGuardColors.Primary
         }
