@@ -17,6 +17,14 @@ appId: com.igorganapolsky.answerguard
 - tapOn: 'Upgrade'
 - waitForAnimationToEnd
 
+# Now the Paywall Sheet is visible. Tap the "Start Business Plan" button on the sheet
+# to trigger the real billing attempt.
+- extendedWaitUntil:
+    visible: '.*Start Business Plan.*'
+    timeout: 10000
+- tapOn: '.*Start Business Plan.*'
+- waitForAnimationToEnd
+
 - extendedWaitUntil:
     visible:
       text: '.*(Google Play|Could not open|Connecting|Could not start|Pro upgrade).*'
