@@ -23,7 +23,12 @@ FAIL=0
 # CI-safe subset: uses ci-smoke-test (no compact-mode dependency),
 # excludes runScript tests and long-timeout alarm tests.
 for flow in \
-  .maestro/ci-smoke-test.yaml
+  .maestro/ci-smoke-test.yaml \
+  .maestro/home-content-render.yaml \
+  .maestro/deep-link-open-home.yaml \
+  .maestro/pro-upgrade-cancel-returns-home.yaml \
+  .maestro/pro-upgrade-tap-shows-status.yaml \
+  .maestro/pro-restore-no-purchase.yaml
 do
   echo "== Running: $flow =="
   adb shell am force-stop com.igorganapolsky.answerguard 2>/dev/null || true

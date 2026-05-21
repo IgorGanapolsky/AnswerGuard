@@ -8,6 +8,7 @@ appId: com.igorganapolsky.answerguard
 # TODO: needs testTag("pro_restore_button") and testTag("pro_status_message").
 - launchApp:
     clearState: true
+- runFlow: dismiss-popups.yaml
 - extendedWaitUntil:
     visible: 'AnswerGuard Pro'
     timeout: 30000

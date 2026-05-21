@@ -1,0 +1,24 @@
+# Shared sub-flow to dismiss common system dialogs and App Distribution popups.
+- runFlow:
+    when:
+      visible:
+        text: ".*keeps stopping.*"
+    commands:
+      - tapOn: "Close app"
+- runFlow:
+    when:
+      visible:
+        text: ".*isn't responding.*"
+    commands:
+      - tapOn: "Close app"
+- runFlow:
+    when:
+      visible: "Wait"
+    commands:
+      - tapOn: "Wait"
+- runFlow:
+    when:
+      visible:
+        text: ".*Enable testing features.*"
+    commands:
+      - tapOn: "NOT NOW"

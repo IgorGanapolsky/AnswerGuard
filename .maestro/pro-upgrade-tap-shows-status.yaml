@@ -8,6 +8,7 @@ appId: com.igorganapolsky.answerguard
 # TODO: needs testTag("pro_upgrade_button") and testTag("pro_status_message") for stable matching.
 - launchApp:
     clearState: true
+- runFlow: dismiss-popups.yaml
 - extendedWaitUntil:
     visible: 'AnswerGuard Pro'
     timeout: 30000

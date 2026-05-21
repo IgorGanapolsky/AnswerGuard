@@ -5,6 +5,7 @@ appId: com.igorganapolsky.answerguard
 # TODO: needs testTag("home_how_it_works") and testTag("home_privacy_card") for non-text-coupled matching.
 - launchApp:
     clearState: true
+- runFlow: dismiss-popups.yaml
 - extendedWaitUntil:
     visible: 'AnswerGuard'
     timeout: 30000

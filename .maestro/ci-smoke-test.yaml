@@ -5,30 +5,8 @@ appId: com.igorganapolsky.answerguard
     clearState: true
 - waitForAnimationToEnd
 
-# Dismiss common emulator system popups if present
-- runFlow:
-    when:
-      visible:
-        text: ".*keeps stopping.*"
-    commands:
-      - tapOn: "Close app"
-- runFlow:
-    when:
-      visible:
-        text: ".*isn't responding.*"
-    commands:
-      - tapOn: "Close app"
-- runFlow:
-    when:
-      visible: "Wait"
-    commands:
-      - tapOn: "Wait"
-- runFlow:
-    when:
-      visible:
-        text: ".*Enable testing features.*"
-    commands:
-      - tapOn: "NOT NOW"
+# Dismiss common emulator system popups and App Distribution popups if present
+- runFlow: dismiss-popups.yaml
 
 - extendedWaitUntil:
     visible: 'Call Screening'

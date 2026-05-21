@@ -8,6 +8,7 @@ appId: com.igorganapolsky.answerguard
     clearState: true
     arguments:
       deepLink: 'answerguard://open?utm_source=maestro&utm_medium=e2e&utm_campaign=device_tests'
+- runFlow: dismiss-popups.yaml
 
 - extendedWaitUntil:
     visible: 'AnswerGuard'
