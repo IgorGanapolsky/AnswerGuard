@@ -39,6 +39,8 @@ def run(source: Path, appiconset: Path) -> Dict[str, Any]:
         return {"status": "error", "reason": "Contents.json has invalid images list"}
 
     src = Image.open(source).convert("RGBA")
+    if src.width != src.height:
+        return {"status": "error", "reason": f"source icon is not square ({src.width}x{src.height})"}
     written = []
     for image in images:
         if not isinstance(image, dict):

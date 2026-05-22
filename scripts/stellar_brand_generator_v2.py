@@ -149,8 +149,20 @@ if __name__ == "__main__":
     import subprocess
     import sys
     print("🔄 Synchronizing Android launcher mipmaps from new source icon...")
-    subprocess.run([sys.executable, str(script_dir / "sync_android_icon_from_source.py")], check=False)
+    result_android = subprocess.run([sys.executable, str(script_dir / "sync_android_icon_from_source.py")], capture_output=True, text=True)
+    if result_android.returncode != 0:
+        print(f"❌ Android icon sync failed: {result_android.stderr}")
+    else:
+        print(result_android.stdout.strip())
     
-    print("🔄 Synchronizing iOS xcassets AppIcon from new source icon...")
-    subprocess.run([sys.executable, str(script_dir / "sync_ios_icon_from_source.py")], check=False)
+    ios_sync_script = script_dir / "sync_ios_icon_from_source.py"
+    if ios_sync_script.exists():
+        print("🔄 Synchronizing iOS xcassets AppIcon from new source icon...")
+        result_ios = subprocess.run([sys.executable, str(ios_sync_script)], capture_output=True, text=True)
+        if result_ios.returncode != 0:
+            print(f"❌ iOS icon sync failed: {result_ios.stderr}")
+        else:
+            print(result_ios.stdout.strip())
+    else:
+        print("⏭️ Skipping iOS icon sync (script not yet available)")
 

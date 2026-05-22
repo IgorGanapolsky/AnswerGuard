@@ -20,6 +20,11 @@ def run(source: Path, res_dir: Path) -> bool:
         return False
 
     src = Image.open(source).convert("RGBA")
+    if src.width != src.height:
+        print(f"❌ Error: source icon is not square ({src.width}x{src.height})", file=sys.stderr)
+        return False
+    if src.width < 512:
+        print(f"⚠️ Warning: source icon is small ({src.width}x{src.height}), quality may be degraded", file=sys.stderr)
 
     # Standard densities and their target resolutions (in pixels)
     # Legacy: Standard launcher icon size
