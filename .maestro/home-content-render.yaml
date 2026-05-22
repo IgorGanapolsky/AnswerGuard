@@ -1,10 +1,10 @@
 appId: com.igorganapolsky.answerguard
 ---
-# Verify the full home surface renders, not just the top of the StatusCard.
-# Covers HowItWorks steps and PrivacyCard, which existing smoke tests skip.
-# TODO: needs testTag("home_how_it_works") and testTag("home_privacy_card") for non-text-coupled matching.
+# Verify the full settings surface renders.
+# Covers HowItWorks steps and PrivacyCard, which are in the Settings screen.
 - launchApp:
     clearState: true
+- runFlow: dismiss-popups.yaml
 - extendedWaitUntil:
     visible: 'AnswerGuard'
     timeout: 30000
@@ -12,8 +12,18 @@ appId: com.igorganapolsky.answerguard
 - assertVisible: 'Call Screening'
 - assertVisible: 'AnswerGuard Pro'
 
-- scroll
-- waitForAnimationToEnd
+# Navigate to Settings screen
+- tapOn: 'Settings'
+- extendedWaitUntil:
+    visible: 'Settings & Info'
+    timeout: 10000
+- assertVisible: 'Settings & Info'
+
+- scrollUntilVisible:
+    element:
+      text: 'How it works'
+    direction: DOWN
+    timeout: 20000
 
 - assertVisible: 'How it works'
 - assertVisible:
@@ -23,11 +33,22 @@ appId: com.igorganapolsky.answerguard
 - assertVisible:
     text: '.*Unknown calls are allowed by default.*'
 
-- scroll
-- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: 'Privacy first'
+    direction: DOWN
+    timeout: 20000
 
 - assertVisible: 'Privacy first'
 - assertVisible:
     text: '.*does not upload your call history.*'
 - assertVisible:
     text: 'Package: com.igorganapolsky.answerguard'
+
+# Go back to Home
+- tapOn: 'Back'
+- extendedWaitUntil:
+    visible: 'AnswerGuard'
+    timeout: 10000
+- assertVisible: 'AnswerGuard'
+

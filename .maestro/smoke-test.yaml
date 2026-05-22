@@ -1,9 +1,18 @@
 appId: com.igorganapolsky.answerguard
 ---
 # Smoke test: verify AnswerGuard launches to the protection home screen.
+# Asserts only the stable home surface present in BOTH the enabled and
+# not-yet-enabled states. "Enable Call Screening" is intentionally not
+# asserted here — it renders only before the call-screening role is held,
+# so it is not a reliable signal on a configured device.
 - launchApp
 - waitForAnimationToEnd
 - assertVisible: 'AnswerGuard'
 - assertVisible: 'Call Screening'
-- assertVisible: 'Enable Call Screening'
-- assertVisible: 'AnswerGuard Pro'
+# The Pro card sits below the fold once screening is active, so scroll to it
+# rather than asserting it is visible on the initial viewport.
+- scrollUntilVisible:
+    element:
+      text: 'AnswerGuard Pro'
+    direction: DOWN
+    timeout: 20000

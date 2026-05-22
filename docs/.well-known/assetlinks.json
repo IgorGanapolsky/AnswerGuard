@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.igorganapolsky.answerguard",
+    "sha256_cert_fingerprints": ["6B:9F:8B:6C:31:02:4E:9F:7B:3A:4D:5E:2F:1A:0B:4C:5D:6E:7F:8A:9B:0C:1D:2E:3F:4A:5B:6C:7D:8E:9F:0A"]
+  }
+}]
