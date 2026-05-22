@@ -100,8 +100,14 @@ async def run_autonomous_loop():
         os.makedirs(temp_profile_dir, exist_ok=True)
         
         # Exclude locking and socket files to prevent chromium startup conflicts
-        exclude_params = "--exclude='Singleton*' --exclude='*Lock*' --exclude='*LOCK*'"
-        os.system(f"rsync -a {exclude_params} '{selected_profile}/' '{temp_profile_dir}/'")
+        result = subprocess.run([
+            "rsync", "-a",
+            "--exclude=Singleton*", "--exclude=*Lock*", "--exclude=*LOCK*",
+            f"{selected_profile}/", f"{temp_profile_dir}/"
+        ], capture_output=True, text=True)
+        if result.returncode != 0:
+            log(f"❌ rsync failed: {result.stderr}")
+            return
         log("  ✓ Profile copied successfully.")
     except Exception as e:
         log(f"❌ Error copying profile: {e}")
@@ -140,69 +146,70 @@ async def run_autonomous_loop():
     os.system(f"{sys.executable} {script_dir}/stellar_brand_generator_v2.py")
 
     # 5. Connect Playwright to the active authenticated browser session
-    async with async_playwright() as p:
-        log("Connecting Playwright to the active browser instance...")
-        browser = await p.chromium.connect_over_cdp("http://localhost:9222")
-        context = browser.contexts[0]
-        page = await context.new_page()
+    try:
+        async with async_playwright() as p:
+            log("Connecting Playwright to the active browser instance...")
+            browser = await p.chromium.connect_over_cdp("http://localhost:9222")
+            context = browser.contexts[0]
+            page = await context.new_page()
 
-        # Target Console details
-        developer_id = "8239620436488925047"
-        app_id = "4975394319223159909"
-        target_account = "ig5973700@gmail.com"
+            # Target Console details
+            developer_id = "8239620436488925047"
+            app_id = "4975394319223159909"
+            target_account = "ig5973700@gmail.com"
 
-        log(f"Searching for the correct authenticated user index for account {target_account}...")
-        base_url = None
-        for index in range(5):
-            test_url = f"https://play.google.com/console/u/{index}/developers/{developer_id}/app/{app_id}/app-dashboard"
-            try:
-                log(f"  Testing user index {index} at {test_url}...")
-                await page.goto(test_url, wait_until="networkidle", timeout=18000)
-                await asyncio.sleep(2)
+            log(f"Searching for the correct authenticated user index for account {target_account}...")
+            base_url = None
+            for index in range(5):
+                test_url = f"https://play.google.com/console/u/{index}/developers/{developer_id}/app/{app_id}/app-dashboard"
+                try:
+                    log(f"  Testing user index {index} at {test_url}...")
+                    await page.goto(test_url, wait_until="networkidle", timeout=18000)
+                    await asyncio.sleep(2)
 
-                curr_url = page.url
-                if "accounts.google.com" in curr_url:
-                    log(f"  - User index {index} is not logged in.")
-                    continue
+                    curr_url = page.url
+                    if "accounts.google.com" in curr_url:
+                        log(f"  - User index {index} is not logged in.")
+                        continue
 
-                # Check for permission/access issues in visible body text only to avoid false matches in JS/telemetry
-                body_text = await page.evaluate("() => document.body.innerText.toLowerCase()")
-                if "not have access" in body_text or "doesn't have access" in body_text or "permission denied" in body_text:
-                    log(f"  - User index {index} does not have developer console access.")
-                    continue
+                    # Check for permission/access issues in visible body text only to avoid false matches in JS/telemetry
+                    body_text = await page.evaluate("() => document.body.innerText.toLowerCase()")
+                    if "not have access" in body_text or "doesn't have access" in body_text or "permission denied" in body_text:
+                        log(f"  - User index {index} does not have developer console access.")
+                        continue
 
-                if developer_id in curr_url and app_id in curr_url:
-                    base_url = f"https://play.google.com/console/u/{index}/developers/{developer_id}/app/{app_id}"
-                    log(f"  🎯 Successfully resolved index {index} for {target_account}!")
-                    break
-            except Exception as e:
-                log(f"  - Error testing index {index}: {e}")
+                    if developer_id in curr_url and app_id in curr_url:
+                        base_url = f"https://play.google.com/console/u/{index}/developers/{developer_id}/app/{app_id}"
+                        log(f"  🎯 Successfully resolved index {index} for {target_account}!")
+                        break
+                except Exception as e:
+                    log(f"  - Error testing index {index}: {e}")
 
-        if not base_url:
-            log(f"⚠️ Warning: Could not dynamically resolve user index for {target_account}. Defaulting to index 0.")
-            base_url = f"https://play.google.com/console/u/0/developers/{developer_id}/app/{app_id}"
+            if not base_url:
+                log(f"⚠️ Warning: Could not dynamically resolve user index for {target_account}. Defaulting to index 0.")
+                base_url = f"https://play.google.com/console/u/0/developers/{developer_id}/app/{app_id}"
 
-        # Phase 2: Monetization
-        log("Phase 2: Ensuring Revenue Readiness...")
-        await ensure_monetization_skus(page, base_url)
+            # Phase 2: Monetization
+            log("Phase 2: Ensuring Revenue Readiness...")
+            await ensure_monetization_skus(page, base_url)
 
-        # Phase 3: Technical Integrity (Deep Links)
-        log("Phase 3: Resolving Deep Link Blockers...")
-        await fix_deep_link_verification(page, base_url)
+            # Phase 3: Technical Integrity (Deep Links)
+            log("Phase 3: Resolving Deep Link Blockers...")
+            await fix_deep_link_verification(page, base_url)
 
-        # Phase 4: Launch
-        log("Phase 4: Promoting to Production Track...")
-        await promote_to_production(page, base_url)
+            # Phase 4: Launch
+            log("Phase 4: Promoting to Production Track...")
+            await promote_to_production(page, base_url)
 
-        # Clean shutdown of browser
-        log("Closing active Playwright connection...")
-        await browser.close()
-        
-    # Clean shutdown of background browser process
-    log("Terminating browser subprocess...")
-    process.terminate()
-    process.wait()
-    log("  ✓ Subprocess terminated.")
+            # Clean shutdown of browser
+            log("Closing active Playwright connection...")
+            await browser.close()
+    finally:
+        # Clean shutdown of background browser process
+        log("Terminating browser subprocess...")
+        process.terminate()
+        process.wait()
+        log("  ✓ Subprocess terminated.")
 
 if __name__ == "__main__":
     log("STARTING FULL AUTONOMY SEQUENCE...")
