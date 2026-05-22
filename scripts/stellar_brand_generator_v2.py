@@ -143,3 +143,14 @@ if __name__ == "__main__":
             if p.exists(): p.unlink()
 
     generate_release_notes()
+
+    # Platform Launcher Icon Synchronization
+    script_dir = Path(__file__).resolve().parent
+    import subprocess
+    import sys
+    print("🔄 Synchronizing Android launcher mipmaps from new source icon...")
+    subprocess.run([sys.executable, str(script_dir / "sync_android_icon_from_source.py")], check=False)
+    
+    print("🔄 Synchronizing iOS xcassets AppIcon from new source icon...")
+    subprocess.run([sys.executable, str(script_dir / "sync_ios_icon_from_source.py")], check=False)
+
