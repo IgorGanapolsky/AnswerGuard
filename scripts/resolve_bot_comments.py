@@ -9,7 +9,9 @@ BOT_AUTHORS = [
     "trunk-io",
     "gemini-code-assist",
     "sentry",
-    "github-actions"
+    "github-actions",
+    "gitar-bot",
+    "gitar"
 ]
 
 def run_gh_command(args):
