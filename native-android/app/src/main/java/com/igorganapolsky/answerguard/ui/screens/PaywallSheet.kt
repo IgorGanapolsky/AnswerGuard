@@ -160,14 +160,18 @@ fun PaywallSheet(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    FeatureRow(title = "Autonomous AI Agents", desc = "On-device Gemini Nano decodes intent in real-time.")
-                    FeatureRow(title = "Deepfake Voice Defense", desc = "Detect AI-cloned voices with local biometrics.")
-                    FeatureRow(title = "Agentic Governance", desc = "Deterministic guardrails to prevent AI hallucinations.")
-                    FeatureRow(title = "Household Security", desc = "Multi-device coverage for up to 5 family members.")
-                    FeatureRow(title = "B2B Compliance", desc = "Priority data safety updates and professional support.")
+                    FeatureRow(title = "Autonomous AI Agents", desc = "On-device Gemini Nano decodes intent in real-time.", planBadge = "ALL PLANS")
+                    FeatureRow(title = "Deepfake Voice Defense", desc = "Detect AI-cloned voices with local biometrics.", planBadge = "ALL PLANS")
+                    FeatureRow(title = "Household Security", desc = "Multi-device coverage for up to 5 family members.", planBadge = "FAMILY & BUSINESS")
+                    FeatureRow(title = "Agentic Governance", desc = "Deterministic guardrails to prevent AI hallucinations.", planBadge = "BUSINESS ONLY")
+                    FeatureRow(title = "B2B Compliance", desc = "Priority data safety updates and professional support.", planBadge = "BUSINESS ONLY")
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                PlanComparisonCard()
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = PAYWALL_PRICING_FOOTER,
@@ -207,7 +211,7 @@ fun PaywallSheet(
 }
 
 @Composable
-private fun FeatureRow(title: String, desc: String) {
+private fun FeatureRow(title: String, desc: String, planBadge: String? = null) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
@@ -228,17 +232,103 @@ private fun FeatureRow(title: String, desc: String) {
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFF8FAFC)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFF8FAFC)
+                )
+                if (planBadge != null) {
+                    val isBusiness = "BUSINESS" in planBadge.uppercase()
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (isBusiness) Color(0xFF2DD4BF).copy(alpha = 0.15f) else Color(0xFFB6C2CC).copy(alpha = 0.1f),
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = planBadge,
+                            color = if (isBusiness) Color(0xFF2DD4BF) else Color(0xFFB6C2CC),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
             Text(
                 text = desc,
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFFB6C2CC)
             )
+        }
+    }
+}
+
+@Composable
+private fun PlanComparisonCard() {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF111820)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Which plan is right for you?",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFF8FAFC)
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Text("👨‍👩‍👧‍👦", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Family Protection ($29.99/yr)",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFB6C2CC)
+                        )
+                        Text(
+                            text = "Ultimate security for up to 5 household devices. Protect loved ones from deepfake scams and voice cloning.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                }
+                
+                HorizontalDivider(color = Color(0xFF1E293B))
+                
+                Row(verticalAlignment = Alignment.Top) {
+                    Text("💼", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Business Plan ($49.99/yr)",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2DD4BF)
+                        )
+                        Text(
+                            text = "Adds enterprise Agentic Governance and B2B Compliance. Absolute deterministic safety and priority SLAs for professionals.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                }
+            }
         }
     }
 }
