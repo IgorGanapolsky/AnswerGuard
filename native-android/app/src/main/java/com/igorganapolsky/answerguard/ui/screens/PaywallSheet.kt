@@ -43,6 +43,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.igorganapolsky.answerguard.billing.ProManager
 import com.igorganapolsky.answerguard.billing.EntitlementLevel
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.withTimeoutOrNull
+
+internal const val HIDDEN_UNLOCK_HOLD_DURATION_MS = 8_000L
 
 internal const val PAYWALL_HEADLINE = "Upgrade to AI Call Shield"
 internal const val PAYWALL_SUBHEADLINE =
@@ -58,9 +66,11 @@ fun PaywallSheet(
     onPurchase: (String) -> Unit,
     onRestore: () -> Unit,
     onDismiss: () -> Unit,
+    onSecretUnlock: (() -> Unit)? = null,
 ) {
     val scrollState = rememberScrollState()
     val uriHandler = LocalUriHandler.current
+    val haptic = LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -142,7 +152,18 @@ fun PaywallSheet(
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFF8FAFC),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.then(
+                        if (onSecretUnlock != null && ProManager.canUseDebugUnlock()) {
+                            Modifier.holdForHiddenUnlock(
+                                holdDurationMs = HIDDEN_UNLOCK_HOLD_DURATION_MS,
+                                haptic = haptic,
+                                onHoldComplete = onSecretUnlock
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -242,3 +263,37 @@ private fun FeatureRow(title: String, desc: String) {
         }
     }
 }
+
+internal fun Modifier.holdForHiddenUnlock(
+    holdDurationMs: Long,
+    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback,
+    onHoldComplete: () -> Unit,
+): Modifier =
+    pointerInput(holdDurationMs, onHoldComplete) {
+        awaitPointerEventScope {
+            while (true) {
+                awaitFirstDown(requireUnconsumed = false)
+                val success =
+                    withTimeoutOrNull(holdDurationMs) {
+                        var released = false
+                        while (!released) {
+                            val event = awaitPointerEvent()
+                            if (event.changes.any { it.changedToUp() }) {
+                                released = true
+                            }
+                        }
+                        false // Released before timeout
+                    } ?: true
+
+                if (success) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onHoldComplete()
+                    // Wait for the final up event before allowing next hold
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.changes.any { it.changedToUp() }) break
+                    }
+                }
+            }
+        }
+    }
