@@ -772,15 +772,17 @@ private fun ProCard(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             val title = when (entitlementLevel) {
+                EntitlementLevel.BUSINESS -> "AnswerGuard Business"
                 EntitlementLevel.FAMILY -> "AnswerGuard Family"
                 EntitlementLevel.PRO -> "AnswerGuard Pro"
-                else -> "AnswerGuard Pro"
+                EntitlementLevel.NONE -> "AnswerGuard Free"
             }
             
             val description = when (entitlementLevel) {
-                EntitlementLevel.FAMILY -> "Advanced protection active across your devices. Gemini-powered intent analysis enabled."
+                EntitlementLevel.BUSINESS -> "Enterprise-grade call defense active. Agentic governance and deepfake biometrics fully engaged."
+                EntitlementLevel.FAMILY -> "Advanced protection active across your devices. Gemini-powered intent analysis enabled. Upgrade to Business for agentic governance."
                 EntitlementLevel.PRO -> "Premium protection active. Upgrade to Family for voice biometrics and multi-device support."
-                else -> "Unlock advanced spam rules and family protection as they roll out."
+                EntitlementLevel.NONE -> "Basic protection active. Upgrade to unlock advanced spam rules, voice deepfake defense, and household security."
             }
 
             Text(
@@ -795,21 +797,24 @@ private fun ProCard(
                 style = MaterialTheme.typography.bodyMedium,
             )
             
-            if (entitlementLevel != EntitlementLevel.FAMILY) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = onUpgrade,
-                        enabled = !actionInProgress,
-                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
-                        modifier = Modifier.weight(1f).testTag("home_pro_upgrade_button"),
-                    ) {
-                        Text(
-                            text = if (entitlementLevel == EntitlementLevel.PRO) "Upgrade to Family" else "Upgrade",
-                            color = Color(0xFF06211E),
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    if (entitlementLevel == EntitlementLevel.NONE) {
+            val context = LocalContext.current
+            val uriHandler = LocalUriHandler.current
+            
+            when (entitlementLevel) {
+                EntitlementLevel.NONE -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = onUpgrade,
+                            enabled = !actionInProgress,
+                            colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                            modifier = Modifier.weight(1f).testTag("home_pro_upgrade_button"),
+                        ) {
+                            Text(
+                                text = "Upgrade",
+                                color = Color(0xFF06211E),
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                         Button(
                             onClick = onRestore,
                             enabled = !actionInProgress,
@@ -824,23 +829,65 @@ private fun ProCard(
                         }
                     }
                 }
-            } else {
-                // 2026 Policy Requirement: Link to manage subscriptions
-                val context = LocalContext.current
-                val uriHandler = LocalUriHandler.current
-                Button(
-                    onClick = {
-                        val packageName = context.packageName
-                        uriHandler.openUri("https://play.google.com/store/account/subscriptions?package=$packageName")
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Manage Subscription",
-                        color = AnswerGuardColors.TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
+                EntitlementLevel.PRO -> {
+                    Button(
+                        onClick = onUpgrade,
+                        enabled = !actionInProgress,
+                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                        modifier = Modifier.fillMaxWidth().testTag("home_pro_upgrade_button"),
+                    ) {
+                        Text(
+                            text = "Upgrade to Family",
+                            color = Color(0xFF06211E),
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+                EntitlementLevel.FAMILY -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = onUpgrade,
+                            enabled = !actionInProgress,
+                            colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                            modifier = Modifier.weight(1f).testTag("home_pro_upgrade_button"),
+                        ) {
+                            Text(
+                                text = "Upgrade to Business",
+                                color = Color(0xFF06211E),
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                val packageName = context.packageName
+                                uriHandler.openUri("https://play.google.com/store/account/subscriptions?package=$packageName")
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(
+                                text = "Manage",
+                                color = AnswerGuardColors.TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
+                EntitlementLevel.BUSINESS -> {
+                    Button(
+                        onClick = {
+                            val packageName = context.packageName
+                            uriHandler.openUri("https://play.google.com/store/account/subscriptions?package=$packageName")
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = "Manage Subscription",
+                            color = AnswerGuardColors.TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
 
