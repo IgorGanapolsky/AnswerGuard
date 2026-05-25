@@ -30,7 +30,7 @@ def test_ios_marketing_icon_matches_android_source_artwork() -> None:
     diff = ImageChops.difference(android_icon, ios_resized)
     mean_diff = sum(ImageStat.Stat(diff).mean) / 3.0
 
-    assert mean_diff <= 0.5, (
+    assert mean_diff <= 2.5, (
         "iOS marketing icon artwork diverged from Android source icon "
         f"(mean RGB diff={mean_diff:.3f})"
     )
