@@ -153,7 +153,7 @@ final class ProManager: ObservableObject {
 
 #if DEBUG
     func unlockProForDebug() {
-        entitlementLevel = .base
+        entitlementLevel = .elite
         Self.log.notice("Developer override enabled: Pro unlocked via hidden hold gesture")
     }
 #endif

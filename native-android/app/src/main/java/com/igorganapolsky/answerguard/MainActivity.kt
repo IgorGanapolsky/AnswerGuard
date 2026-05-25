@@ -84,6 +84,9 @@ import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.igorganapolsky.answerguard.ui.screens.holdForHiddenUnlock
+import com.igorganapolsky.answerguard.ui.screens.HIDDEN_UNLOCK_HOLD_DURATION_MS
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -552,7 +555,8 @@ private fun AnswerGuardHome(
                 showPaywall = false
                 onRestore()
             },
-            onDismiss = { showPaywall = false }
+            onDismiss = { showPaywall = false },
+            onSecretUnlock = onSecretUnlock
         )
     }
     
@@ -864,6 +868,7 @@ private fun Header(
             verticalAlignment = Alignment.Top
         ) {
             Column(modifier = Modifier.weight(1f)) {
+                val haptic = LocalHapticFeedback.current
                 Text(
                     text = "AnswerGuard",
                     color = AnswerGuardColors.TextPrimary,
@@ -871,11 +876,16 @@ private fun Header(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .testTag("home_title")
-                        .combinedClickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {},
-                            onLongClick = onSecretUnlock
+                        .then(
+                            if (ProManager.canUseDebugUnlock()) {
+                                Modifier.holdForHiddenUnlock(
+                                    holdDurationMs = HIDDEN_UNLOCK_HOLD_DURATION_MS,
+                                    haptic = haptic,
+                                    onHoldComplete = onSecretUnlock
+                                )
+                            } else {
+                                Modifier
+                            }
                         )
                 )
                 Spacer(modifier = Modifier.height(4.dp))
