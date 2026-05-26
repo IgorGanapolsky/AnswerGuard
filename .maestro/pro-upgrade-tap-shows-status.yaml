@@ -9,9 +9,16 @@ appId: com.igorganapolsky.answerguard
 - launchApp:
     clearState: true
 - runFlow: dismiss-popups.yaml
+# Card title varies by tier (Free pre-purchase, Pro/Family/Business after);
+# scroll into view since it sits below the activity list.
 - extendedWaitUntil:
-    visible: 'AnswerGuard Pro'
+    visible: 'AnswerGuard'
     timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: 'AnswerGuard (Free|Pro|Family|Business)'
+    direction: DOWN
+    timeout: 20000
 
 - assertVisible: 'Upgrade'
 - tapOn: 'Upgrade'
@@ -30,5 +37,9 @@ appId: com.igorganapolsky.answerguard
       text: '.*(Google Play|Could not open|Connecting|Could not start|Pro upgrade).*'
     timeout: 15000
 
-- assertVisible: 'AnswerGuard Pro'
+- scrollUntilVisible:
+    element:
+      text: 'AnswerGuard (Free|Pro|Family|Business)'
+    direction: DOWN
+    timeout: 15000
 - assertVisible: 'Upgrade'
