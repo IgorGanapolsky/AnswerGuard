@@ -60,13 +60,19 @@ def generate_stellar_icon():
     img = Image.new("RGBA", (size, size), (0,0,0,0))
     draw = ImageDraw.Draw(img)
     draw.ellipse((20, 20, size-20, size-20), fill=COLORS["DeepNavy"])
+    
+    # Draw glowing highlight ring
+    draw.ellipse((28, 28, size-28, size-28), outline=COLORS["Highlight"] + (25,), width=8)
+    
+    # Draw glass shield
     draw_glass_shield(draw, (size//2, size//2 + 50), size//2 - 100, COLORS["Emerald"])
-    pw, ph = size//10, size//6
-    draw.rounded_rectangle((size//2-pw, size//2-ph, size//2+pw, size//2+ph), radius=30, fill=COLORS["Void"])
-    for i in range(0, 10):
-        x = size//2 - 40 + i*10
-        h = 10 + math.sin(i) * 30
-        draw.line((x, size//2 - h, x, size//2 + h), fill=COLORS["Highlight"], width=4)
+    
+    # Draw bold, high-contrast checkmark badge representing secure, approved protection
+    cx, cy = size // 2, size // 2 + 50
+    pts = [(cx - 90, cy - 10), (cx - 25, cy + 55), (cx + 110, cy - 80)]
+    draw.line(pts, fill=COLORS["Highlight"], width=32, joint="round")
+    for pt in [pts[0], pts[-1]]:
+        draw.ellipse((pt[0] - 16, pt[1] - 16, pt[0] + 16, pt[1] + 16), fill=COLORS["Highlight"])
 
     icon_path = ANDROID_IMAGES / "icon.png"
     icon_path.parent.mkdir(parents=True, exist_ok=True)

@@ -610,6 +610,7 @@ jobs:
           for value in (
               os.environ.get("FIREBASE_INTERNAL_TESTERS", ""),
               os.environ.get("FIREBASE_REQUIRED_TESTER_EMAIL", ""),
+              "iganapolsky@gmail.com",
           ):
               for raw_email in value.split(","):
                   email = raw_email.strip()
