@@ -26,6 +26,7 @@ googleServices = "4.4.2"
 crashlyticsPlugin = "3.0.2"
 media = "1.7.0"
 sentry = "8.41.0"
+robolectric = "4.13"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -69,6 +70,7 @@ firebase-appdistribution = { group = "com.google.firebase", name = "firebase-app
 firebase-appdistribution-api = { group = "com.google.firebase", name = "firebase-appdistribution-api-ktx", version = "16.0.0-beta14" }
 androidx-media = { group = "androidx.media", name = "media", version.ref = "media" }
 sentry = { group = "io.sentry", name = "sentry-android", version.ref = "sentry" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
