@@ -1,8 +1,8 @@
 name: iOS Internal Retry
 
 on:
-  schedule:
-    - cron: "35 */3 * * *"
+  # schedule:
+    # - cron: "35 */3 * * *"
   workflow_dispatch:
 
 permissions:
