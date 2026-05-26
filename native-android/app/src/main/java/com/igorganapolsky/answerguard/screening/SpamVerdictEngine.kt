@@ -35,6 +35,7 @@ object SpamVerdictEngine {
     // Legitimate carrier/voicemail retrieval numbers that should never be silenced or blocked
     private val carrierVoicemailNumbers = setOf(
         "18559975360", // Google Fi Voicemail
+        "18559739613", // Google Fi Voicemail System
         "18056377243", // T-Mobile Voicemail
         "18668223348", // Verizon Voicemail Retrieval
         "18882446245", // AT&T Voicemail Retrieval
