@@ -22,3 +22,8 @@ This file contains foundational mandates for Gemini CLI within the AnswerGuard r
 - **Data Privacy:** Rigorous checks are in place to ensure call screening data and contacts never leave the device.
 - **Platform Parity:** Maintain feature parity between Android and iOS versions (Call Screening, Personal Blocklist, Contact Identification).
 - **Privacy:** Adhere to the policies in `PRIVACY_POLICY.md`.
+
+## GitHub Actions Efficiency & Budget Capping
+
+- **No Idle Scheduled Cron Triggers**: Non-critical background workflows (e.g., wiki sync, posthog dashboards, rating snapshots) must not have automated cron `schedule:` triggers to prevent background resource/budget waste.
+- **Manual and PR-Driven CI Execution**: Automated workflows must utilize `workflow_dispatch` for manual on-demand execution. Keep GitHub Actions active only for PR CI verification gates, security/secrets scans, and explicitly triggered deployments.
