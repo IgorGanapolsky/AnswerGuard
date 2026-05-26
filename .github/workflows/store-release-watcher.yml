@@ -2,7 +2,9 @@ name: Store Release Watcher
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    # Was "*/30 * * * *" (1,440 runs/mo). Store release propagation takes
+    # hours after publish — 30 min polling is overkill. Every 2 hours.
+    - cron: "0 */2 * * *"
   workflow_dispatch:
     inputs:
       version:
