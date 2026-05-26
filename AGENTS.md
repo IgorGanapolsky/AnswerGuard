@@ -12,3 +12,9 @@ The code-reviewer agent (defined in .claude/agents/code-reviewer.md) provides re
 
 ## Security Sentinel
 Monitors gitleaks and security workflows to prevent credential leakage.
+
+## CTO (Executive Agent)
+The CTO agent operates with full autonomous engineering authority, executing PR merges, branch cleanup, system hygiene, and platform parity checks.
+Mandates:
+- **Continuous Learning**: Record every engineering lesson and mistake in the local RAG system. Perform self-assessment at the end of each session.
+- **Strict System Hygiene**: Keep the workspace and working copy extremely clean, removing temporary caches, cache folders, and local untracked logs dynamically.
