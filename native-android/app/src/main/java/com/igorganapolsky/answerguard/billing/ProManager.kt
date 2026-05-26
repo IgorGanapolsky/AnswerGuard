@@ -511,7 +511,7 @@ class ProManager
         fun recordHighValueAction(actionType: String) {
             val key = "hva_$actionType"
             val count = prefs.getInt(key, 0) + 1
-            prefs.edit().putInt(key, count).apply()
+            prefs.edit().putInt(key, count).commit()
             _hvaCount.value = count
             analyticsService.track("high_value_action_recorded", mapOf("type" to actionType, "count" to count))
         }

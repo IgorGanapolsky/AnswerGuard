@@ -778,7 +778,7 @@ private fun ProCard(
                 EntitlementLevel.BUSINESS -> "AnswerGuard Business"
                 EntitlementLevel.FAMILY -> "AnswerGuard Family"
                 EntitlementLevel.PRO -> "AnswerGuard Pro"
-                EntitlementLevel.NONE -> "AnswerGuard Pro"
+                EntitlementLevel.NONE -> "AnswerGuard Free"
             }
             
             val description = when (entitlementLevel) {

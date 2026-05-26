@@ -89,13 +89,13 @@ fun PaywallSheet(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
-                        onClick = { onPurchase(ProManager.BUSINESS_PRODUCT_ID) },
+                        onClick = { onPurchase(ProManager.ELITE_PRODUCT_ID) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2DD4BF)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "Start Business Plan \u2022 $businessPrice",
+                            text = "Family Protection Plan \u2022 $familyPrice",
                             color = Color(0xFF06211E),
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(vertical = 4.dp)
@@ -103,14 +103,14 @@ fun PaywallSheet(
                     }
 
                     androidx.compose.material3.OutlinedButton(
-                        onClick = { onPurchase(ProManager.ELITE_PRODUCT_ID) },
+                        onClick = { onPurchase(ProManager.BUSINESS_PRODUCT_ID) },
                         modifier = Modifier.fillMaxWidth(),
                         border = BorderStroke(1.dp, Color(0xFF2DD4BF).copy(alpha = 0.5f)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2DD4BF)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "Family Protection \u2022 $familyPrice",
+                            text = "Business Shield Plan \u2022 $businessPrice",
                             fontWeight = FontWeight.SemiBold
                         )
                     }
