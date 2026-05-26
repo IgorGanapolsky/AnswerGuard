@@ -1277,6 +1277,25 @@ private fun RecentActivityCard(
     }
 }
 
+private fun formatPhoneNumber(number: String): String {
+    val digits = number.filter { it.isDigit() }
+    return when {
+        digits.length == 11 && digits.startsWith("1") -> {
+            "+1 (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}"
+        }
+        digits.length == 10 -> {
+            "(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
+        }
+        else -> {
+            if (number.startsWith("+") && digits.length == 11) {
+                "+1 (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}"
+            } else {
+                number
+            }
+        }
+    }
+}
+
 @Composable
 private fun ActivityRow(
     call: ScreenedCall,
@@ -1289,15 +1308,17 @@ private fun ActivityRow(
     onUnblock: () -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f)) {
             val carrier = CarrierResolver.resolve(call.number)
-            val carrierSuffix = if (carrier != null) " • $carrier" else ""
             val isSms = call.callType == "SMS"
             val typePrefix = if (isSms) "SMS: " else ""
+            val formattedNumber = formatPhoneNumber(call.number)
 
             if (isPro && call.senderName != null) {
                 Text(
@@ -1306,40 +1327,39 @@ private fun ActivityRow(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
+                val carrierText = if (carrier != null) " • $carrier" else ""
                 Text(
-                    text = "${call.number}$carrierSuffix",
+                    text = "$formattedNumber$carrierText",
                     color = AnswerGuardColors.TextSecondary,
                     style = MaterialTheme.typography.labelSmall
                 )
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "$typePrefix${call.number}",
-                        color = AnswerGuardColors.TextPrimary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    if (carrier != null) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "($carrier)",
-                            color = AnswerGuardColors.TextSecondary,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                }
+                Text(
+                    text = "$typePrefix$formattedNumber",
+                    color = AnswerGuardColors.TextPrimary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(call.timestamp))
             val eventTypeLabel = if (isSms) "Received" else "Called"
             val historyText = "$eventTypeLabel $totalCalls time${if (totalCalls > 1) "s" else ""} ($blockedCalls blocked, $allowedCalls allowed)"
+            
+            // Prepend carrier to metadata sub-line for non-Pro/non-name calls
+            val carrierPrefix = if (!isPro || call.senderName == null) {
+                if (carrier != null) "$carrier \u2022 " else ""
+            } else ""
+
             Text(
-                text = "$time \u2022 $historyText",
+                text = "$time \u2022 $carrierPrefix$historyText",
                 color = AnswerGuardColors.TextSecondary,
                 style = MaterialTheme.typography.labelSmall
             )
         }
         
+        Spacer(modifier = Modifier.width(12.dp))
+
         val (label, color) = when {
             isBlocked -> "Blocked" to Color.Red
             call.verdict == SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
@@ -1348,8 +1368,8 @@ private fun ActivityRow(
 
         Box(
             modifier = Modifier
-                .background(color.copy(alpha = 0.1f), RoundedCornerShape(4.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .background(color.copy(alpha = 0.1f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
             Text(
                 text = label,
@@ -1366,9 +1386,9 @@ private fun ActivityRow(
 
         Box(
             modifier = Modifier
-                .background(actionColor.copy(alpha = 0.12f), RoundedCornerShape(4.dp))
+                .background(actionColor.copy(alpha = 0.12f), RoundedCornerShape(6.dp))
                 .clickable { if (isBlocked) onUnblock() else onBlock() }
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {
             Text(
                 text = actionLabel,
