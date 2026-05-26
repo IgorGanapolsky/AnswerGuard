@@ -49,7 +49,12 @@ object SpamVerdictEngine {
         }
 
         // 0. Explicit carrier voicemail allowlist (prevents silencing system voicemail services)
-        if (carrierVoicemailNumbers.contains(digits)) {
+        val normalized = if (digits.startsWith("1") && digits.length > 1) digits.substring(1) else digits
+        val isVoicemail = carrierVoicemailNumbers.any { voicemailNum ->
+            val normVoicemail = if (voicemailNum.startsWith("1") && voicemailNum.length > 1) voicemailNum.substring(1) else voicemailNum
+            normVoicemail == normalized
+        }
+        if (isVoicemail) {
             Log.d(tag, "$digits is a legitimate carrier voicemail number — allowing")
             return SpamVerdict.ALLOW
         }

@@ -6,9 +6,9 @@ package com.igorganapolsky.answerguard.screening
  */
 object CarrierResolver {
 
-    fun resolve(number: String): String {
+    fun resolve(number: String): String? {
         val digits = number.filter { it.isDigit() }
-        if (digits.isEmpty()) return "Unknown Carrier"
+        if (digits.isEmpty()) return null
 
         // 1. Check known voicemail / service numbers first
         return when {
@@ -19,19 +19,9 @@ object CarrierResolver {
             digits.endsWith("19544483475") || digits.endsWith("9544483475") -> "AT&T"
             digits.endsWith("14082560351") || digits.endsWith("4082560351") -> "Verizon"
             digits.endsWith("18884021096") || digits.endsWith("8884021096") -> "AT&T"
-            digits.endsWith("9544940469") -> "T-Mobile"
             digits.endsWith("19544940469") || digits.endsWith("9544940469") -> "T-Mobile"
             digits.endsWith("18706888127") || digits.endsWith("8706888127") -> "Verizon"
-            else -> {
-                // Heuristic local fallback based on final digit to keep it realistic
-                val lastDigit = digits.lastOrNull()?.digitToIntOrNull() ?: 0
-                when (lastDigit % 4) {
-                    0 -> "Verizon"
-                    1 -> "T-Mobile"
-                    2 -> "AT&T"
-                    else -> "Google Fi"
-                }
-            }
+            else -> null
         }
     }
 }

@@ -17,11 +17,7 @@ object CallerIdDatabase {
         "18668223348" to "Verizon Voicemail Retrieval",
         "18882446245" to "AT&T Voicemail Retrieval",
         "19544483475" to "ABC Puerto Rico",
-        "18706888127" to "Unsubscribe Campaign",
-        "14082560351" to "Spam Telemarketer",
-        "18884021096" to "Scam Likely",
-        "9544940469" to "Potential Spam",
-        "19544940469" to "Potential Spam"
+        "18706888127" to "Unsubscribe Campaign"
     )
 
     fun identify(number: String): String? {
