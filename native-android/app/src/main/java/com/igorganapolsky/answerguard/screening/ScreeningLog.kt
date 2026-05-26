@@ -8,13 +8,17 @@ import org.json.JSONObject
 data class ScreenedCall(
     val number: String,
     val verdict: SpamVerdict,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val callType: String = "CALL", // "CALL" or "SMS"
+    val senderName: String? = null // Identified caller/sender name
 ) {
     fun toJson(): String {
         return JSONObject().apply {
             put("number", number)
             put("verdict", verdict.name)
             put("timestamp", timestamp)
+            put("callType", callType)
+            put("senderName", senderName ?: "")
         }.toString()
     }
 
@@ -24,7 +28,9 @@ data class ScreenedCall(
             return ScreenedCall(
                 number = obj.getString("number"),
                 verdict = SpamVerdict.valueOf(obj.getString("verdict")),
-                timestamp = obj.getLong("timestamp")
+                timestamp = obj.getLong("timestamp"),
+                callType = obj.optString("callType", "CALL"),
+                senderName = obj.optString("senderName", "").takeIf { it.isNotEmpty() }
             )
         }
     }
@@ -65,6 +71,7 @@ object ScreeningLog {
     private fun save(calls: List<ScreenedCall>) {
         val arr = JSONArray()
         calls.forEach { arr.put(it.toJson()) }
-        prefs?.edit { putString(KEY_LOG, arr.toString()) }
+        prefs?.edit(commit = true) { putString(KEY_LOG, arr.toString()) }
     }
 }
+

@@ -43,10 +43,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.igorganapolsky.answerguard.billing.ProManager
 import com.igorganapolsky.answerguard.billing.EntitlementLevel
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import kotlinx.coroutines.withTimeoutOrNull
+
+internal const val HIDDEN_UNLOCK_HOLD_DURATION_MS = 8_000L
 
 internal const val PAYWALL_HEADLINE = "Upgrade to AI Call Shield"
 internal const val PAYWALL_SUBHEADLINE =
-    "Unlock on-device autonomous intent analysis, voice deepfake defense, and perfectly reliable agentic governance."
+    "Unlock on-device AI intent analysis, voice deepfake defense, and strict consumer and business-grade scam shielding."
 internal const val PAYWALL_PRICING_FOOTER = "Cancel anytime. Subscription auto-renews until cancelled."
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -58,9 +66,11 @@ fun PaywallSheet(
     onPurchase: (String) -> Unit,
     onRestore: () -> Unit,
     onDismiss: () -> Unit,
+    onSecretUnlock: (() -> Unit)? = null,
 ) {
     val scrollState = rememberScrollState()
     val uriHandler = LocalUriHandler.current
+    val haptic = LocalHapticFeedback.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -79,13 +89,13 @@ fun PaywallSheet(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Button(
-                        onClick = { onPurchase(ProManager.BUSINESS_PRODUCT_ID) },
+                        onClick = { onPurchase(ProManager.ELITE_PRODUCT_ID) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2DD4BF)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "Start Business Plan \u2022 $businessPrice",
+                            text = "Family Protection Plan \u2022 $familyPrice",
                             color = Color(0xFF06211E),
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(vertical = 4.dp)
@@ -93,14 +103,14 @@ fun PaywallSheet(
                     }
 
                     androidx.compose.material3.OutlinedButton(
-                        onClick = { onPurchase(ProManager.ELITE_PRODUCT_ID) },
+                        onClick = { onPurchase(ProManager.BUSINESS_PRODUCT_ID) },
                         modifier = Modifier.fillMaxWidth(),
                         border = BorderStroke(1.dp, Color(0xFF2DD4BF).copy(alpha = 0.5f)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2DD4BF)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "Family Protection \u2022 $familyPrice",
+                            text = "Business Shield Plan \u2022 $businessPrice",
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -142,7 +152,18 @@ fun PaywallSheet(
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFF8FAFC),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.then(
+                        if (onSecretUnlock != null && ProManager.canUseDebugUnlock()) {
+                            Modifier.holdForHiddenUnlock(
+                                holdDurationMs = HIDDEN_UNLOCK_HOLD_DURATION_MS,
+                                haptic = haptic,
+                                onHoldComplete = onSecretUnlock
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -160,14 +181,18 @@ fun PaywallSheet(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    FeatureRow(title = "Autonomous AI Agents", desc = "On-device Gemini Nano decodes intent in real-time.")
-                    FeatureRow(title = "Deepfake Voice Defense", desc = "Detect AI-cloned voices with local biometrics.")
-                    FeatureRow(title = "Agentic Governance", desc = "Deterministic guardrails to prevent AI hallucinations.")
-                    FeatureRow(title = "Household Security", desc = "Multi-device coverage for up to 5 family members.")
-                    FeatureRow(title = "B2B Compliance", desc = "Priority data safety updates and professional support.")
+                    FeatureRow(title = "Autonomous AI Agents", desc = "On-device Gemini Nano decodes intent in real-time.", planBadge = "ALL PLANS")
+                    FeatureRow(title = "Deepfake Voice Defense", desc = "Detect AI-cloned voices with local biometrics.", planBadge = "ALL PLANS")
+                    FeatureRow(title = "Household Security", desc = "Multi-device coverage for up to 5 family members.", planBadge = "FAMILY & BUSINESS")
+                    FeatureRow(title = "Strict Scam Defense", desc = "100% reliable call analysis with zero false positives.", planBadge = "BUSINESS ONLY")
+                    FeatureRow(title = "B2B Compliance", desc = "Priority data safety updates and professional support.", planBadge = "BUSINESS ONLY")
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                PlanComparisonCard()
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = PAYWALL_PRICING_FOOTER,
@@ -207,7 +232,7 @@ fun PaywallSheet(
 }
 
 @Composable
-private fun FeatureRow(title: String, desc: String) {
+private fun FeatureRow(title: String, desc: String, planBadge: String? = null) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
@@ -228,12 +253,35 @@ private fun FeatureRow(title: String, desc: String) {
         }
         Spacer(modifier = Modifier.width(12.dp))
         Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFF8FAFC)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFF8FAFC)
+                )
+                if (planBadge != null) {
+                    val isBusiness = "BUSINESS" in planBadge.uppercase()
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (isBusiness) Color(0xFF2DD4BF).copy(alpha = 0.15f) else Color(0xFFB6C2CC).copy(alpha = 0.1f),
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = planBadge,
+                            color = if (isBusiness) Color(0xFF2DD4BF) else Color(0xFFB6C2CC),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
             Text(
                 text = desc,
                 style = MaterialTheme.typography.bodySmall,
@@ -242,3 +290,100 @@ private fun FeatureRow(title: String, desc: String) {
         }
     }
 }
+
+@Composable
+private fun PlanComparisonCard() {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF111820)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Which plan is right for you?",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFF8FAFC)
+            )
+            
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Text("👨‍👩‍👧‍👦", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Family Protection ($29.99/yr)",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFB6C2CC)
+                        )
+                        Text(
+                            text = "Ultimate security for up to 5 household devices. Protect loved ones from deepfake scams and voice cloning.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                }
+                
+                HorizontalDivider(color = Color(0xFF1E293B))
+                
+                Row(verticalAlignment = Alignment.Top) {
+                    Text("💼", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Business Plan ($49.99/yr)",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2DD4BF)
+                        )
+                        Text(
+                            text = "Adds strict scam defense and B2B Compliance. Professional-grade call filtering and priority support for business owners.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+internal fun Modifier.holdForHiddenUnlock(
+    holdDurationMs: Long,
+    haptic: androidx.compose.ui.hapticfeedback.HapticFeedback,
+    onHoldComplete: () -> Unit,
+): Modifier =
+    pointerInput(holdDurationMs, onHoldComplete) {
+        awaitPointerEventScope {
+            while (true) {
+                awaitFirstDown(requireUnconsumed = false)
+                val success =
+                    withTimeoutOrNull(holdDurationMs) {
+                        var released = false
+                        while (!released) {
+                            val event = awaitPointerEvent()
+                            if (event.changes.any { it.changedToUp() }) {
+                                released = true
+                            }
+                        }
+                        false // Released before timeout
+                    } ?: true
+
+                if (success) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onHoldComplete()
+                    // Wait for the final up event before allowing next hold
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.changes.any { it.changedToUp() }) break
+                    }
+                }
+            }
+        }
+    }

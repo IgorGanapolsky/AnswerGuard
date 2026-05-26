@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.igorganapolsky.answerguard",
-    "sha256_cert_fingerprints": ["6B:9F:8B:6C:31:02:4E:9F:7B:3A:4D:5E:2F:1A:0B:4C:5D:6E:7F:8A:9B:0C:1D:2E:3F:4A:5B:6C:7D:8E:9F:0A"]
+    "sha256_cert_fingerprints": ["26:4C:0C:8E:36:13:DE:F2:A1:41:CB:56:80:A4:8F:6E:1F:93:BF:C1:6B:05:A1:3E:DD:75:7E:9C:F4:C6:66:97"]
   }
 }]
