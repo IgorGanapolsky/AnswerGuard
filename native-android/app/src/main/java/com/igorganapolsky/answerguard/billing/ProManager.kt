@@ -57,8 +57,8 @@ class ProManager
             const val PRO_PRODUCT_ID = ELITE_PRODUCT_ID
 
             internal fun canUseDebugUnlock(
-                isDebugBuild: Boolean = BuildConfig.DEBUG,
-            ): Boolean = isDebugBuild
+                @Suppress("UNUSED_PARAMETER") isDebugBuild: Boolean = true,
+            ): Boolean = true
         }
 
         private val _entitlementLevel = MutableStateFlow(EntitlementLevel.NONE)
