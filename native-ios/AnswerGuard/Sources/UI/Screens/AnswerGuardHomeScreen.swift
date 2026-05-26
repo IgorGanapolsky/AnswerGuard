@@ -40,9 +40,19 @@ struct AnswerGuardHomeScreen: View {
             Image(systemName: "phone.badge.checkmark")
                 .font(.system(size: 64))
                 .foregroundStyle(.tint)
+#if DEBUG
+                .onLongPressGesture(minimumDuration: 8.0) {
+                    ProManager.shared.unlockProForDebug()
+                }
+#endif
             Text("Spam & Scam Call Protection")
                 .font(.title2.bold())
                 .multilineTextAlignment(.center)
+#if DEBUG
+                .onLongPressGesture(minimumDuration: 8.0) {
+                    ProManager.shared.unlockProForDebug()
+                }
+#endif
             Text("Identify and block unwanted callers before your phone rings.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

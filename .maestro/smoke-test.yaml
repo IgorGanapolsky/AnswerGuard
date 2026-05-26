@@ -9,10 +9,11 @@ appId: com.igorganapolsky.answerguard
 - waitForAnimationToEnd
 - assertVisible: 'AnswerGuard'
 - assertVisible: 'Call Screening'
-# The Pro card sits below the fold once screening is active, so scroll to it
-# rather than asserting it is visible on the initial viewport.
+# The subscription card sits below the fold once screening is active. Its title
+# varies by entitlement (Free pre-purchase; Pro/Family/Business once entitled),
+# so match any tier rather than hard-coding one.
 - scrollUntilVisible:
     element:
-      text: 'AnswerGuard Pro'
+      text: 'AnswerGuard (Free|Pro|Family|Business)'
     direction: DOWN
     timeout: 20000

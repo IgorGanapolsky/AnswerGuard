@@ -9,9 +9,17 @@ appId: com.igorganapolsky.answerguard
 - launchApp:
     clearState: true
 - runFlow: dismiss-popups.yaml
+# The subscription card title is "AnswerGuard Free" pre-purchase (CI default)
+# and "AnswerGuard Pro/Family/Business" once entitled. Match either, and scroll
+# to it since it sits below the activity list.
 - extendedWaitUntil:
-    visible: 'AnswerGuard Pro'
+    visible: 'AnswerGuard'
     timeout: 30000
+- scrollUntilVisible:
+    element:
+      text: 'AnswerGuard (Free|Pro|Family|Business)'
+    direction: DOWN
+    timeout: 20000
 
 - assertVisible: 'Restore'
 - tapOn: 'Restore'
