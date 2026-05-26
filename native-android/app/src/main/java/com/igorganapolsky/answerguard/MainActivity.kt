@@ -1155,9 +1155,17 @@ private fun RecentActivityCard(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     calls.take(5).forEach { call ->
                         val digits = call.number.filter { it.isDigit() }
+                        val historyForNumber = calls.filter { it.number.filter { c -> c.isDigit() } == digits }
+                        val totalCalls = historyForNumber.size
+                        val blockedCalls = historyForNumber.count { it.verdict == com.igorganapolsky.answerguard.screening.SpamVerdict.BLOCK || it.verdict == com.igorganapolsky.answerguard.screening.SpamVerdict.SILENCE || blockedNumbers.contains(digits) }
+                        val allowedCalls = totalCalls - blockedCalls
+                        
                         ActivityRow(
                             call = call,
                             isBlocked = blockedNumbers.contains(digits),
+                            totalCalls = totalCalls,
+                            blockedCalls = blockedCalls,
+                            allowedCalls = allowedCalls,
                             onBlock = { onBlock(call.number) },
                             onUnblock = { onUnblock(call.number) }
                         )
@@ -1172,6 +1180,9 @@ private fun RecentActivityCard(
 private fun ActivityRow(
     call: ScreenedCall,
     isBlocked: Boolean,
+    totalCalls: Int,
+    blockedCalls: Int,
+    allowedCalls: Int,
     onBlock: () -> Unit,
     onUnblock: () -> Unit,
 ) {
@@ -1188,8 +1199,9 @@ private fun ActivityRow(
                 fontWeight = FontWeight.Medium
             )
             val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(call.timestamp))
+            val historyText = "Called $totalCalls time${if (totalCalls > 1) "s" else ""} ($blockedCalls blocked, $allowedCalls allowed)"
             Text(
-                text = time,
+                text = "$time \u2022 $historyText",
                 color = AnswerGuardColors.TextSecondary,
                 style = MaterialTheme.typography.labelSmall
             )
