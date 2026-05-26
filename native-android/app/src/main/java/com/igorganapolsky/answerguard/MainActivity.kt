@@ -76,6 +76,8 @@ import com.igorganapolsky.answerguard.screening.ScreenedCall
 import com.igorganapolsky.answerguard.screening.ScreeningLog
 import com.igorganapolsky.answerguard.screening.SpamVerdict
 import com.igorganapolsky.answerguard.screening.UserBlocklist
+import com.igorganapolsky.answerguard.screening.CarrierResolver
+import com.igorganapolsky.answerguard.screening.CallerIdDatabase
 import com.igorganapolsky.answerguard.ui.screens.PaywallSheet
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.igorganapolsky.answerguard.screening.PauseState
@@ -489,6 +491,7 @@ private fun AnswerGuardHome(
                             RecentActivityCard(
                                 calls = recentCalls,
                                 blockedNumbers = blockedNumbers,
+                                isPro = entitlementLevel.isPro,
                                 onBlock = { 
                                     onBlockNumber(it)
                                     proManager.recordHighValueAction("ai_protection")
@@ -1126,6 +1129,7 @@ private fun Step(number: String, text: String) {
 private fun RecentActivityCard(
     calls: List<ScreenedCall>,
     blockedNumbers: Set<String>,
+    isPro: Boolean,
     onBlock: (String) -> Unit,
     onUnblock: (String) -> Unit,
 ) {
@@ -1153,7 +1157,8 @@ private fun RecentActivityCard(
                 )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    calls.take(5).forEach { call ->
+                    val uniqueCalls = calls.distinctBy { it.number.filter { c -> c.isDigit() } }
+                    uniqueCalls.take(5).forEach { call ->
                         val digits = call.number.filter { it.isDigit() }
                         val historyForNumber = calls.filter { it.number.filter { c -> c.isDigit() } == digits }
                         val totalCalls = historyForNumber.size
@@ -1163,6 +1168,7 @@ private fun RecentActivityCard(
                         ActivityRow(
                             call = call,
                             isBlocked = blockedNumbers.contains(digits),
+                            isPro = isPro,
                             totalCalls = totalCalls,
                             blockedCalls = blockedCalls,
                             allowedCalls = allowedCalls,
@@ -1180,6 +1186,7 @@ private fun RecentActivityCard(
 private fun ActivityRow(
     call: ScreenedCall,
     isBlocked: Boolean,
+    isPro: Boolean,
     totalCalls: Int,
     blockedCalls: Int,
     allowedCalls: Int,
@@ -1192,14 +1199,43 @@ private fun ActivityRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = call.number,
-                color = AnswerGuardColors.TextPrimary,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
+            val carrier = CarrierResolver.resolve(call.number)
+            val carrierSuffix = " • $carrier"
+            val isSms = call.callType == "SMS"
+            val typePrefix = if (isSms) "SMS: " else ""
+
+            if (isPro && call.senderName != null) {
+                Text(
+                    text = "$typePrefix${call.senderName}",
+                    color = AnswerGuardColors.TextPrimary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${call.number}$carrierSuffix",
+                    color = AnswerGuardColors.TextSecondary,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "$typePrefix${call.number}",
+                        color = AnswerGuardColors.TextPrimary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "($carrier)",
+                        color = AnswerGuardColors.TextSecondary,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            }
+
             val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(call.timestamp))
-            val historyText = "Called $totalCalls time${if (totalCalls > 1) "s" else ""} ($blockedCalls blocked, $allowedCalls allowed)"
+            val eventTypeLabel = if (isSms) "Received" else "Called"
+            val historyText = "$eventTypeLabel $totalCalls time${if (totalCalls > 1) "s" else ""} ($blockedCalls blocked, $allowedCalls allowed)"
             Text(
                 text = "$time \u2022 $historyText",
                 color = AnswerGuardColors.TextSecondary,
@@ -1207,11 +1243,6 @@ private fun ActivityRow(
             )
         }
         
-        // Status badge reflects the number's CURRENT protection state so it
-        // always agrees with the action button beside it: a number on the
-        // blocklist reads "Blocked" (paired with "Unblock"); otherwise it
-        // shows the recent call's verdict (paired with "Block"). Status and
-        // action never contradict each other.
         val (label, color) = when {
             isBlocked -> "Blocked" to Color.Red
             call.verdict == SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
@@ -1233,9 +1264,6 @@ private fun ActivityRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Separate, explicitly labeled blocklist control — distinct from the
-        // status badge so tapping to block/unblock can't be confused with (or
-        // hidden behind) the call outcome.
         val actionLabel = if (isBlocked) "Unblock" else "Block"
         val actionColor = if (isBlocked) AnswerGuardColors.Primary else Color.Red
 

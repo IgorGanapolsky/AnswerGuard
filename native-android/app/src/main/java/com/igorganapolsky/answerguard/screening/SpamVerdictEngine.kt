@@ -32,12 +32,26 @@ object SpamVerdictEngine {
         Regex("""^(\+?1)?900\d+$"""),                          // 900 premium
     )
 
+    // Legitimate carrier/voicemail retrieval numbers that should never be silenced or blocked
+    private val carrierVoicemailNumbers = setOf(
+        "18559975360", // Google Fi Voicemail
+        "18056377243", // T-Mobile Voicemail
+        "18668223348", // Verizon Voicemail Retrieval
+        "18882446245", // AT&T Voicemail Retrieval
+    )
+
     fun evaluate(context: android.content.Context, rawNumber: String): SpamVerdict {
         val digits = rawNumber.filter { it.isDigit() }
 
         if (digits.isBlank()) {
             Log.w(tag, "Unknown/private number — silencing")
             return SpamVerdict.SILENCE
+        }
+
+        // 0. Explicit carrier voicemail allowlist (prevents silencing system voicemail services)
+        if (carrierVoicemailNumbers.contains(digits)) {
+            Log.d(tag, "$digits is a legitimate carrier voicemail number — allowing")
+            return SpamVerdict.ALLOW
         }
 
         // 1. User contacts (Requires READ_CONTACTS)
