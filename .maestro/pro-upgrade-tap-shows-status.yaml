@@ -24,12 +24,14 @@ appId: com.igorganapolsky.answerguard
 - tapOn: 'Upgrade'
 - waitForAnimationToEnd
 
-# Now the Paywall Sheet is visible. Tap the "Start Business Plan" button on the sheet
-# to trigger the real billing attempt.
+# Now the Paywall Sheet is visible. Tap the Business Shield plan CTA on the
+# sheet to trigger the real billing attempt. The button label was renamed
+# from "Start Business Plan" to "Business Shield Plan • $price" in the May
+# 2026 paywall redesign — match the new label with a permissive regex.
 - extendedWaitUntil:
-    visible: '.*Start Business Plan.*'
+    visible: '.*Business Shield Plan.*'
     timeout: 10000
-- tapOn: '.*Start Business Plan.*'
+- tapOn: '.*Business Shield Plan.*'
 - waitForAnimationToEnd
 
 - extendedWaitUntil:
