@@ -1228,6 +1228,22 @@ private fun RecentActivityCard(
     onBlock: (String) -> Unit,
     onUnblock: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    // Android only invokes our CallScreeningService when a call actually rings.
+    // With DND silencing calls, the OS / carrier can route incoming calls
+    // straight to voicemail without firing onScreenCall — those calls never
+    // reach our log. Surface that to the user when DND is on so they don't
+    // think activity is missing or pull-to-refresh is broken.
+    val dndOn = remember(calls) {
+        runCatching {
+            val nm = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE)
+                as? android.app.NotificationManager
+            nm?.currentInterruptionFilter?.let {
+                it != android.app.NotificationManager.INTERRUPTION_FILTER_ALL &&
+                    it != android.app.NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+            } ?: false
+        }.getOrDefault(false)
+    }
     Card(
         colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
         shape = RoundedCornerShape(8.dp),
@@ -1243,7 +1259,18 @@ private fun RecentActivityCard(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
-            
+
+            if (dndOn) {
+                Text(
+                    text = "Do Not Disturb is on. Calls your carrier sends " +
+                        "straight to voicemail won't appear here — they bypass " +
+                        "Android's call-screening hook entirely.",
+                    color = AnswerGuardColors.Warning,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.testTag("recent_activity_dnd_hint"),
+                )
+            }
+
             if (calls.isEmpty()) {
                 Text(
                     text = "No calls screened yet. Blocked or suspicious calls will appear here.",
