@@ -76,6 +76,8 @@ import com.igorganapolsky.answerguard.screening.ScreenedCall
 import com.igorganapolsky.answerguard.screening.ScreeningLog
 import com.igorganapolsky.answerguard.screening.SpamVerdict
 import com.igorganapolsky.answerguard.screening.UserBlocklist
+import com.igorganapolsky.answerguard.screening.CarrierResolver
+import com.igorganapolsky.answerguard.screening.CallerIdDatabase
 import com.igorganapolsky.answerguard.ui.screens.PaywallSheet
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.igorganapolsky.answerguard.screening.PauseState
@@ -97,6 +99,7 @@ class MainActivity : ComponentActivity() {
     private var callScreeningEnabled by mutableStateOf(false)
     private var screeningPaused by mutableStateOf(false)
     private var contactsPermissionGranted by mutableStateOf(false)
+    private var smsPermissionGranted by mutableStateOf(false)
     private var recentCalls by mutableStateOf<List<ScreenedCall>>(emptyList())
     private var proActionInProgress by mutableStateOf(false)
     private var proStatusMessage by mutableStateOf<String?>(null)
@@ -131,6 +134,17 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    private val smsPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            smsPermissionGranted = isGranted
+            if (isGranted) {
+                analyticsService.track("sms_permission_granted")
+                emitFeedback("SMS access granted")
+            } else {
+                emitFeedback("SMS access denied - enable it in Settings")
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -154,10 +168,12 @@ class MainActivity : ComponentActivity() {
                         callScreeningEnabled = callScreeningEnabled,
                         screeningPaused = screeningPaused,
                         contactsPermissionGranted = contactsPermissionGranted,
+                        smsPermissionGranted = smsPermissionGranted,
                         onEnable = ::requestCallScreeningRole,
                         onTogglePause = ::togglePause,
                         onSwitchApp = { showDisableInstruction = true },
                         onEnableContacts = ::requestContactsPermission,
+                        onEnableSms = ::requestSmsPermission,
                         onUpgrade = ::launchProPurchase,
                         onRestore = ::restorePurchases,
                         recentCalls = recentCalls,
@@ -232,6 +248,10 @@ class MainActivity : ComponentActivity() {
             androidx.core.content.ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.READ_CONTACTS
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        smsPermissionGranted =
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.RECEIVE_SMS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         recentCalls = ScreeningLog.getRecent()
     }
 
@@ -252,6 +272,10 @@ class MainActivity : ComponentActivity() {
 
     private fun requestContactsPermission() {
         contactsPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+    }
+
+    private fun requestSmsPermission() {
+        smsPermissionLauncher.launch(android.Manifest.permission.RECEIVE_SMS)
     }
 
     private fun requestDisableCallScreening() {
@@ -380,10 +404,12 @@ private fun AnswerGuardHome(
     callScreeningEnabled: Boolean,
     screeningPaused: Boolean,
     contactsPermissionGranted: Boolean,
+    smsPermissionGranted: Boolean,
     onEnable: () -> Unit,
     onTogglePause: () -> Unit,
     onSwitchApp: () -> Unit,
     onEnableContacts: () -> Unit,
+    onEnableSms: () -> Unit,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
     recentCalls: List<ScreenedCall>,
@@ -404,6 +430,8 @@ private fun AnswerGuardHome(
     var showPaywall by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
+    
+    var isRefreshing by remember { mutableStateOf(false) }
     
     val entitlementLevel by proManager.entitlementLevel.collectAsStateWithLifecycle()
     val blockedNumbers by UserBlocklist.blockedNumbers.collectAsStateWithLifecycle()
@@ -450,8 +478,15 @@ private fun AnswerGuardHome(
             }
             else -> {
                 PullToRefreshBox(
-                    isRefreshing = false, // We use transient feedback/emitFeedback for status
-                    onRefresh = onRefreshCalls,
+                    isRefreshing = isRefreshing,
+                    onRefresh = {
+                        isRefreshing = true
+                        snackbarScope.launch {
+                            onRefreshCalls()
+                            kotlinx.coroutines.delay(800)
+                            isRefreshing = false
+                        }
+                    },
                     state = rememberPullToRefreshState(),
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -486,9 +521,16 @@ private fun AnswerGuardHome(
                                 permissionGranted = contactsPermissionGranted,
                                 onEnable = onEnableContacts,
                             )
+                            if (entitlementLevel.isPro) {
+                                SmsCard(
+                                    permissionGranted = smsPermissionGranted,
+                                    onEnable = onEnableSms,
+                                )
+                            }
                             RecentActivityCard(
                                 calls = recentCalls,
                                 blockedNumbers = blockedNumbers,
+                                isPro = entitlementLevel.isPro,
                                 onBlock = { 
                                     onBlockNumber(it)
                                     proManager.recordHighValueAction("ai_protection")
@@ -749,6 +791,62 @@ private fun ContactsCard(
 }
 
 @Composable
+private fun SmsCard(
+    permissionGranted: Boolean,
+    onEnable: () -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StatusDot(enabled = permissionGranted)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "SMS Caller Identification",
+                        color = AnswerGuardColors.TextPrimary,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = if (permissionGranted) "Active" else "Recommended (Pro)",
+                        color = if (permissionGranted) AnswerGuardColors.Primary else AnswerGuardColors.Warning,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+            
+            Text(
+                text = "Allows AnswerGuard to intercept spam text messages and identify sender names entirely on-device.",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+
+            if (!permissionGranted) {
+                Button(
+                    onClick = onEnable,
+                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "Allow SMS Access",
+                        color = Color(0xFF06211E),
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProCard(
     entitlementLevel: EntitlementLevel,
     onUpgrade: () -> Unit,
@@ -775,7 +873,7 @@ private fun ProCard(
                 EntitlementLevel.BUSINESS -> "AnswerGuard Business"
                 EntitlementLevel.FAMILY -> "AnswerGuard Family"
                 EntitlementLevel.PRO -> "AnswerGuard Pro"
-                EntitlementLevel.NONE -> "AnswerGuard Pro"
+                EntitlementLevel.NONE -> "AnswerGuard Free"
             }
             
             val description = when (entitlementLevel) {
@@ -1126,6 +1224,7 @@ private fun Step(number: String, text: String) {
 private fun RecentActivityCard(
     calls: List<ScreenedCall>,
     blockedNumbers: Set<String>,
+    isPro: Boolean,
     onBlock: (String) -> Unit,
     onUnblock: (String) -> Unit,
 ) {
@@ -1153,7 +1252,8 @@ private fun RecentActivityCard(
                 )
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    calls.take(5).forEach { call ->
+                    val uniqueCalls = calls.distinctBy { it.number.filter { c -> c.isDigit() } }
+                    uniqueCalls.take(5).forEach { call ->
                         val digits = call.number.filter { it.isDigit() }
                         val historyForNumber = calls.filter { it.number.filter { c -> c.isDigit() } == digits }
                         val totalCalls = historyForNumber.size
@@ -1163,6 +1263,7 @@ private fun RecentActivityCard(
                         ActivityRow(
                             call = call,
                             isBlocked = blockedNumbers.contains(digits),
+                            isPro = isPro,
                             totalCalls = totalCalls,
                             blockedCalls = blockedCalls,
                             allowedCalls = allowedCalls,
@@ -1180,6 +1281,7 @@ private fun RecentActivityCard(
 private fun ActivityRow(
     call: ScreenedCall,
     isBlocked: Boolean,
+    isPro: Boolean,
     totalCalls: Int,
     blockedCalls: Int,
     allowedCalls: Int,
@@ -1192,14 +1294,45 @@ private fun ActivityRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = call.number,
-                color = AnswerGuardColors.TextPrimary,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
+            val carrier = CarrierResolver.resolve(call.number)
+            val carrierSuffix = if (carrier != null) " • $carrier" else ""
+            val isSms = call.callType == "SMS"
+            val typePrefix = if (isSms) "SMS: " else ""
+
+            if (isPro && call.senderName != null) {
+                Text(
+                    text = "$typePrefix${call.senderName}",
+                    color = AnswerGuardColors.TextPrimary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${call.number}$carrierSuffix",
+                    color = AnswerGuardColors.TextSecondary,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "$typePrefix${call.number}",
+                        color = AnswerGuardColors.TextPrimary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (carrier != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "($carrier)",
+                            color = AnswerGuardColors.TextSecondary,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+            }
+
             val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(call.timestamp))
-            val historyText = "Called $totalCalls time${if (totalCalls > 1) "s" else ""} ($blockedCalls blocked, $allowedCalls allowed)"
+            val eventTypeLabel = if (isSms) "Received" else "Called"
+            val historyText = "$eventTypeLabel $totalCalls time${if (totalCalls > 1) "s" else ""} ($blockedCalls blocked, $allowedCalls allowed)"
             Text(
                 text = "$time \u2022 $historyText",
                 color = AnswerGuardColors.TextSecondary,
@@ -1207,11 +1340,6 @@ private fun ActivityRow(
             )
         }
         
-        // Status badge reflects the number's CURRENT protection state so it
-        // always agrees with the action button beside it: a number on the
-        // blocklist reads "Blocked" (paired with "Unblock"); otherwise it
-        // shows the recent call's verdict (paired with "Block"). Status and
-        // action never contradict each other.
         val (label, color) = when {
             isBlocked -> "Blocked" to Color.Red
             call.verdict == SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
@@ -1233,9 +1361,6 @@ private fun ActivityRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Separate, explicitly labeled blocklist control — distinct from the
-        // status badge so tapping to block/unblock can't be confused with (or
-        // hidden behind) the call outcome.
         val actionLabel = if (isBlocked) "Unblock" else "Block"
         val actionColor = if (isBlocked) AnswerGuardColors.Primary else Color.Red
 
