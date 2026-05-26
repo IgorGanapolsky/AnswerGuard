@@ -8,8 +8,8 @@ on:
         required: false
         default: "37"
         type: string
-  schedule:
-    - cron: "25 11 * * 1" # Weekly Monday check
+  # schedule:
+    # - cron: "25 11 * * 1" # Weekly Monday check
 
 concurrency:
   group: android17-canary-${{ github.ref_name }}-${{ github.event_name }}

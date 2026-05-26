@@ -1,8 +1,8 @@
 name: Wiki Sync
 
 on:
-  schedule:
-    - cron: '*/15 * * * *' # Every 15 minutes for near-real-time paid + growth dashboard updates
+  # schedule:
+    # - cron: '*/15 * * * *' # Every 15 minutes for near-real-time paid + growth dashboard updates
   workflow_dispatch:
   push:
     branches: [develop]
