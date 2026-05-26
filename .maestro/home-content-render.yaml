@@ -10,7 +10,13 @@ appId: com.igorganapolsky.answerguard
     timeout: 30000
 - assertVisible: 'AnswerGuard'
 - assertVisible: 'Call Screening'
-- assertVisible: 'AnswerGuard Pro'
+# Subscription tier card title varies by entitlement (Free/Pro/Family/Business).
+# Match any tier name and scroll into view since it sits below the activity list.
+- scrollUntilVisible:
+    element:
+      text: 'AnswerGuard (Free|Pro|Family|Business)'
+    direction: DOWN
+    timeout: 20000
 
 # Navigate to Settings screen
 - tapOn: 'Settings'

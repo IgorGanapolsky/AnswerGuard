@@ -98,4 +98,24 @@ class SpamVerdictEngineTest {
 
         assertEquals(SpamVerdict.ALLOW, SpamVerdictEngine.evaluate(context, "18005550199"))
     }
+
+    @Test
+    fun `allows Google Fi voicemail number explicitly`() {
+        assertEquals(SpamVerdict.ALLOW, SpamVerdictEngine.evaluate(context, "+1 855-997-5360"))
+    }
+
+    @Test
+    fun `allows T-Mobile voicemail number explicitly`() {
+        assertEquals(SpamVerdict.ALLOW, SpamVerdictEngine.evaluate(context, "+1 805-637-7243"))
+    }
+
+    @Test
+    fun `allows Verizon voicemail number explicitly`() {
+        assertEquals(SpamVerdict.ALLOW, SpamVerdictEngine.evaluate(context, "+1 866-822-3348"))
+    }
+
+    @Test
+    fun `allows AT&T voicemail number explicitly`() {
+        assertEquals(SpamVerdict.ALLOW, SpamVerdictEngine.evaluate(context, "+1 888-244-6245"))
+    }
 }
