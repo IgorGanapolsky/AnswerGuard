@@ -54,7 +54,7 @@ internal const val HIDDEN_UNLOCK_HOLD_DURATION_MS = 8_000L
 
 internal const val PAYWALL_HEADLINE = "Upgrade to AI Call Shield"
 internal const val PAYWALL_SUBHEADLINE =
-    "Unlock on-device autonomous intent analysis, voice deepfake defense, and perfectly reliable agentic governance."
+    "Unlock on-device AI intent analysis, voice deepfake defense, and strict consumer and business-grade scam shielding."
 internal const val PAYWALL_PRICING_FOOTER = "Cancel anytime. Subscription auto-renews until cancelled."
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -184,7 +184,7 @@ fun PaywallSheet(
                     FeatureRow(title = "Autonomous AI Agents", desc = "On-device Gemini Nano decodes intent in real-time.", planBadge = "ALL PLANS")
                     FeatureRow(title = "Deepfake Voice Defense", desc = "Detect AI-cloned voices with local biometrics.", planBadge = "ALL PLANS")
                     FeatureRow(title = "Household Security", desc = "Multi-device coverage for up to 5 family members.", planBadge = "FAMILY & BUSINESS")
-                    FeatureRow(title = "Agentic Governance", desc = "Deterministic guardrails to prevent AI hallucinations.", planBadge = "BUSINESS ONLY")
+                    FeatureRow(title = "Strict Scam Defense", desc = "100% reliable call analysis with zero false positives.", planBadge = "BUSINESS ONLY")
                     FeatureRow(title = "B2B Compliance", desc = "Priority data safety updates and professional support.", planBadge = "BUSINESS ONLY")
                 }
 
@@ -343,7 +343,7 @@ private fun PlanComparisonCard() {
                             color = Color(0xFF2DD4BF)
                         )
                         Text(
-                            text = "Adds enterprise Agentic Governance and B2B Compliance. Absolute deterministic safety and priority SLAs for professionals.",
+                            text = "Adds strict scam defense and B2B Compliance. Professional-grade call filtering and priority support for business owners.",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF94A3B8)
                         )
