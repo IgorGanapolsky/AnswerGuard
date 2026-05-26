@@ -199,6 +199,10 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.truth)
     testImplementation(libs.org.json)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.test.core)
@@ -249,7 +253,15 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
     )
 
     val buildDirFile = layout.buildDirectory.get().asFile
-    val kotlinClasses = fileTree(buildDirFile.resolve("tmp/kotlin-classes/debug")) { exclude(excludes) }
+    // Use the ASM-transformed classes that are actually loaded at test runtime —
+    // Hilt's @AndroidEntryPoint injection happens via bytecode transformation, and
+    // Jacoco's exec data is keyed on the transformed class bytecode. Falling back
+    // to tmp/kotlin-classes/debug would yield 0% coverage for any @AndroidEntryPoint
+    // class because the runtime bytecode differs from the report-time bytecode.
+    val asmTransformedDir = buildDirFile.resolve("intermediates/classes/debug/transformDebugClassesWithAsm/dirs")
+    val kotlinClassesDir = buildDirFile.resolve("tmp/kotlin-classes/debug")
+    val classesRoot = if (asmTransformedDir.exists()) asmTransformedDir else kotlinClassesDir
+    val kotlinClasses = fileTree(classesRoot) { exclude(excludes) }
     val javaClasses = fileTree(buildDirFile.resolve("intermediates/javac/debug/classes")) { exclude(excludes) }
 
     classDirectories.setFrom(files(kotlinClasses, javaClasses))
