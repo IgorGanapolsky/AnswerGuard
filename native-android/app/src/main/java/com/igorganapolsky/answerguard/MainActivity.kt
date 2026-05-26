@@ -482,9 +482,12 @@ private fun AnswerGuardHome(
                     onRefresh = {
                         isRefreshing = true
                         snackbarScope.launch {
-                            onRefreshCalls()
-                            kotlinx.coroutines.delay(800)
-                            isRefreshing = false
+                            try {
+                                onRefreshCalls()
+                                kotlinx.coroutines.delay(800)
+                            } finally {
+                                isRefreshing = false
+                            }
                         }
                     },
                     state = rememberPullToRefreshState(),
@@ -1286,13 +1289,7 @@ private fun formatPhoneNumber(number: String): String {
         digits.length == 10 -> {
             "(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}"
         }
-        else -> {
-            if (number.startsWith("+") && digits.length == 11) {
-                "+1 (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}"
-            } else {
-                number
-            }
-        }
+        else -> number
     }
 }
 
