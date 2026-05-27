@@ -140,7 +140,7 @@ verify-ios-ui:
 
 maestro-android:
 	@echo "==> Maestro: Android flows (requires emulator/device + maestro CLI)"
-	@maestro test .maestro/smoke-test.yaml
+	@maestro test .maestro/ci-smoke-test.yaml
 
 maestro-ios:
 	@echo "==> Maestro: iOS flows (requires simulator + maestro CLI)"
