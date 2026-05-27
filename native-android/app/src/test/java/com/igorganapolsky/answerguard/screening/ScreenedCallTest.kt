@@ -149,4 +149,65 @@ class ScreenedCallTest {
         val call = ScreenedCall(number = "1", verdict = SpamVerdict.ALLOW, timestamp = 1L)
         assertThat(call.senderName).isNull()
     }
+
+    @Test
+    fun `default source is SCREENING`() {
+        val call = ScreenedCall(number = "1", verdict = SpamVerdict.ALLOW, timestamp = 1L)
+        assertThat(call.source).isEqualTo(CallSource.SCREENING)
+    }
+
+    @Test
+    fun `toJson encodes source`() {
+        val call = ScreenedCall(
+            number = "16175550100",
+            verdict = SpamVerdict.SILENCE,
+            timestamp = 1L,
+            source = CallSource.VOICEMAIL,
+        )
+        val obj = JSONObject(call.toJson())
+        assertThat(obj.getString("source")).isEqualTo("VOICEMAIL")
+    }
+
+    @Test
+    fun `fromJson defaults source to SCREENING for legacy JSON`() {
+        // Legacy persisted records (pre see-all-calls feature) don't have a
+        // source field; they must round-trip as SCREENING for back-compat.
+        val legacy = JSONObject().apply {
+            put("number", "16175550100")
+            put("verdict", "ALLOW")
+            put("timestamp", 1L)
+            put("callType", "CALL")
+            put("senderName", "")
+        }.toString()
+
+        val call = ScreenedCall.fromJson(legacy)
+        assertThat(call.source).isEqualTo(CallSource.SCREENING)
+    }
+
+    @Test
+    fun `fromJson tolerates unknown source value`() {
+        val json = JSONObject().apply {
+            put("number", "16175550100")
+            put("verdict", "ALLOW")
+            put("timestamp", 1L)
+            put("source", "MARS_ORBIT")
+        }.toString()
+
+        val call = ScreenedCall.fromJson(json)
+        assertThat(call.source).isEqualTo(CallSource.SCREENING)
+    }
+
+    @Test
+    fun `source roundtrips for SYSTEM_CALL_LOG and VOICEMAIL`() {
+        listOf(CallSource.SYSTEM_CALL_LOG, CallSource.VOICEMAIL).forEach { src ->
+            val original = ScreenedCall(
+                number = "18005551234",
+                verdict = SpamVerdict.SILENCE,
+                timestamp = 1L,
+                source = src,
+            )
+            val restored = ScreenedCall.fromJson(original.toJson())
+            assertThat(restored.source).isEqualTo(src)
+        }
+    }
 }
