@@ -35,14 +35,23 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navDeepLink
+import com.igorganapolsky.answerguard.nav.Route
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -425,8 +434,17 @@ private fun AnswerGuardHome(
     onDismissDisableInstruction: () -> Unit,
     onConfirmDisable: () -> Unit,
 ) {
-    var showBlocklist by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
+    // Navigation lives in a real back stack (nav-compose 2.9.8). Swipe-back
+    // and the system back gesture pop entries instead of falling through to
+    // Activity.finish() — fixes the "the whole app closes" bug the user
+    // reported on the previous state-based `when {}` switch. Predictive-back
+    // animations on Android 13+ are automatic.
+    val navController = rememberNavController()
+    // Paywall remains a ModalBottomSheet outside the NavHost (per 2026
+    // best-practice research): bottom sheets aren't peeked by predictive
+    // back, and modelling them as routes adds a dependency for one sheet.
+    // AlertDialogs likewise stay state-driven (transient confirmations,
+    // not destinations).
     var showPaywall by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
@@ -462,21 +480,23 @@ private fun AnswerGuardHome(
             }
         },
     ) { innerPadding ->
-        when {
-            showBlocklist -> {
-                BlocklistScreen(
-                    onBack = { showBlocklist = false },
-                    showSnackbar = showSnackbar,
-                    modifier = Modifier.padding(innerPadding),
-                )
-            }
-            showSettings -> {
-                SettingsScreen(
-                    onBack = { showSettings = false },
-                    modifier = Modifier.padding(innerPadding)
-                )
-            }
-            else -> {
+        NavHost(
+            navController = navController,
+            startDestination = Route.Home,
+            modifier = Modifier.padding(innerPadding),
+        ) {
+            // Home — picks up deep links for both the https custom-scheme
+            // (igorganapolsky.github.io/AnswerGuard) and the answerguard://
+            // custom scheme registered in AndroidManifest.xml. The NavHost
+            // auto-consumes the launching Intent, so handleDeepLink()'s
+            // legacy UTM handler stays for analytics but does NOT need to
+            // route the user — NavHost does it.
+            composable<Route.Home>(
+                deepLinks = listOf(
+                    navDeepLink<Route.Home>(basePath = "https://igorganapolsky.github.io/AnswerGuard"),
+                    navDeepLink<Route.Home>(basePath = "answerguard://open"),
+                ),
+            ) {
                 PullToRefreshBox(
                     isRefreshing = isRefreshing,
                     onRefresh = {
@@ -508,7 +528,7 @@ private fun AnswerGuardHome(
                             Spacer(modifier = Modifier.height(16.dp))
                             Header(
                                 onSecretUnlock = onSecretUnlock,
-                                onSettingsClick = { showSettings = true }
+                                onSettingsClick = { navController.navigate(Route.Settings) }
                             )
                             StatusCard(
                                 callScreeningEnabled = callScreeningEnabled,
@@ -537,7 +557,7 @@ private fun AnswerGuardHome(
                                 },
                                 onUnblock = onUnblockNumber
                             )
-                            BlocklistCard(onClick = { showBlocklist = true })
+                            BlocklistCard(onClick = { navController.navigate(Route.Blocklist) })
                             ProCard(
                                 entitlementLevel = entitlementLevel,
                                 onUpgrade = { showPaywall = true },
@@ -549,6 +569,19 @@ private fun AnswerGuardHome(
                         }
                     }
                 }
+            }
+
+            composable<Route.Blocklist> {
+                BlocklistScreen(
+                    onBack = { navController.popBackStack() },
+                    showSnackbar = showSnackbar,
+                )
+            }
+
+            composable<Route.Settings> {
+                SettingsScreen(
+                    onBack = { navController.popBackStack() },
+                )
             }
         }
     }
@@ -647,6 +680,7 @@ private fun BlocklistCard(onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BlocklistScreen(
     onBack: () -> Unit,
@@ -656,20 +690,41 @@ private fun BlocklistScreen(
     var numbers by remember { mutableStateOf(UserBlocklist.getAll().toList()) }
     var newNumber by remember { mutableStateOf("") }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AnswerGuardColors.Background)
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted)) {
-                Text("Back")
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text("Your Blocklist", color = AnswerGuardColors.TextPrimary, style = MaterialTheme.typography.headlineSmall)
-        }
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = AnswerGuardColors.Background,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Your Blocklist",
+                        color = AnswerGuardColors.TextPrimary,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = AnswerGuardColors.TextPrimary,
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = AnswerGuardColors.Background,
+                    titleContentColor = AnswerGuardColors.TextPrimary,
+                ),
+            )
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(AnswerGuardColors.Background)
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             androidx.compose.material3.TextField(
@@ -730,6 +785,7 @@ private fun BlocklistScreen(
                     }
                 }
             }
+        }
         }
     }
 }
@@ -1427,39 +1483,52 @@ private fun ActivityRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AnswerGuardColors.Background)
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onBack) {
-                Text("Back", color = AnswerGuardColors.Primary)
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Settings & Info",
-                color = AnswerGuardColors.TextPrimary,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = AnswerGuardColors.Background,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        "Settings & Info",
+                        color = AnswerGuardColors.TextPrimary,
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = AnswerGuardColors.TextPrimary,
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = AnswerGuardColors.Background,
+                    titleContentColor = AnswerGuardColors.TextPrimary,
+                ),
             )
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(AnswerGuardColors.Background)
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            HowItWorks()
+            PrivacyCard()
+            Spacer(modifier = Modifier.weight(1f))
         }
-
-        HowItWorks()
-        PrivacyCard()
-        
-        Spacer(modifier = Modifier.weight(1f))
     }
 }
 @Composable

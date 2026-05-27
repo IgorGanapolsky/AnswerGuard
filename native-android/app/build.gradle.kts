@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.googleServices) apply false
@@ -155,6 +156,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.kotlinx.serialization.json)
 
     // Dependency Injection
     implementation(libs.hilt.android)
@@ -250,6 +252,16 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
         // lambdas are excluded.
         "**/MainActivity*.*",
         "**/*ComposableSingletons*.*",
+        // Hilt/Dagger generated scaffolding — pure machine-generated, not
+        // authored logic. Same set as PR #128.
+        "**/Dagger*.*",
+        "**/Hilt_*.*",
+        "**/*_HiltModules*.*",
+        "**/*_Factory.*",
+        "**/*_MembersInjector.*",
+        "**/*_Impl.*",
+        "**/*_Provide*Factory.*",
+        "**/AnswerGuardColors.*",
     )
 
     val buildDirFile = layout.buildDirectory.get().asFile
@@ -291,7 +303,7 @@ tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = BigDecimal("0.07")
+                minimum = BigDecimal("0.80")
             }
         }
     }
