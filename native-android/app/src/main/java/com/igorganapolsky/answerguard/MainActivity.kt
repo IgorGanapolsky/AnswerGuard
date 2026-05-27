@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -688,11 +687,11 @@ private fun BlocklistScreen(
     showSnackbar: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    // Intercept Android's back gesture / button so swipe-back returns to the
-    // home screen instead of falling through to Activity.finish() and closing
-    // the whole app. Predictive-back animation runs at PRIORITY_DEFAULT.
-    BackHandler(enabled = true) { onBack() }
-
+    // NavHost owns back natively — popBackStack is called automatically on
+    // the system back gesture / swipe. The PR #114 BackHandler patch that
+    // used to live here is redundant after the nav-compose migration and
+    // was removed to avoid double-handling. Predictive-back animation
+    // (shrink/peek on Android 13+) is provided by NavHost.
     var numbers by remember { mutableStateOf(UserBlocklist.getAll().toList()) }
     var newNumber by remember { mutableStateOf("") }
 
