@@ -1,12 +1,13 @@
 appId: com.igorganapolsky.answerguard
 ---
-# Verifies the in-app "Delete my data" flow shipped in PR #111 (Play Data
-# Safety requirement). Adds a blocklist entry, deletes all data, confirms the
-# entry is gone — covering the round-trip from on-device persistence to
-# user-initiated wipe.
+# AnswerGuard — verifies the in-app "Delete my data" flow shipped in PR #111
+# (Play Data Safety requirement). Adds a blocklist entry, deletes all data,
+# confirms the entry is gone — covering the round-trip from on-device
+# persistence to user-initiated wipe.
 - clearState
 - launchApp
 - waitForAnimationToEnd
+- assertVisible: "AnswerGuard"
 
 # Add a blocklist entry so we have something to verify gets cleared.
 - scrollUntilVisible:
