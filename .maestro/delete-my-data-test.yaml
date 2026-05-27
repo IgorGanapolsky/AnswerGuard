@@ -1,0 +1,55 @@
+appId: com.igorganapolsky.answerguard
+---
+# Verifies the in-app "Delete my data" flow shipped in PR #111 (Play Data
+# Safety requirement). Adds a blocklist entry, deletes all data, confirms the
+# entry is gone — covering the round-trip from on-device persistence to
+# user-initiated wipe.
+- clearState
+- launchApp
+- waitForAnimationToEnd
+
+# Add a blocklist entry so we have something to verify gets cleared.
+- scrollUntilVisible:
+    element:
+      text: "Personal Blocklist"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Manage Blocklist"
+- assertVisible: "Your Blocklist"
+- tapOn: "Enter number"
+- inputText: "5559876543"
+- tapOn: "Add"
+- assertVisible: "5559876543"
+- hideKeyboard
+- waitForAnimationToEnd
+- tapOn: "Back"
+- assertNotVisible: "Your Blocklist"
+
+# Scroll to the Privacy & Data card and tap "Delete my data".
+- scrollUntilVisible:
+    element:
+      text: "Privacy & Data"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Delete my data"
+
+# Confirm dialog appears, then confirm the destructive action.
+- assertVisible: "Delete all on-device data?"
+- tapOn:
+    text: "Delete my data"
+    # Disambiguate from the trigger button on the card itself — the dialog's
+    # confirm button has the same label but lives inside the AlertDialog.
+    index: 1
+
+# Reopen blocklist and verify the test entry is gone.
+- scrollUntilVisible:
+    element:
+      text: "Personal Blocklist"
+    direction: DOWN
+    timeout: 20000
+- tapOn: "Manage Blocklist"
+- assertVisible: "Your Blocklist"
+- assertNotVisible: "5559876543"
+- hideKeyboard
+- waitForAnimationToEnd
+- tapOn: "Back"
