@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -687,6 +688,11 @@ private fun BlocklistScreen(
     showSnackbar: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // Intercept Android's back gesture / button so swipe-back returns to the
+    // home screen instead of falling through to Activity.finish() and closing
+    // the whole app. Predictive-back animation runs at PRIORITY_DEFAULT.
+    BackHandler(enabled = true) { onBack() }
+
     var numbers by remember { mutableStateOf(UserBlocklist.getAll().toList()) }
     var newNumber by remember { mutableStateOf("") }
 
@@ -1489,6 +1495,11 @@ private fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // NavHost owns back natively now — the BackHandler patch from PR #114
+    // was correct for the state-based switch, but is redundant once
+    // navigation-compose is in place. The Scaffold + TopAppBar replaces
+    // the inline TextButton("Back") so the back affordance is Material 3
+    // consistent across all sub-screens.
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = AnswerGuardColors.Background,
