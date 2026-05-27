@@ -250,6 +250,21 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
         // lambdas are excluded.
         "**/MainActivity*.*",
         "**/*ComposableSingletons*.*",
+        // Hilt / Dagger generated classes — pure scaffolding, not authored
+        // logic. Including them in coverage tanked the headline number by
+        // ~10 points (584 instructions at 0% coverage in 14 generated classes
+        // as of 2026-05-27). Standard JaCoCo + Hilt practice excludes these.
+        "**/Dagger*.*",
+        "**/Hilt_*.*",
+        "**/*_HiltModules*.*",
+        "**/*_Factory.*",
+        "**/*_MembersInjector.*",
+        "**/*_Impl.*",
+        "**/*_Provide*Factory.*",
+        // Brand color object — literal hex constants in MainActivity.kt;
+        // no logic to cover. Already excluded MainActivity surface above
+        // but this top-level object lives at the package root.
+        "**/AnswerGuardColors.*",
     )
 
     val buildDirFile = layout.buildDirectory.get().asFile
@@ -274,10 +289,21 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
     )
 }
 
-// Coverage ratchet. MainActivity Composables are excluded (not unit-testable).
-// ProManager (~1041 instructions) and AnalyticsService (~835) are intentionally
-// IN the metric — they're production logic that should drive future tests.
-// Raise threshold as those classes get covered.
+// Coverage ratchet. MainActivity Composables, Hilt-generated classes,
+// and the brand-color object are excluded above (not unit-testable or
+// pure constants). ProManager and AnalyticsService remain IN the metric
+// — they're production logic that should drive future tests.
+//
+// Threshold rationale (2026-05-27):
+//   - Before excluding Hilt-generated noise: 79.62% (3-of-the-way-out
+//     from the 0.07 floor that had been in place since 2026-04).
+//   - After Hilt/Dagger/AnswerGuardColors exclusions: ~86% on authored
+//     code. Setting threshold to 0.80 leaves headroom while making
+//     regressions visible (a single uncovered new class drops the
+//     headline number).
+//   - PR #90's title claimed "83.8% past 80% target". The 80% in that
+//     title was aspirational, not enforced — the previous min = 0.07
+//     was 11x looser than the claim. This change makes the claim real.
 tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
     dependsOn("jacocoDebugUnitTestReport")
 
@@ -291,7 +317,7 @@ tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = BigDecimal("0.07")
+                minimum = BigDecimal("0.80")
             }
         }
     }
