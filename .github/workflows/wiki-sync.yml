@@ -1,11 +1,11 @@
 name: Wiki Sync
 
 on:
-  schedule:
-    # Was '*/15 * * * *' (2,880 runs/mo, ~$46/mo). Cut to daily — the push
-    # triggers below already cover real wiki/marketing updates; cron is just
-    # a sweeper. Use workflow_dispatch for manual sync.
-    - cron: '0 6 * * *'
+  # schedule:  # Disabled to optimize GitHub Actions budget
+    # # Was '*/15 * * * *' (2,880 runs/mo, ~$46/mo). Cut to daily — the push
+    # # triggers below already cover real wiki/marketing updates; cron is just
+    # # a sweeper. Use workflow_dispatch for manual sync.
+    # - cron: '0 6 * * *'
   workflow_dispatch:
   push:
     branches: [develop]
