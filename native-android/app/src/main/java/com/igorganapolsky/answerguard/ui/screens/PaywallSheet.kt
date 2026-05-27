@@ -52,9 +52,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 internal const val HIDDEN_UNLOCK_HOLD_DURATION_MS = 8_000L
 
-internal const val PAYWALL_HEADLINE = "Upgrade to AI Call Shield"
+internal const val PAYWALL_HEADLINE = "Upgrade AnswerGuard"
 internal const val PAYWALL_SUBHEADLINE =
-    "Unlock on-device AI intent analysis, voice deepfake defense, and strict consumer and business-grade scam shielding."
+    "Smart on-device screening, SMS caller identification, household protection, and priority support."
 internal const val PAYWALL_PRICING_FOOTER = "Cancel anytime. Subscription auto-renews until cancelled."
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -181,11 +181,12 @@ fun PaywallSheet(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    FeatureRow(title = "Autonomous AI Agents", desc = "On-device Gemini Nano decodes intent in real-time.", planBadge = "ALL PLANS")
-                    FeatureRow(title = "Deepfake Voice Defense", desc = "Detect AI-cloned voices with local biometrics.", planBadge = "ALL PLANS")
-                    FeatureRow(title = "Household Security", desc = "Multi-device coverage for up to 5 family members.", planBadge = "FAMILY & BUSINESS")
-                    FeatureRow(title = "Strict Scam Defense", desc = "100% reliable call analysis with zero false positives.", planBadge = "BUSINESS ONLY")
-                    FeatureRow(title = "B2B Compliance", desc = "Priority data safety updates and professional support.", planBadge = "BUSINESS ONLY")
+                    FeatureRow(title = "On-device screening", desc = "Spam heuristics run locally — no audio leaves your phone.", planBadge = "ALL PLANS")
+                    FeatureRow(title = "SMS caller identification", desc = "Identify business and delivery senders from incoming SMS.", planBadge = "PRO, FAMILY & BUSINESS")
+                    FeatureRow(title = "Advanced spam rules", desc = "Extended heuristic rule-set tuned for 2026 robocaller patterns.", planBadge = "PRO, FAMILY & BUSINESS")
+                    FeatureRow(title = "Household sharing", desc = "Pro features for up to 6 family members via Google Play family sharing.", planBadge = "FAMILY & BUSINESS")
+                    FeatureRow(title = "Priority support", desc = "Direct email line for upgrades, billing, and bug reports.", planBadge = "BUSINESS ONLY")
+                    FeatureRow(title = "Coming soon: AI intent", desc = "On-device Gemini Nano caller-intent analysis — shipping in a future release.", planBadge = "ROADMAP")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -323,7 +324,7 @@ private fun PlanComparisonCard() {
                             color = Color(0xFFB6C2CC)
                         )
                         Text(
-                            text = "Ultimate security for up to 5 household devices. Protect loved ones from deepfake scams and voice cloning.",
+                            text = "All Pro features for up to 6 household members via Google Play family sharing. One subscription, one bill.",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF94A3B8)
                         )

@@ -93,11 +93,12 @@ class PaywallSheetTest {
     @Test
     fun renders_all_feature_rows() {
         setPaywall()
-        composeTestRule.onNodeWithText("Autonomous AI Agents").assertExists()
-        composeTestRule.onNodeWithText("Deepfake Voice Defense").assertExists()
-        composeTestRule.onNodeWithText("Household Security").assertExists()
-        composeTestRule.onNodeWithText("Strict Scam Defense").assertExists()
-        composeTestRule.onNodeWithText("B2B Compliance").assertExists()
+        composeTestRule.onNodeWithText("On-device screening").assertExists()
+        composeTestRule.onNodeWithText("SMS caller identification").assertExists()
+        composeTestRule.onNodeWithText("Advanced spam rules").assertExists()
+        composeTestRule.onNodeWithText("Household sharing").assertExists()
+        composeTestRule.onNodeWithText("Priority support").assertExists()
+        composeTestRule.onNodeWithText("Coming soon: AI intent").assertExists()
     }
 
     @Test

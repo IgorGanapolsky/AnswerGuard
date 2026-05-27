@@ -878,9 +878,9 @@ private fun ProCard(
             
             val description = when (entitlementLevel) {
                 EntitlementLevel.BUSINESS -> "Enterprise-grade call defense active. Advanced scam shielding and priority B2B support fully engaged."
-                EntitlementLevel.FAMILY -> "Advanced protection active across your devices. Gemini-powered intent analysis enabled. Upgrade to Business for strict scam defense."
-                EntitlementLevel.PRO -> "Premium protection active. Upgrade to Family for voice biometrics and multi-device support."
-                EntitlementLevel.NONE -> "Basic protection active. Upgrade to unlock advanced spam rules, voice deepfake defense, and household security."
+                EntitlementLevel.FAMILY -> "Family plan active across your devices. Pro features shared with up to 6 household members. Upgrade to Business for priority support."
+                EntitlementLevel.PRO -> "Pro plan active. SMS caller identification and advanced spam rules enabled. Upgrade to Family for household sharing."
+                EntitlementLevel.NONE -> "Basic protection active. Upgrade to unlock SMS caller identification, advanced spam rules, and household sharing."
             }
 
             Text(
