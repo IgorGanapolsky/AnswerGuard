@@ -302,6 +302,38 @@ if [ -n "$STAGED_SWIFT" ]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════════
+# ANDROID VERIFICATION — unit tests + JaCoCo 80% threshold
+# ═══════════════════════════════════════════════════════════════════
+# Triggered when any native-android/app/src/{main,test}/** file is staged.
+# Mirrors the CI gate in .github/workflows/ci.yml so a Kotlin change can't
+# land on develop with broken unit tests or sub-threshold coverage.
+#
+# Set ANSWERGUARD_SKIP_ANDROID_VERIFY=1 to bypass for docs-only emergency
+# commits that happen to also touch native-android/ (rare; mostly README).
+
+STAGED_ANDROID_SRC=$(git diff --cached --name-only --diff-filter=ACM \
+  | grep -E '^native-android/app/src/(main|test)/' || true)
+
+if [ -n "$STAGED_ANDROID_SRC" ] && [ "${ANSWERGUARD_SKIP_ANDROID_VERIFY:-0}" != "1" ]; then
+  echo ""
+  echo "🔬 Android source changed — running unit tests + JaCoCo coverage..."
+  if [ -z "${JAVA_HOME:-}" ] && [ -d /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ]; then
+    export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+  fi
+  if ! ( cd native-android && ./gradlew \
+           :app:testDebugUnitTest \
+           :app:jacocoDebugUnitTestReport \
+           :app:jacocoCoverageVerification \
+           --no-daemon -q 2>&1 | tail -20 ); then
+    err "Android verification failed (unit tests OR JaCoCo coverage threshold)."
+    echo "   Re-run: cd native-android && ./gradlew :app:testDebugUnitTest :app:jacocoCoverageVerification"
+    echo "   To bypass for a docs-only emergency: ANSWERGUARD_SKIP_ANDROID_VERIFY=1 git commit ..."
+  else
+    echo "   ✅ Android tests + coverage threshold passed."
+  fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════
 # RESULT
 # ═══════════════════════════════════════════════════════════════════
 
