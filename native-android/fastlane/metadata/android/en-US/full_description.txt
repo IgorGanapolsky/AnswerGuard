@@ -1,17 +1,24 @@
-AnswerGuard is the first AI-native call screening utility built for the 2026 security landscape. It protects you and your family from evolving spam, fraud, and AI-generated voice deepfakes—entirely on-device.
+AnswerGuard is a privacy-first call screening app for Android. It silences spam, blocks robocallers, and shows you exactly why each call was handled the way it was — all on your device, with no account required.
 
-Why AnswerGuard is 2026's Top-Rated Privacy Utility:
+What's in the box today:
 
-- ON-DEVICE GEMINI INTELLIGENCE: Leverage Gemini Nano to analyze the intent of unknown callers in real-time. No audio ever leaves your phone.
-- VOICE BIOMETRIC PROTECTION: Detect and block sophisticated voice-cloning scams (grandparent scams) before they reach you.
-- ZERO-KNOWLEDGE PRIVACY: No accounts, no call history uploads, and no data broker connections. Your call log stays yours.
-- PERSONAL & FAMILY BLOCKLISTS: Manually block specific numbers or use advanced wildcard patterns to stop entire ranges of robocallers.
-- REAL-TIME ACTIVITY LOG: See exactly why a call was blocked or silenced with our transparent activity dashboard.
-- SECURE SETUP: Guided role-based onboarding ensuring AnswerGuard is your system-default protector with one tap.
+- ON-DEVICE SCREENING: every incoming number is evaluated locally with heuristics tuned for 2026's spam landscape. Decisions in well under a second; no cloud round-trip, no audio leaves your phone.
+- TRANSPARENT ACTIVITY LOG: see whether each recent call was Allowed, Silenced, or Blocked, plus calls your carrier routed straight to voicemail or that Do Not Disturb silenced before AnswerGuard's screening hook could fire.
+- PERSONAL BLOCKLIST: tap to block any number from Recent Activity, or manage your full blocklist in one place.
+- CONTACTS ALLOWLIST: people saved in your contacts are never silenced. Contact lookup happens on-device only.
+- DELETE MY DATA: clear your screening history, blocklist, and allowlist any time, without uninstalling.
+- ZERO ADS, NO TRACKERS: no advertising ID, no data-broker connections, no account.
 
-Monetization & Plans:
-- Basic Tier: Local heuristic screening and personal blocklist.
-- AnswerGuard Pro: Advanced spam rules and premium localized reputation data.
-- AnswerGuard Family: Full AI intent analysis, voice biometrics, and multi-device protection for your entire household.
+Plans:
 
-AnswerGuard is for users who demand the highest level of security without sacrificing their digital privacy. No ads, no tracking, just protection.
+- Basic (free): local heuristic screening, personal blocklist, contacts allowlist, transparent activity log.
+- AnswerGuard Pro: SMS caller identification and advanced spam rules.
+- AnswerGuard Family: Pro features for up to six family members via Google Play family sharing.
+- AnswerGuard Business: Pro plus business-tuned spam rules and priority support.
+
+Roadmap (not yet in this release):
+
+- On-device AI intent analysis powered by Gemini Nano.
+- Voice biometric defense against AI voice-cloning scams.
+
+AnswerGuard is built for users who want strong protection without giving up their privacy. Source code, privacy policy, and feature roadmap at https://igorganapolsky.github.io/AnswerGuard/
