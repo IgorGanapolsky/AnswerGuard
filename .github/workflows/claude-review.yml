@@ -3,9 +3,21 @@ name: AI Code Review
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".thumbgate/**"
+      - ".github/ISSUE_TEMPLATE/**"
   issue_comment:
     types: [created]
-  push:
+  # NOTE: `push:` trigger removed 2026-05-27 to cut Actions burn. Was
+  # unbounded — fired on every push to every feature branch (~10 runs/week
+  # per the audit) to render a "Claude Review Advisory" no-op for required
+  # checks. PR + comment triggers cover the real review flows.
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

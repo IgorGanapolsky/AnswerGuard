@@ -3,6 +3,11 @@ name: PR State Machine
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".thumbgate/**"
+      - ".github/ISSUE_TEMPLATE/**"
   check_suite:
     types: [completed]
   workflow_dispatch:
@@ -12,13 +17,17 @@ on:
         required: false
 
 concurrency:
+  # 2026-05-27: flipped cancel-in-progress from false to true. The
+  # reconciliation is idempotent — replaying it on every synchronize
+  # was paying for redundant runs on rapidly-iterated branches.
   group: pr-state-machine-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   reconcile:
     name: reconcile-pr-state
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       checks: read
