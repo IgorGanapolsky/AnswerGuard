@@ -1,6 +1,5 @@
-JUNE 2026 SECURITY CORE UPDATE:
-- Autonomous AI Call Shield: Gemini Nano now analyzes unknown caller intent entirely on-device.
-- Voice Deepfake Defense: New biometric layers to detect and block AI-cloned voices in real-time.
-- Zero-Knowledge History: Activity logs are now 100% private and never leave your device.
-- Household Sync: Pro/Family members can now share blocklists via private encrypted channels.
-- Optimized for Android 17: Full support for the latest system-level call screening APIs.
+What's new in v1.2.7:
+- See calls your carrier routed direct to voicemail and calls Do Not Disturb silenced — now visible in Recent Activity with clear labels.
+- New launcher icon: shield + telephone handset, so the app is recognisable on your home screen at a glance.
+- "Delete my data" in the Privacy & Data card — clear your screening history and blocklist without uninstalling.
+- Refreshed privacy policy with explicit sections for SMS, Family/Business plans, and on-device data deletion.
