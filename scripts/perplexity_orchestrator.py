@@ -44,8 +44,7 @@ DEFAULT_SYSTEM_PROMPT = (
 def _get_api_key() -> str:
     key = os.environ.get("PERPLEXITY_API_KEY", "")
     if not key:
-        print("ERROR: PERPLEXITY_API_KEY not set. Add it to .env or export it.", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError("PERPLEXITY_API_KEY not set. Add it to .env or export it.")
     return key
 
 

@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -42,8 +43,7 @@ PRESETS = ["fast-search", "pro-search", "deep-research"]
 def _get_api_key() -> str:
     key = os.environ.get("PERPLEXITY_API_KEY", "")
     if not key:
-        print("ERROR: PERPLEXITY_API_KEY not set.", file=sys.stderr)
-        sys.exit(1)
+        raise ValueError("PERPLEXITY_API_KEY not set. Add it to .env or export it.")
     return key
 
 
@@ -183,6 +183,16 @@ def run_self_test() -> bool:
 
 
 def main() -> None:
+    # Match perplexity_orchestrator.py behaviour: load .env from repo root so the
+    # script works the same way whether PERPLEXITY_API_KEY is exported in the
+    # shell or written to .env.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        from repo_dotenv import load_repo_dotenv
+        load_repo_dotenv(Path(__file__).resolve().parents[1])
+    except ImportError:
+        pass
+
     parser = argparse.ArgumentParser(description="Perplexity Agent API client")
     parser.add_argument("--query", "-q", type=str, help="Query to send")
     parser.add_argument("--model", "-m", type=str, default=None, help=f"Model (e.g. {', '.join(AVAILABLE_MODELS[:3])})")
