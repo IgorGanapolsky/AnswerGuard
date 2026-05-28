@@ -1,0 +1,6 @@
+What's new in v1.2.7:
+- Privacy-first call screening that runs entirely on your device — no audio leaves your phone.
+- New launcher icon: shield + telephone handset, easy to spot on your home screen.
+- "Delete my data" in the Privacy & Data card — clear screening history and blocklist without uninstalling the app.
+- Tightened paywall copy so plan features match what's actually shipped.
+- WhatsApp and other VoIP calls pass through unscreened.
