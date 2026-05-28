@@ -56,9 +56,26 @@ class ProManager
             const val BUSINESS_PRODUCT_ID = "answerguard_business"
             const val PRO_PRODUCT_ID = ELITE_PRODUCT_ID
 
+            /**
+             * Gate for the developer/QA backdoor that calls [forcePro] on long-press
+             * from the paywall and home screens. **Must return false in production
+             * Play Store builds** — letting an arbitrary user unlock paid tiers
+             * without payment violates Play's Payments policy and would get the
+             * app rejected or banned.
+             *
+             * Default param is [BuildConfig.DEBUG] so the gate flips off as soon as
+             * Gradle assembles a release build. Tests pass explicit values to cover
+             * both branches without depending on the test runner's BuildConfig.
+             *
+             * If internal-distribution release-signed APKs ever need the backdoor
+             * back (e.g. for QA flows that exercise paywall states), add a flavour
+             * dimension or a `BuildConfig.INTERNAL_UNLOCK_ENABLED` field set via
+             * `-PciInternalUnlock=true` in the Firebase build job. Do NOT just flip
+             * the default back to `true`.
+             */
             internal fun canUseDebugUnlock(
-                @Suppress("UNUSED_PARAMETER") isDebugBuild: Boolean = true,
-            ): Boolean = true
+                isDebugBuild: Boolean = BuildConfig.DEBUG,
+            ): Boolean = isDebugBuild
         }
 
         private val _entitlementLevel = MutableStateFlow(EntitlementLevel.NONE)
