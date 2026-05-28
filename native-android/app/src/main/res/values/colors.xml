@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="background_dark">#FF0A0A0F</color>
+    <!-- Launcher icon background — brand deep-teal so the adaptive icon
+         mask fills with brand colour instead of black margin. Matches the
+         bottom stop of icon.svg's bgGrad. -->
+    <color name="launcher_icon_background">#FF06211E</color>
     <color name="background_light">#FF141419</color>
     <color name="accent_primary">#FFDC2626</color>
     <color name="text_primary">#FFF8FAFC</color>
