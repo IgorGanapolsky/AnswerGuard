@@ -175,4 +175,37 @@ class AnswerGuardScreeningServiceTest {
         assertThat(recent[0].number).isEqualTo("")
         verify(exactly = 1) { service.respondToCall(eq(details), any()) }
     }
+
+    @Test
+    fun `self-managed VoIP call (WhatsApp Signal FaceTime) is passed through without screening`() {
+        // Repro of the user-reported bug: a WhatsApp Call landed in Recent
+        // Activity as "Silenced" because its handle "WhatsApp Call" has zero
+        // digits → SpamVerdictEngine returned SILENCE for "private number".
+        // After this fix, self-managed calls bypass screening entirely.
+        val details = mockk<Call.Details>(relaxed = true)
+        every { details.callProperties } returns Call.Details.PROPERTY_SELF_MANAGED
+        every { details.handle } returns android.net.Uri.fromParts("tel", "WhatsApp Call", null)
+
+        service.onScreenCall(details)
+
+        // No log entry, no high-value-action — the call was never our concern.
+        assertThat(ScreeningLog.getRecent()).isEmpty()
+        verify(exactly = 0) { proManager.recordHighValueAction(any()) }
+        verify(exactly = 1) { service.respondToCall(eq(details), any()) }
+    }
+
+    @Test
+    fun `non-tel scheme handle (sip, app-custom) is passed through without screening`() {
+        // A VoIP call via SIP or an app-custom URI scheme should never reach
+        // SpamVerdictEngine — cellular-spam heuristics don't apply to SIP URIs.
+        val details = mockk<Call.Details>(relaxed = true)
+        every { details.callProperties } returns 0
+        every { details.handle } returns android.net.Uri.fromParts("sip", "user@example.com", null)
+
+        service.onScreenCall(details)
+
+        assertThat(ScreeningLog.getRecent()).isEmpty()
+        verify(exactly = 0) { proManager.recordHighValueAction(any()) }
+        verify(exactly = 1) { service.respondToCall(eq(details), any()) }
+    }
 }

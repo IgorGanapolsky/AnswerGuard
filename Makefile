@@ -110,11 +110,14 @@ fix-ios-device:
 	@xcrun devicectl list devices 2>/dev/null || echo "No devices found — reconnect USB cable"
 	@echo "==> Done. Try 'make run-ios-device' again. If still hanging, reboot your Mac."
 
-# Install git hooks
+# Install git hooks via core.hooksPath — the repo-tracked file IS the hook,
+# so a `git pull` is enough to get the latest version. No more drift between
+# scripts/pre-commit and .git/hooks/pre-commit.
 install-hooks:
-	@cp scripts/pre-commit .git/hooks/pre-commit
-	@chmod +x .git/hooks/pre-commit
-	@echo "✅ Pre-commit hook installed"
+	@git config core.hooksPath scripts/git-hooks
+	@chmod +x scripts/git-hooks/* 2>/dev/null || true
+	@echo "✅ core.hooksPath set to scripts/git-hooks (current hooks: $$(ls scripts/git-hooks/ | tr '\n' ' '))"
+	@echo "   Hooks will auto-update on every git pull. Run again only if you re-clone."
 
 # Verify (unit tests + builds)
 verify: verify-android verify-ios
@@ -137,7 +140,7 @@ verify-ios-ui:
 
 maestro-android:
 	@echo "==> Maestro: Android flows (requires emulator/device + maestro CLI)"
-	@maestro test .maestro/smoke-test.yaml
+	@maestro test .maestro/ci-smoke-test.yaml
 
 maestro-ios:
 	@echo "==> Maestro: iOS flows (requires simulator + maestro CLI)"

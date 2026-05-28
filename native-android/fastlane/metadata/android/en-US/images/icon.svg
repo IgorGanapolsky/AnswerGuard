@@ -1,91 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AnswerGuard COMPOSED launcher icon — used for:
+    • Play Store hi-res icon (512×512)
+    • iOS marketing icon (1024×1024)
+    • Legacy Android launcher (API < 26)
+  Adaptive Android (API 26+) layers icon-foreground.svg over a solid
+  teal background color so the launcher's squircle mask fills with the
+  brand color instead of black margin.
+-->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Deep dark gradient background -->
-    <radialGradient id="bgGlow" cx="50%" cy="42%" r="60%">
-      <stop offset="0%" stop-color="#0F2A28"/>
-      <stop offset="55%" stop-color="#0B1518"/>
-      <stop offset="100%" stop-color="#06090C"/>
-    </radialGradient>
-
-    <!-- Shield teal gradient (top-down) -->
-    <linearGradient id="shieldFill" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#5EEAD4"/>
-      <stop offset="55%" stop-color="#2DD4BF"/>
-      <stop offset="100%" stop-color="#14B8A6"/>
-    </linearGradient>
-
-    <!-- Outer rim highlight -->
-    <linearGradient id="shieldRim" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#A7F3D0" stop-opacity="0.95"/>
-      <stop offset="100%" stop-color="#0D9488" stop-opacity="0.9"/>
-    </linearGradient>
-
-    <!-- Phone handset darker emerald (sits on bright shield) -->
-    <linearGradient id="phoneFill" x1="50%" y1="0%" x2="50%" y2="100%">
-      <stop offset="0%" stop-color="#064E3B"/>
+    <linearGradient id="bgGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#0E4744"/>
       <stop offset="100%" stop-color="#06211E"/>
     </linearGradient>
-
-    <!-- Soft teal glow halo behind shield -->
-    <radialGradient id="haloGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#2DD4BF" stop-opacity="0.55"/>
-      <stop offset="55%" stop-color="#2DD4BF" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#2DD4BF" stop-opacity="0"/>
-    </radialGradient>
-
-    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="14" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
+    <linearGradient id="shieldFill" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#A7F3D0"/>
+      <stop offset="55%" stop-color="#5EEAD4"/>
+      <stop offset="100%" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="shieldRim" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ECFEFF" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0F766E" stop-opacity="0.95"/>
+    </linearGradient>
   </defs>
 
-  <!-- Full-bleed background (Android adaptive icons get masked anyway) -->
-  <rect width="1024" height="1024" fill="url(#bgGlow)"/>
+  <!-- Full-bleed brand-teal background. Fills the launcher mask with
+       brand colour so there's no black margin around the shield. -->
+  <rect width="1024" height="1024" fill="url(#bgGrad)"/>
 
-  <!-- Halo behind shield -->
-  <circle cx="512" cy="512" r="430" fill="url(#haloGlow)"/>
+  <!-- Shield — sized to fill ~75% of canvas so it dominates the
+       squircle mask. Stays within Android's 66% safe zone at the
+       narrowest dimension; mask shows brand teal at the corners. -->
+  <path d="
+    M 512 208
+    L 800 280
+    L 800 488
+    C 800 640, 712 768, 512 832
+    C 312 768, 224 640, 224 488
+    L 224 280
+    Z"
+    fill="url(#shieldFill)"
+    stroke="url(#shieldRim)"
+    stroke-width="14"
+    stroke-linejoin="round"/>
 
-  <!-- ========== SHIELD ==========
-       Classic heater/crest shield, sized to fit Android safe zone (~680px tall),
-       centered at (512, 520). -->
-  <g filter="url(#softGlow)">
-    <!-- Shield body -->
-    <path d="
-      M 512 152
-      L 818 232
-      L 818 480
-      C 818 642, 720 778, 512 868
-      C 304 778, 206 642, 206 480
-      L 206 232
-      Z"
-      fill="url(#shieldFill)"
-      stroke="url(#shieldRim)"
-      stroke-width="12"
-      stroke-linejoin="round"/>
+  <!-- Top-arc highlight for 3D feel. -->
+  <path d="
+    M 280 296
+    L 512 240
+    L 744 296
+    L 744 348
+    C 744 348, 632 312, 512 312
+    C 392 312, 280 348, 280 348
+    Z"
+    fill="#ECFEFF"
+    opacity="0.30"/>
 
-    <!-- Inner shield highlight (top arc, gives 3D feel) -->
-    <path d="
-      M 270 252
-      L 512 188
-      L 754 252
-      L 754 320
-      C 754 320, 640 280, 512 280
-      C 384 280, 270 320, 270 320
-      Z"
-      fill="#A7F3D0"
-      opacity="0.28"/>
-  </g>
-
-  <!-- ========== PHONE HANDSET ==========
-       Classic Material-style telephone receiver, rotated -30° for dynamic
-       motion. Sized to dominate the shield while staying inside the safe
-       zone. Drawn in deep emerald so it reads as a cutout against the
-       bright teal shield. -->
-  <g transform="translate(512 520) rotate(-30) scale(20) translate(-12 -12)">
+  <!-- Phone handset, rotated -25° for motion, centred on shield. -->
+  <g transform="translate(512 520) rotate(-25) scale(18) translate(-12 -12)">
     <path d="
       M 19.23 15.26
       l -2.54 -0.29
@@ -102,12 +75,6 @@
       c 1.13 0.07 2.07 -0.87 2.07 -2
       v -1.73
       c 0.01 -1.01 -0.75 -1.86 -1.76 -1.98 z"
-      fill="url(#phoneFill)"
-      stroke="#06211E"
-      stroke-width="0.15"
-      stroke-linejoin="round"/>
+      fill="#06211E"/>
   </g>
-
-  <!-- Subtle bottom shadow under shield -->
-  <ellipse cx="512" cy="880" rx="220" ry="22" fill="#000000" opacity="0.4"/>
 </svg>
