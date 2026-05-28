@@ -519,7 +519,7 @@ private fun AnswerGuardHome(
                                 statusMessage = proStatusMessage,
                                 showSnackbar = showSnackbar,
                             )
-                            PrivacyCard(onDeleteData = { showDeleteDataConfirm = true })
+                            PrivacyAndDataCard(onDeleteData = { showDeleteDataConfirm = true })
                         }
                     }
                 }
@@ -582,9 +582,14 @@ private fun AnswerGuardHome(
             confirmButton = {
                 Button(
                     onClick = {
-                        DataDeletion.deleteAllUserData(ctx)
+                        val cleared = DataDeletion.deleteAllUserData(ctx)
                         showDeleteDataConfirm = false
                         onRefreshCalls()
+                        android.widget.Toast.makeText(
+                            ctx,
+                            "All on-device data deleted ($cleared stores cleared)",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
                 ) {
@@ -663,7 +668,7 @@ private fun BlocklistCard(onClick: () -> Unit) {
 }
 
 @Composable
-private fun PrivacyCard(onDeleteData: () -> Unit) {
+private fun PrivacyAndDataCard(onDeleteData: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
         shape = RoundedCornerShape(8.dp),

@@ -42,6 +42,12 @@ object DataDeletion {
     /**
      * Clears every known SharedPreferences file. Returns the number of
      * stores wiped (useful for telemetry and unit tests).
+     *
+     * Writes are issued via `apply()` so the main thread never blocks on
+     * 8 sequential disk fsyncs. Android guarantees the in-memory state
+     * flips synchronously and the disk write completes before the
+     * process exits, so subsequent reads (e.g. RecentActivity refresh
+     * right after this returns) see the empty state immediately.
      */
     fun deleteAllUserData(context: Context): Int {
         var cleared = 0
@@ -49,7 +55,7 @@ object DataDeletion {
             context.getSharedPreferences(name, Context.MODE_PRIVATE)
                 .edit()
                 .clear()
-                .commit()
+                .apply()
             cleared += 1
         }
         return cleared
