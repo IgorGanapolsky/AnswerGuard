@@ -12,7 +12,7 @@ What's in the box today:
 Plans:
 
 - Basic (free): local heuristic screening, personal blocklist, contacts allowlist, transparent activity log.
-- AnswerGuard Pro: SMS caller identification and advanced spam rules.
+- AnswerGuard Pro: advanced spam rules and priority routing for high-risk numbers.
 - AnswerGuard Family: Pro features for up to six family members via Google Play family sharing.
 - AnswerGuard Business: Pro plus business-tuned spam rules and priority support.
 
