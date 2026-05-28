@@ -250,6 +250,21 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
         // lambdas are excluded.
         "**/MainActivity*.*",
         "**/*ComposableSingletons*.*",
+        // Hilt/Dagger generated code — KSP-emitted, not authored. Including
+        // these skews INSTRUCTION coverage (Hilt_MainActivity alone is 117
+        // instr at 0%, dragging the suite from ~82% down to 79.99%).
+        "**/Hilt_*.*",
+        "**/Dagger*.*",
+        "**/*_HiltModules*.*",
+        "**/*_Factory.*",
+        "**/*_MembersInjector.*",
+        "**/*_Impl.*",
+        "**/*_Provide*Factory.*",
+        // Design tokens — pure data, nothing to test.
+        "**/AnswerGuardColors.*",
+        // Hilt @Module — declaration-only @Provides scaffolding; validated by
+        // Hilt's compile-time checks, not unit tests.
+        "**/di/AppModule*.*",
     )
 
     val buildDirFile = layout.buildDirectory.get().asFile
