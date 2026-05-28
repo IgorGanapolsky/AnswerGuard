@@ -799,7 +799,7 @@ private fun ProCard(
             val description = when (entitlementLevel) {
                 EntitlementLevel.BUSINESS -> "Enterprise-grade call defense active. Advanced scam shielding and priority B2B support fully engaged."
                 EntitlementLevel.FAMILY -> "Advanced protection active across your devices. Gemini-powered intent analysis enabled. Upgrade to Business for strict scam defense."
-                EntitlementLevel.PRO -> "Premium protection active. Upgrade to Family for voice biometrics and multi-device support."
+                EntitlementLevel.PRO -> "Premium protection active. Compare Family and Business plans to add household sharing or business-tuned rules."
                 EntitlementLevel.NONE -> "Basic protection active. Upgrade to unlock advanced spam rules, voice deepfake defense, and household security."
             }
 
@@ -855,7 +855,7 @@ private fun ProCard(
                         modifier = Modifier.fillMaxWidth().testTag("home_pro_upgrade_button"),
                     ) {
                         Text(
-                            text = "Upgrade to Family",
+                            text = "See plans",
                             color = Color(0xFF06211E),
                             fontWeight = FontWeight.Bold,
                         )
