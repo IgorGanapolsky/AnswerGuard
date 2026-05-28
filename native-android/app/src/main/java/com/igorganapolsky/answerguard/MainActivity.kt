@@ -71,6 +71,7 @@ import com.igorganapolsky.answerguard.BuildConfig
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
 import com.igorganapolsky.answerguard.billing.ProManager
+import com.igorganapolsky.answerguard.privacy.DataDeletion
 import com.igorganapolsky.answerguard.review.StoreReviewManager
 import com.igorganapolsky.answerguard.billing.EntitlementLevel
 import com.igorganapolsky.answerguard.screening.ScreenedCall
@@ -405,6 +406,7 @@ private fun AnswerGuardHome(
     var showBlocklist by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showPaywall by remember { mutableStateOf(false) }
+    var showDeleteDataConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
     
@@ -517,6 +519,7 @@ private fun AnswerGuardHome(
                                 statusMessage = proStatusMessage,
                                 showSnackbar = showSnackbar,
                             )
+                            PrivacyAndDataCard(onDeleteData = { showDeleteDataConfirm = true })
                         }
                     }
                 }
@@ -552,6 +555,52 @@ private fun AnswerGuardHome(
                     Text("Cancel", color = AnswerGuardColors.TextSecondary)
                 }
             }
+        )
+    }
+
+    if (showDeleteDataConfirm) {
+        val ctx = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { showDeleteDataConfirm = false },
+            containerColor = AnswerGuardColors.Surface,
+            titleContentColor = AnswerGuardColors.TextPrimary,
+            textContentColor = AnswerGuardColors.TextSecondary,
+            title = { Text("Delete all on-device data?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "This clears your screening history, blocklist, contacts " +
+                            "allowlist, and screening pause state on this device.",
+                    )
+                    Text(
+                        "Your paid subscription (if any) is restored from Google Play " +
+                            "on the next launch. Uninstalling the app does the same thing.",
+                        color = AnswerGuardColors.TextSecondary,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val cleared = DataDeletion.deleteAllUserData(ctx)
+                        showDeleteDataConfirm = false
+                        onRefreshCalls()
+                        android.widget.Toast.makeText(
+                            ctx,
+                            "All on-device data deleted ($cleared stores cleared)",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                ) {
+                    Text("Delete my data", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDataConfirm = false }) {
+                    Text("Cancel", color = AnswerGuardColors.TextSecondary)
+                }
+            },
         )
     }
 
@@ -612,6 +661,45 @@ private fun BlocklistCard(onClick: () -> Unit) {
                     text = "Manage Blocklist",
                     color = AnswerGuardColors.TextPrimary,
                     fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrivacyAndDataCard(onDeleteData: () -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Privacy & Data",
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "AnswerGuard stores your screening history, blocklist, and " +
+                    "contacts allowlist on this device only. Delete them any time.",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            TextButton(
+                onClick = onDeleteData,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("delete_my_data_button"),
+            ) {
+                Text(
+                    text = "Delete my data",
+                    color = Color(0xFFEF4444),
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
         }
