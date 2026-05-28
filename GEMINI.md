@@ -15,7 +15,7 @@ This file contains foundational mandates for Gemini CLI within the AnswerGuard r
 ## Core Workflows
 
 - **Branching:** Changes should move through feature branches into `develop`, then promoted to `main`.
-- **Hooks:** Git hooks are installed via `make install-hooks`. Ensure `scripts/pre-commit` is respected.
+- **Hooks:** Git hooks live in `scripts/git-hooks/` and are activated via `make install-hooks` (which sets `git config core.hooksPath scripts/git-hooks`). After that one-shot setup, every `git pull` automatically delivers the latest hook — no copy step, no drift.
 
 ## Technical Context
 

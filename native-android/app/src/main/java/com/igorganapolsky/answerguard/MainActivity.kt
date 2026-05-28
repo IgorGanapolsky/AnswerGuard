@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -99,7 +100,6 @@ class MainActivity : ComponentActivity() {
     private var callScreeningEnabled by mutableStateOf(false)
     private var screeningPaused by mutableStateOf(false)
     private var contactsPermissionGranted by mutableStateOf(false)
-    private var smsPermissionGranted by mutableStateOf(false)
     private var recentCalls by mutableStateOf<List<ScreenedCall>>(emptyList())
     private var proActionInProgress by mutableStateOf(false)
     private var proStatusMessage by mutableStateOf<String?>(null)
@@ -134,17 +134,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    private val smsPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            smsPermissionGranted = isGranted
-            if (isGranted) {
-                analyticsService.track("sms_permission_granted")
-                emitFeedback("SMS access granted")
-            } else {
-                emitFeedback("SMS access denied - enable it in Settings")
-            }
-        }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -168,12 +157,10 @@ class MainActivity : ComponentActivity() {
                         callScreeningEnabled = callScreeningEnabled,
                         screeningPaused = screeningPaused,
                         contactsPermissionGranted = contactsPermissionGranted,
-                        smsPermissionGranted = smsPermissionGranted,
                         onEnable = ::requestCallScreeningRole,
                         onTogglePause = ::togglePause,
                         onSwitchApp = { showDisableInstruction = true },
                         onEnableContacts = ::requestContactsPermission,
-                        onEnableSms = ::requestSmsPermission,
                         onUpgrade = ::launchProPurchase,
                         onRestore = ::restorePurchases,
                         recentCalls = recentCalls,
@@ -248,10 +235,6 @@ class MainActivity : ComponentActivity() {
             androidx.core.content.ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.READ_CONTACTS
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        smsPermissionGranted =
-            androidx.core.content.ContextCompat.checkSelfPermission(
-                this, android.Manifest.permission.RECEIVE_SMS
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         recentCalls = ScreeningLog.getRecent()
     }
 
@@ -272,10 +255,6 @@ class MainActivity : ComponentActivity() {
 
     private fun requestContactsPermission() {
         contactsPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
-    }
-
-    private fun requestSmsPermission() {
-        smsPermissionLauncher.launch(android.Manifest.permission.RECEIVE_SMS)
     }
 
     private fun requestDisableCallScreening() {
@@ -404,12 +383,10 @@ private fun AnswerGuardHome(
     callScreeningEnabled: Boolean,
     screeningPaused: Boolean,
     contactsPermissionGranted: Boolean,
-    smsPermissionGranted: Boolean,
     onEnable: () -> Unit,
     onTogglePause: () -> Unit,
     onSwitchApp: () -> Unit,
     onEnableContacts: () -> Unit,
-    onEnableSms: () -> Unit,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
     recentCalls: List<ScreenedCall>,
@@ -521,12 +498,6 @@ private fun AnswerGuardHome(
                                 permissionGranted = contactsPermissionGranted,
                                 onEnable = onEnableContacts,
                             )
-                            if (entitlementLevel.isPro) {
-                                SmsCard(
-                                    permissionGranted = smsPermissionGranted,
-                                    onEnable = onEnableSms,
-                                )
-                            }
                             RecentActivityCard(
                                 calls = recentCalls,
                                 blockedNumbers = blockedNumbers,
@@ -653,6 +624,11 @@ private fun BlocklistScreen(
     showSnackbar: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // Intercept Android's back gesture / button so swipe-back returns to the
+    // home screen instead of falling through to Activity.finish() and closing
+    // the whole app. Predictive-back animation runs at PRIORITY_DEFAULT.
+    BackHandler(enabled = true) { onBack() }
+
     var numbers by remember { mutableStateOf(UserBlocklist.getAll().toList()) }
     var newNumber by remember { mutableStateOf("") }
 
@@ -791,62 +767,6 @@ private fun ContactsCard(
 }
 
 @Composable
-private fun SmsCard(
-    permissionGranted: Boolean,
-    onEnable: () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                StatusDot(enabled = permissionGranted)
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "SMS Caller Identification",
-                        color = AnswerGuardColors.TextPrimary,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = if (permissionGranted) "Active" else "Recommended (Pro)",
-                        color = if (permissionGranted) AnswerGuardColors.Primary else AnswerGuardColors.Warning,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-            
-            Text(
-                text = "Allows AnswerGuard to intercept spam text messages and identify sender names entirely on-device.",
-                color = AnswerGuardColors.TextSecondary,
-                style = MaterialTheme.typography.bodySmall,
-            )
-
-            if (!permissionGranted) {
-                Button(
-                    onClick = onEnable,
-                    colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = "Allow SMS Access",
-                        color = Color(0xFF06211E),
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun ProCard(
     entitlementLevel: EntitlementLevel,
     onUpgrade: () -> Unit,
@@ -879,7 +799,7 @@ private fun ProCard(
             val description = when (entitlementLevel) {
                 EntitlementLevel.BUSINESS -> "Enterprise-grade call defense active. Advanced scam shielding and priority B2B support fully engaged."
                 EntitlementLevel.FAMILY -> "Advanced protection active across your devices. Gemini-powered intent analysis enabled. Upgrade to Business for strict scam defense."
-                EntitlementLevel.PRO -> "Premium protection active. Upgrade to Family for voice biometrics and multi-device support."
+                EntitlementLevel.PRO -> "Premium protection active. Compare Family and Business plans to add household sharing or business-tuned rules."
                 EntitlementLevel.NONE -> "Basic protection active. Upgrade to unlock advanced spam rules, voice deepfake defense, and household security."
             }
 
@@ -935,7 +855,7 @@ private fun ProCard(
                         modifier = Modifier.fillMaxWidth().testTag("home_pro_upgrade_button"),
                     ) {
                         Text(
-                            text = "Upgrade to Family",
+                            text = "See plans",
                             color = Color(0xFF06211E),
                             fontWeight = FontWeight.Bold,
                         )
@@ -1432,6 +1352,11 @@ private fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Intercept Android's back gesture / button so swipe-back returns to the
+    // home screen instead of closing the whole app. See BlocklistScreen for
+    // the full rationale; this is the same fix.
+    BackHandler(enabled = true) { onBack() }
+
     Column(
         modifier = modifier
             .fillMaxSize()
