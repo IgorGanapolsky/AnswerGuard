@@ -1,7 +1,0 @@
-appId: com.igorganapolsky.answerguard
----
-# Legacy filename kept for script compatibility; verifies AnswerGuard launches.
-- launchApp
-- waitForAnimationToEnd
-- assertVisible: 'AnswerGuard'
-- assertVisible: 'Call Screening'

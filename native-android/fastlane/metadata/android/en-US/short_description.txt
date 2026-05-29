@@ -1,1 +1,1 @@
-AI call screening & deepfake protection. 2026's most private spam blocker.
+On-device call screening. Block spam, see every call. Private by default.

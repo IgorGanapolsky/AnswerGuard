@@ -93,11 +93,20 @@ class PaywallSheetTest {
     @Test
     fun renders_all_feature_rows() {
         setPaywall()
-        composeTestRule.onNodeWithText("Autonomous AI Agents").assertExists()
-        composeTestRule.onNodeWithText("Deepfake Voice Defense").assertExists()
-        composeTestRule.onNodeWithText("Household Security").assertExists()
-        composeTestRule.onNodeWithText("Strict Scam Defense").assertExists()
-        composeTestRule.onNodeWithText("B2B Compliance").assertExists()
+        // Available today — features actually shipped in v1.2.x
+        composeTestRule.onNodeWithText("Advanced spam rules").assertExists()
+        composeTestRule.onNodeWithText("Google Play family sharing").assertExists()
+        composeTestRule.onNodeWithText("Business-tuned rules + priority support").assertExists()
+        // Coming soon — clearly demarcated as not yet shipped (Play DBA policy compliance)
+        composeTestRule.onNodeWithText("On-device AI intent analysis").assertExists()
+        composeTestRule.onNodeWithText("Voice deepfake defense").assertExists()
+    }
+
+    @Test
+    fun separates_shipped_features_from_roadmap() {
+        setPaywall()
+        composeTestRule.onNodeWithText("Available today").assertExists()
+        composeTestRule.onNodeWithText("Coming soon (not yet shipped)").assertExists()
     }
 
     @Test
