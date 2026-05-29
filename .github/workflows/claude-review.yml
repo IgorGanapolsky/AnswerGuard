@@ -16,7 +16,11 @@ on:
   # checks. PR + comment triggers cover the real review flows.
 
 concurrency:
-  group: claude-review-${{ github.event.pull_request.number || github.ref }}
+  # issue_comment events have undefined github.event.pull_request — fall through
+  # to github.event.issue.number so per-PR isolation still holds when a comment
+  # triggers the workflow. Without this, every issue_comment run shares the
+  # github.ref group and they all cancel each other.
+  group: claude-review-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
   cancel-in-progress: true
 
 env:

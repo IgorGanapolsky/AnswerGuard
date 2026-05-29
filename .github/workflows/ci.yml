@@ -203,11 +203,17 @@ jobs:
     # a pass for the required "Autonomous iOS Build Check" branch-protection
     # status (vs path-filtering the workflow, which would leave the check
     # in a permanently-Pending state that blocks the merge).
+    # `always() && !cancelled()` ensures this `if:` is still evaluated when
+    # the `changes` job fails (e.g., dorny/paths-filter errors on a
+    # workflow_dispatch with no comparison ref). Without this, a failure in
+    # `changes` would mark this job Skipped regardless of intent, breaking
+    # the push/merge_group/workflow_dispatch safety net described above.
     if: |
-      needs.changes.outputs.ios == 'true' ||
-      github.event_name == 'push' ||
-      github.event_name == 'merge_group' ||
-      github.event_name == 'workflow_dispatch'
+      always() && !cancelled() &&
+      (needs.changes.outputs.ios == 'true' ||
+       github.event_name == 'push' ||
+       github.event_name == 'merge_group' ||
+       github.event_name == 'workflow_dispatch')
     runs-on: macos-15
     timeout-minutes: 20
     defaults:

@@ -7,13 +7,11 @@ on:
     # # events. Every 6 hours is plenty.
     # - cron: "0 */6 * * *"
   workflow_dispatch:
+  # paths-ignore intentionally omitted: this workflow's purpose is comment
+  # cleanup regardless of which files changed. Filtering by path would let
+  # a doc-only push leave bot comments orphaned on the previous code push.
   pull_request_target:
     types: [opened, synchronize, reopened]
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
-      - ".thumbgate/**"
-      - ".github/ISSUE_TEMPLATE/**"
 
 permissions:
   contents: read
