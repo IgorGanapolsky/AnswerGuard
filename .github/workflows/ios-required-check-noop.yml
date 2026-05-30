@@ -17,7 +17,6 @@ on:
       - "native-ios/**"
       - ".github/workflows/ci.yml"
       - ".github/workflows/native-release.yml"
-      - ".github/workflows/ios-required-check-noop.yml"
 
 permissions:
   contents: read
