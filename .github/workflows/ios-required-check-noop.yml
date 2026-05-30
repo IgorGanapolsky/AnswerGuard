@@ -1,0 +1,39 @@
+name: iOS Required Check Noop
+
+# Companion to ci.yml's `ios` job (display name "Autonomous iOS Build Check"),
+# which is conditionally skipped when iOS files haven't changed on a PR (PR #107
+# cost-saving optimization). GitHub branch protection treats SKIPPED required
+# checks as not-completed, blocking merges on non-iOS PRs.
+#
+# This workflow runs on PRs that DON'T touch iOS, and reports the same display
+# name as a green "noop pass". Required-check matching is by name, so either
+# ci.yml's real build OR this noop satisfies the gate — but never both for the
+# same PR, because the path filters are mirror images.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "native-ios/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/native-release.yml"
+      - ".github/workflows/ios-required-check-noop.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-required-check-noop-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-noop:
+    name: Autonomous iOS Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Report noop pass — iOS unchanged on this PR
+        run: |
+          echo "::notice::iOS sources unchanged on this PR; the real ci.yml ios build was skipped."
+          echo "::notice::This noop job reports the required 'Autonomous iOS Build Check' as green."
+          echo "::notice::If you want real iOS validation, push to native-ios/** and the ci.yml job will run."
