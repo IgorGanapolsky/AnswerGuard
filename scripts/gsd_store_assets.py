@@ -2,7 +2,6 @@
 """GSD script to sync AnswerGuard assets and complete Store Listing via CDP."""
 
 import time
-import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 from play_artifacts import ARTIFACTS_DIR, screenshot_path

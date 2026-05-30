@@ -9,7 +9,6 @@ Prioritizes Google Chrome as it contains the active developer session.
 import os
 import sys
 import asyncio
-import argparse
 import subprocess
 import shutil
 import requests
