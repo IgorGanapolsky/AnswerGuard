@@ -56,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -403,9 +404,16 @@ private fun AnswerGuardHome(
     onDismissDisableInstruction: () -> Unit,
     onConfirmDisable: () -> Unit,
 ) {
-    var showBlocklist by remember { mutableStateOf(false) }
-    var showSettings by remember { mutableStateOf(false) }
-    var showPaywall by remember { mutableStateOf(false) }
+    // rememberSaveable so rotation / process-death doesn't yank the user back
+    // to Home in the middle of editing the blocklist or settings.
+    var showBlocklist by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showPaywall by rememberSaveable { mutableStateOf(false) }
+    // Once the dynamic-HVA paywall fires on hvaCount == 3, don't re-fire on
+    // every rotation (LaunchedEffect would otherwise re-trigger because the
+    // key — hvaCount — is unchanged). Survives process death so a user who
+    // already dismissed it doesn't keep seeing it on every relaunch.
+    var dynamicPaywallShown by rememberSaveable { mutableStateOf(false) }
     var showDeleteDataConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val snackbarScope = rememberCoroutineScope()
@@ -622,10 +630,19 @@ private fun AnswerGuardHome(
         )
     }
     
-    // Dynamic Micro-Paywall Trigger: After 3 high-value actions
+    // Dynamic Micro-Paywall Trigger: After 3 high-value actions, exactly once.
+    // `dynamicPaywallShown` is rememberSaveable so once we show the paywall we
+    // never re-fire it (otherwise a rotation re-triggers the LaunchedEffect
+    // because hvaCount hasn't changed, and the user keeps getting the same
+    // paywall they already dismissed).
     androidx.compose.runtime.LaunchedEffect(hvaCount) {
-        if (hvaCount == 3 && entitlementLevel == EntitlementLevel.NONE) {
+        if (
+            hvaCount == 3 &&
+            entitlementLevel == EntitlementLevel.NONE &&
+            !dynamicPaywallShown
+        ) {
             showPaywall = true
+            dynamicPaywallShown = true
         }
     }
 }
@@ -717,8 +734,14 @@ private fun BlocklistScreen(
     // the whole app. Predictive-back animation runs at PRIORITY_DEFAULT.
     BackHandler(enabled = true) { onBack() }
 
-    var numbers by remember { mutableStateOf(UserBlocklist.getAll().toList()) }
-    var newNumber by remember { mutableStateOf("") }
+    // Observe the source-of-truth Flow instead of holding a local snapshot —
+    // otherwise a call landing while the user is on this screen mutates
+    // UserBlocklist via AnswerGuardScreeningService but the list doesn't
+    // re-render. `.sorted()` keeps stable display order.
+    val numbersSet by UserBlocklist.blockedNumbers.collectAsStateWithLifecycle()
+    val numbers = remember(numbersSet) { numbersSet.sorted() }
+    // rememberSaveable so a rotation doesn't wipe a half-typed phone number.
+    var newNumber by rememberSaveable { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -755,7 +778,7 @@ private fun BlocklistScreen(
                         showSnackbar("Enter a phone number first")
                     } else {
                         com.igorganapolsky.answerguard.screening.UserBlocklist.add(digits)
-                        numbers = com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()
+                        // Flow above re-emits and the list re-renders automatically.
                         newNumber = ""
                         showSnackbar("Blocked $digits")
                     }
@@ -784,7 +807,7 @@ private fun BlocklistScreen(
                         Button(
                             onClick = {
                                 com.igorganapolsky.answerguard.screening.UserBlocklist.remove(number)
-                                numbers = com.igorganapolsky.answerguard.screening.UserBlocklist.getAll().toList()
+                                // Flow above re-emits and the list re-renders automatically.
                                 showSnackbar("Removed $number from blocklist")
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.2f))
