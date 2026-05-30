@@ -10,22 +10,12 @@
 		064BAA16EA4D4830B29F2D9C /* AnswerGuardUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCFBE5D59081407DA7F38ED6 /* AnswerGuardUITests.swift */; };
 		0DDD8A9A4BBA38ABE292B47F /* PrimaryButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68E4CF9C669D336F6C2FD8E7 /* PrimaryButton.swift */; };
 		1BAE4130DA7DC5758A7F13FE /* StoreReviewManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48232C2EAE9FAA775617C954 /* StoreReviewManager.swift */; };
-		1DB82123D1FB23AC92C566D7 /* drum_roll.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = F5F3E399050BD30295736FEA /* drum_roll.mp3 */; };
-		2B75985921EFA190A6114447 /* airhorn.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = F29061814BF691DA7F9CD649 /* airhorn.mp3 */; };
-		3FFD4482489894E382E7B6E8 /* klaxon.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 01D20814587EFDB22A275849 /* klaxon.mp3 */; };
 		49B707298D8B919D28D01A71 /* SharedTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD7E2987345EA2F0A52A882 /* SharedTypes.swift */; };
-		4E242D865279E0BFD5B9CF7B /* gentle-chime.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 91AD2CFB9AE9EF347F990B2F /* gentle-chime.mp3 */; };
 		4ED9D921707F80E1AC5501F3 /* AnswerGuardApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 368C8F93B37D3B244F271919 /* AnswerGuardApp.swift */; };
 		4F4A683B236AE94216503707 /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A84792F8E1380EF1A87461 /* Colors.swift */; };
-		4F9999B0FD7F8A78A7A7C9A6 /* siren.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = B346A5600C70703BAB7FB9E6 /* siren.mp3 */; };
-		4FF9285AE33C37D3F7655511 /* whistle.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C2A2B6F508A20346A871C6F5 /* whistle.mp3 */; };
-		56DF942937CE323893E2E4C6 /* alarm.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3063864498ABB31478972EDD /* alarm.mp3 */; };
-		5B6F3408CC4B851C6428EAAA /* buzzer.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 8E92FED72459C5B7A18BEE3D /* buzzer.mp3 */; };
 		69A55EE7F47BF51A55C13896 /* AnswerGuardLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ACBE63218A7CEC69F1E5422 /* AnswerGuardLiveActivity.swift */; };
-		7333136EFF1A48ADABA95895 /* bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 75387774E2DAB72906B19DCD /* bell.mp3 */; };
 		85ABA1B34E3D14E790434638 /* ProManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A3DD46F85A68522E1B0902 /* ProManager.swift */; };
 		96771424C44C551B73F7732B /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D15E4584476AB7D519E638B /* GlassCard.swift */; };
-		997459C4BEB58C7A5CB1C72F /* gong.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 18EB65CABE2573B583A2913B /* gong.mp3 */; };
 		A1B2C3D400000001DEADBEEF /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D400000002DEADBEEF /* Logger.swift */; };
 		A1B2C3D400000003DEADBEEF /* AnalyticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D400000004DEADBEEF /* AnalyticsService.swift */; };
 		A1B2C3D400000004SHARE01 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D400000004SHARE02 /* ShareSheet.swift */; };
@@ -92,24 +82,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		01D20814587EFDB22A275849 /* klaxon.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = klaxon.mp3; sourceTree = "<group>"; };
 		05CD46A1911192043939F56F /* AnswerGuardWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = AnswerGuardWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		18EB65CABE2573B583A2913B /* gong.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = gong.mp3; sourceTree = "<group>"; };
 		1ACBE63218A7CEC69F1E5422 /* AnswerGuardLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardLiveActivity.swift; sourceTree = "<group>"; };
 		1D15E4584476AB7D519E638B /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
 		1FEB9292178DAA002E1375B9 /* AnswerGuardWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnswerGuardWidgetExtension.entitlements; sourceTree = "<group>"; };
 		25FCEC0B24402A66BBCC142A /* AnswerGuardTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AnswerGuardTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		3063864498ABB31478972EDD /* alarm.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = alarm.mp3; sourceTree = "<group>"; };
 		368C8F93B37D3B244F271919 /* AnswerGuardApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardApp.swift; sourceTree = "<group>"; };
 		48232C2EAE9FAA775617C954 /* StoreReviewManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StoreReviewManager.swift; sourceTree = "<group>"; };
 		4C626B57059C6BDF97711A5D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		50E4F1687D48222CB0AD3509 /* AnswerGuardWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardWidgetBundle.swift; sourceTree = "<group>"; };
 		5897E50AB48E9FBF061E29B4 /* AnswerGuard.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AnswerGuard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		68E4CF9C669D336F6C2FD8E7 /* PrimaryButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryButton.swift; sourceTree = "<group>"; };
-		75387774E2DAB72906B19DCD /* bell.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = bell.mp3; sourceTree = "<group>"; };
 		7CA1C5AD670D6527A669A21F /* RangeSliderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSliderView.swift; sourceTree = "<group>"; };
-		8E92FED72459C5B7A18BEE3D /* buzzer.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = buzzer.mp3; sourceTree = "<group>"; };
-		91AD2CFB9AE9EF347F990B2F /* gentle-chime.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "gentle-chime.mp3"; sourceTree = "<group>"; };
 		A1B2C3D400000002DEADBEEF /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		A1B2C3D400000004DEADBEEF /* AnalyticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsService.swift; sourceTree = "<group>"; };
 		A1B2C3D400000004SHARE02 /* ShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareSheet.swift; sourceTree = "<group>"; };
@@ -124,14 +108,10 @@
 		CD011001000000000000B006 /* ContactsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsServiceTests.swift; sourceTree = "<group>"; };
 		AAGH00112233445566778802 /* AnswerGuardHomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardHomeScreen.swift; sourceTree = "<group>"; };
 		AABB001122334455DEADBEEF /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = AnswerGuard/Resources/Assets.xcassets; sourceTree = "<group>"; };
-		B346A5600C70703BAB7FB9E6 /* siren.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = siren.mp3; sourceTree = "<group>"; };
 		B9A84792F8E1380EF1A87461 /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		BDB556957D054D23B9D4D664 /* AnswerGuardUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AnswerGuardUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		C2A2B6F508A20346A871C6F5 /* whistle.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = whistle.mp3; sourceTree = "<group>"; };
 		CCFBE5D59081407DA7F38ED6 /* AnswerGuardUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnswerGuardUITests.swift; sourceTree = "<group>"; };
 		ECD7E2987345EA2F0A52A882 /* SharedTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedTypes.swift; sourceTree = "<group>"; };
-		F29061814BF691DA7F9CD649 /* airhorn.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = airhorn.mp3; sourceTree = "<group>"; };
-		F5F3E399050BD30295736FEA /* drum_roll.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; path = drum_roll.mp3; sourceTree = "<group>"; };
 		PRIV001122334455AABB0001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AnswerGuard/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -271,16 +251,6 @@
 		DB1EB0493351D1D4C087065E /* Sounds */ = {
 			isa = PBXGroup;
 			children = (
-				3063864498ABB31478972EDD /* alarm.mp3 */,
-				91AD2CFB9AE9EF347F990B2F /* gentle-chime.mp3 */,
-				01D20814587EFDB22A275849 /* klaxon.mp3 */,
-				C2A2B6F508A20346A871C6F5 /* whistle.mp3 */,
-				8E92FED72459C5B7A18BEE3D /* buzzer.mp3 */,
-				18EB65CABE2573B583A2913B /* gong.mp3 */,
-				F29061814BF691DA7F9CD649 /* airhorn.mp3 */,
-				F5F3E399050BD30295736FEA /* drum_roll.mp3 */,
-				B346A5600C70703BAB7FB9E6 /* siren.mp3 */,
-				75387774E2DAB72906B19DCD /* bell.mp3 */,
 			);
 			name = Sounds;
 			path = AnswerGuard/Resources/Sounds;
@@ -483,18 +453,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				56DF942937CE323893E2E4C6 /* alarm.mp3 in Resources */,
-				4E242D865279E0BFD5B9CF7B /* gentle-chime.mp3 in Resources */,
 				AABB001122334455DEADBEE0 /* Assets.xcassets in Resources */,
 				PRIV001122334455AABB0002 /* PrivacyInfo.xcprivacy in Resources */,
-				3FFD4482489894E382E7B6E8 /* klaxon.mp3 in Resources */,
-				4FF9285AE33C37D3F7655511 /* whistle.mp3 in Resources */,
-				5B6F3408CC4B851C6428EAAA /* buzzer.mp3 in Resources */,
-				997459C4BEB58C7A5CB1C72F /* gong.mp3 in Resources */,
-				2B75985921EFA190A6114447 /* airhorn.mp3 in Resources */,
-				1DB82123D1FB23AC92C566D7 /* drum_roll.mp3 in Resources */,
-				4F9999B0FD7F8A78A7A7C9A6 /* siren.mp3 in Resources */,
-				7333136EFF1A48ADABA95895 /* bell.mp3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
