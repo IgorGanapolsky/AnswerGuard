@@ -6,7 +6,6 @@ GSD-Powered: Zero-touch from Branding to Production.
 
 import os
 import sys
-import time
 import asyncio
 from pathlib import Path
 from playwright.async_api import async_playwright

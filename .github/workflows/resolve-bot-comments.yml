@@ -7,6 +7,9 @@ on:
     # # events. Every 6 hours is plenty.
     # - cron: "0 */6 * * *"
   workflow_dispatch:
+  # paths-ignore intentionally omitted: this workflow's purpose is comment
+  # cleanup regardless of which files changed. Filtering by path would let
+  # a doc-only push leave bot comments orphaned on the previous code push.
   pull_request_target:
     types: [opened, synchronize, reopened]
 
@@ -14,9 +17,14 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: resolve-bot-comments-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   resolve:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
 
