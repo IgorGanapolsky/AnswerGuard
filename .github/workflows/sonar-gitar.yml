@@ -3,13 +3,28 @@ name: Sonar & Gitar AI Review
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".thumbgate/**"
+      - ".github/ISSUE_TEMPLATE/**"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".thumbgate/**"
+      - ".github/ISSUE_TEMPLATE/**"
+
+concurrency:
+  group: sonar-gitar-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   sonar-gitar-review:
     name: SonarQube Agentic Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: write

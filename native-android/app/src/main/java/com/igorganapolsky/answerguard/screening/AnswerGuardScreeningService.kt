@@ -33,6 +33,32 @@ class AnswerGuardScreeningService : CallScreeningService() {
             return
         }
 
+        // VoIP bypass: WhatsApp, Signal, FaceTime, Zoom etc. register as
+        // self-managed ConnectionServices, and Android still routes them
+        // through CallScreeningService. Their handles aren't phone numbers
+        // (often literal strings like "WhatsApp Call" or app-specific JIDs),
+        // so SpamVerdictEngine.evaluate sees `digits.isBlank()` and silences
+        // them as "private numbers" — exactly the bug a user just reported.
+        //
+        // Two signals to detect VoIP, both checked because either alone has
+        // false-negative gaps on some OEM ROMs:
+        //   1. callDetails.callProperties & PROPERTY_SELF_MANAGED — the
+        //      official Android flag set by ConnectionService.setSelfManaged.
+        //   2. The handle URI scheme — cellular calls are "tel:"; VoIP can be
+        //      "sip:", a custom app scheme, or null.
+        val isSelfManaged = callDetails.callProperties and
+            Call.Details.PROPERTY_SELF_MANAGED != 0
+        val scheme = callDetails.handle?.scheme
+        if (isSelfManaged || (scheme != null && scheme != "tel")) {
+            Log.i(
+                tag,
+                "Non-cellular call (selfManaged=$isSelfManaged scheme=$scheme) — " +
+                    "passing through without screening",
+            )
+            respondToCall(callDetails, CallResponse.Builder().build())
+            return
+        }
+
         val verdict = SpamVerdictEngine.evaluate(this, handle)
         Log.i(tag, "Verdict for $handle: $verdict")
         

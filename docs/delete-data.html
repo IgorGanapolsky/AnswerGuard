@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AnswerGuard — Request data deletion</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.65;color:#1a1a1a}
+  h1{font-size:1.9em} h2{margin-top:1.7em;font-size:1.25em} ul{padding-left:1.2em}
+  a{color:#0a7d6b}
+  .callout{background:#f1faf7;border-left:4px solid #0a7d6b;padding:14px 18px;border-radius:4px;margin:1.4em 0}
+  ol{padding-left:1.4em}
+  ol li{margin:0.4em 0}
+</style>
+</head>
+<body>
+<h1>AnswerGuard — Request data deletion</h1>
+<p><strong>App:</strong> AnswerGuard: AI Call Shield
+&nbsp;·&nbsp; <strong>Developer:</strong> Igor Ganapolsky (iganapolsky@gmail.com)</p>
+
+<p>This page explains how to delete the data AnswerGuard handles. AnswerGuard is a privacy-first
+call screening app: nearly everything stays on your device. The instructions below cover the two
+classes of data &mdash; on-device, and the small amount we collect through analytics and crash diagnostics.</p>
+
+<h2>Option 1 — Delete on-device data from inside the app</h2>
+<p>This is the fastest path and removes the data immediately.</p>
+<div class="callout">
+<strong>From the AnswerGuard home screen:</strong>
+<ol>
+<li>Open <strong>AnswerGuard</strong>.</li>
+<li>Tap <strong>Settings</strong> (top-right gear).</li>
+<li>Tap <strong>Delete my data</strong>.</li>
+<li>Confirm. AnswerGuard will clear your screening history, personal blocklist, and contacts allowlist immediately.</li>
+</ol>
+</div>
+<p>You can do this any time without uninstalling the app. Your AnswerGuard settings remain so you can keep using call screening.</p>
+
+<h2>Option 2 — Uninstall the app</h2>
+<p>Uninstalling AnswerGuard removes all on-device data automatically &mdash; screening history, blocklist, allowlist, and any cached state. Android handles this as part of the standard uninstall flow.</p>
+
+<h2>Option 3 — Request deletion of analytics and crash data</h2>
+<p>If you also want us to delete the limited analytics and crash data we have collected from your device,
+email <a href="mailto:iganapolsky@gmail.com?subject=AnswerGuard%20data%20deletion%20request">iganapolsky@gmail.com</a>
+with the subject &ldquo;AnswerGuard data deletion request&rdquo;.</p>
+<p>What to include in your email so we can find your records:</p>
+<ul>
+<li>The Google account email used to install AnswerGuard (if applicable), <em>or</em></li>
+<li>The AnswerGuard <strong>installation ID</strong> shown in Settings &rarr; About (a random UUID like <code>a1b2c3d4-...</code>).</li>
+</ul>
+<p>We will delete the analytics events and crash reports associated with that identifier within 30 days
+and confirm by email. There is no charge for this request.</p>
+
+<h2>What gets deleted</h2>
+<ul>
+<li><strong>On-device data</strong> (deleted by Option 1 or 2): screening history, personal blocklist, contacts allowlist cache, app preferences, the per-install random analytics identifier.</li>
+<li><strong>Off-device data</strong> (deleted by Option 3): the anonymous PostHog analytics events tied to your installation ID (e.g.&nbsp;&ldquo;app opened&rdquo;, &ldquo;call screening enabled&rdquo;, &ldquo;paywall viewed&rdquo;); Firebase Crashlytics crash reports from your device.</li>
+</ul>
+
+<h2>What we keep</h2>
+<ul>
+<li><strong>Subscription records</strong> (if you bought AnswerGuard Pro). Google Play retains the purchase record under Google's own retention policy &mdash; we cannot delete that on Google's behalf. To manage or cancel a subscription, use the Google Play Store app or visit <a href="https://play.google.com/store/account/subscriptions">play.google.com/store/account/subscriptions</a>.</li>
+<li><strong>Aggregated, non-identifying metrics</strong> (e.g.&nbsp;&ldquo;total active installs this week&rdquo;) that contain no individual identifier. These cannot be tied back to you.</li>
+</ul>
+
+<h2>Retention</h2>
+<p>On-device data persists until you delete it via Option&nbsp;1 or 2. Off-device analytics and crash data
+that you have <em>not</em> requested deletion for is retained for up to 13 months under our service
+providers' standard retention policies (PostHog, Firebase).</p>
+
+<h2>Contact</h2>
+<p>Questions about data deletion: <a href="mailto:iganapolsky@gmail.com">iganapolsky@gmail.com</a></p>
+<p>Privacy policy: <a href="privacy.html">privacy.html</a></p>
+
+</body>
+</html>

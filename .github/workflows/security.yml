@@ -1,7 +1,12 @@
 name: Security Pipeline
 on:
   schedule:
-    - cron: "0 0 * * *" # Run daily at midnight
+    # 2026-05-27: lowered from daily (`0 0 * * *`, ~30 runs/mo × 3-job
+    # matrix = ~90 job-runs/mo) to weekly. Live CVE coverage is already
+    # provided by the `push:` trigger on every JS/TS dependency change;
+    # the cron is just the unchanged-code drift sweeper, which is fine
+    # weekly. Saves ~78 job-runs/mo.
+    - cron: "0 6 * * 1" # Weekly, Monday 06:00 UTC
   workflow_dispatch: # Allow manual triggers
   push:
     branches: [main, develop]
