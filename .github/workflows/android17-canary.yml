@@ -40,7 +40,9 @@ jobs:
           API_LEVEL: ${{ inputs.api_level || '37' }}
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null
+          # `yes` exits with SIGPIPE once sdkmanager closes stdin; pipefail
+          # would treat that as a step failure, so swallow it explicitly.
+          yes 2>/dev/null | sdkmanager --licenses >/dev/null 2>&1 || true
           sdkmanager "platforms;android-${API_LEVEL}" "build-tools;35.0.0"
 
       - name: Grant execute permission
