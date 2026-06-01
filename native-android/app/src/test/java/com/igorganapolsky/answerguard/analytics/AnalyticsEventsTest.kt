@@ -27,6 +27,7 @@ class AnalyticsEventsTest {
         assertThat(AnalyticsEvents.PAYWALL_PURCHASE_ATTEMPT).isEqualTo("paywall_purchase_attempt")
         assertThat(AnalyticsEvents.PAYWALL_PURCHASE_SUCCESS).isEqualTo("paywall_purchase_success")
         assertThat(AnalyticsEvents.PAYWALL_PURCHASE_RESULT).isEqualTo("paywall_purchase_result")
+        assertThat(AnalyticsEvents.PAYWALL_PURCHASE_FAILED).isEqualTo("paywall_purchase_failed")
         assertThat(AnalyticsEvents.PAYWALL_RESTORE_RESULT).isEqualTo("paywall_restore_result")
     }
 

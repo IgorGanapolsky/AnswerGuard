@@ -4,6 +4,8 @@ import android.os.Build
 import android.telecom.Call
 import android.telecom.CallScreeningService
 import android.util.Log
+import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
+import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.billing.ProManager
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -22,6 +24,9 @@ class AnswerGuardScreeningService : CallScreeningService() {
 
     @Inject
     lateinit var proManager: ProManager
+
+    @Inject
+    lateinit var analyticsService: AnalyticsService
 
     override fun onScreenCall(callDetails: Call.Details) {
         val handle = callDetails.handle?.schemeSpecificPart ?: ""
@@ -61,7 +66,7 @@ class AnswerGuardScreeningService : CallScreeningService() {
 
         val verdict = SpamVerdictEngine.evaluate(this, handle)
         Log.i(tag, "Verdict for $handle: $verdict")
-        
+
         // Record the screened call in local history
         ScreeningLog.record(ScreenedCall(number = handle, verdict = verdict))
 
@@ -69,6 +74,24 @@ class AnswerGuardScreeningService : CallScreeningService() {
         if (verdict == SpamVerdict.BLOCK || verdict == SpamVerdict.SILENCE) {
             proManager.recordHighValueAction("ai_protection")
         }
+
+        // PostHog telemetry. CallScreeningService has a 5s SLA from the OS,
+        // so wrap every analytics emit in runCatching — we'd rather drop a
+        // metric than crash inside the hot path.
+        runCatching {
+            analyticsService.track(
+                AnalyticsEvents.CALL_SCREENED,
+                mapOf("verdict" to verdict.name.lowercase()),
+            )
+            when (verdict) {
+                SpamVerdict.BLOCK -> {
+                    analyticsService.track(AnalyticsEvents.SPAM_CALL_BLOCKED)
+                    analyticsService.trackFirstSpamBlockedIfNeeded()
+                }
+                SpamVerdict.SILENCE -> analyticsService.track(AnalyticsEvents.SPAM_CALL_SILENCED)
+                SpamVerdict.ALLOW -> Unit
+            }
+        }.onFailure { Log.w(tag, "screening analytics emit failed", it) }
 
         // setSilenceCall is API 29+. Service only binds via ROLE_CALL_SCREENING
         // (API 29+) in practice, but guard defensively so a legacy binder on
