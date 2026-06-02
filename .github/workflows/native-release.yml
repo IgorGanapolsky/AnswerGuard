@@ -40,6 +40,14 @@ on:
           - 'true'
         required: false
         default: 'false'
+      regenerate_profiles:
+        description: 'iOS only: one-shot — purge App Store provisioning profiles so match recreates them after capability/entitlement fixes.'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        required: false
+        default: 'false'
       revoke_cert_id:
         description: 'iOS only: free a Distribution-cert slot before regen. Apple cert id to revoke, or "auto" to revoke the safest (expired, else oldest). Empty = skip.'
         type: string
@@ -127,6 +135,37 @@ jobs:
           GIT_AUTH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
           git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+      - name: Ensure iOS App Groups capability
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: |
+          python -m pip install pyjwt==2.11.0 cryptography==46.0.5 requests==2.32.5
+          python scripts/ensure_ios_app_groups.py
+
+      - name: Purge App Store profiles from match storage (one-shot)
+        if: ${{ inputs.regenerate_profiles == 'true' }}
+        env:
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          git clone --depth 1 "$MATCH_GIT_URL" "$work/match-repo"
+          cd "$work/match-repo"
+          echo "App Store profiles currently in storage:"
+          ls -la profiles/appstore/ 2>/dev/null || echo "  (none)"
+          if [ -d profiles/appstore ] && [ -n "$(find profiles/appstore -type f -print -quit)" ]; then
+            git rm -r profiles/appstore
+            git config user.email "ci@answerguard.app"
+            git config user.name "AnswerGuard CI"
+            git commit -m "chore(match): regenerate appstore profiles after entitlement repair"
+            git push
+            echo "✅ Purged App Store profiles; match will recreate them."
+          else
+            echo "No App Store profiles in storage — nothing to purge."
+          fi
 
       # Free a Distribution-certificate slot when the Apple account is at its
       # cap (Apple allows only 2) and match therefore cannot mint a fresh cert
