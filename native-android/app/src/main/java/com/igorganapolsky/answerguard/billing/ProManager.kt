@@ -453,8 +453,7 @@ class ProManager
             responseCode: Int,
             debugMessage: String?,
         ) {
-            analyticsService.track(
-                AnalyticsEvents.PAYWALL_PURCHASE_RESULT,
+            val properties =
                 MonetizationAnalyticsPayload.resultProperties(
                     success = success,
                     result = purchaseResultValue(success, responseCode),
@@ -462,8 +461,16 @@ class ProManager
                     entryPoint = entryPoint,
                     responseCode = responseCode,
                     debugMessage = debugMessage,
-                ),
-            )
+                )
+            analyticsService.track(AnalyticsEvents.PAYWALL_PURCHASE_RESULT, properties)
+            // PostHog alerts filter cleanly on a single event name, so also
+            // emit a dedicated failure event. Alerting on
+            // "paywall_purchase_failed > N per window" is a one-line PostHog
+            // config; alerting on PAYWALL_PURCHASE_RESULT would require an
+            // event-property filter on every alert.
+            if (!success) {
+                analyticsService.track(AnalyticsEvents.PAYWALL_PURCHASE_FAILED, properties)
+            }
         }
 
         private fun trackRestoreResult(

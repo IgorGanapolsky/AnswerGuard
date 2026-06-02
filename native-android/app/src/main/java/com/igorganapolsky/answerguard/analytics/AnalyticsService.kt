@@ -257,6 +257,7 @@ object AnalyticsEvents {
     const val PAYWALL_PURCHASE_ATTEMPT = "paywall_purchase_attempt"
     const val PAYWALL_PURCHASE_SUCCESS = "paywall_purchase_success"
     const val PAYWALL_PURCHASE_RESULT = "paywall_purchase_result"
+    const val PAYWALL_PURCHASE_FAILED = "paywall_purchase_failed"
     const val PAYWALL_RESTORE_RESULT = "paywall_restore_result"
 
     // Attribution
