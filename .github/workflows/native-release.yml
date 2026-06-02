@@ -40,6 +40,11 @@ on:
           - 'true'
         required: false
         default: 'false'
+      revoke_cert_id:
+        description: 'iOS only: free a Distribution-cert slot before regen. Apple cert id to revoke, or "auto" to revoke the safest (expired, else oldest). Empty = skip.'
+        type: string
+        required: false
+        default: ''
 
 concurrency:
   group: mobile-release-pipeline-${{ github.ref_name }}-${{ inputs.platform || 'both' }}
@@ -122,6 +127,27 @@ jobs:
           GIT_AUTH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
         run: |
           git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+      # Free a Distribution-certificate slot when the Apple account is at its
+      # cap (Apple allows only 2) and match therefore cannot mint a fresh cert
+      # ("Could not create another Distribution certificate, reached the
+      # maximum number of available Distribution certificates"). Revoking does
+      # NOT affect apps already shipped on the App Store — only future signing.
+      # Gated on a non-empty revoke_cert_id; "auto" revokes the safest cert
+      # (expired first, else oldest). Empty = skip.
+      - name: Free distribution-cert slot (one-shot revoke)
+        if: ${{ inputs.revoke_cert_id != '' }}
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: |
+          python -m pip install pyjwt==2.11.0 cryptography==46.0.5 requests==2.32.5
+          if [ "${{ inputs.revoke_cert_id }}" = "auto" ]; then
+            python scripts/revoke_ios_cert.py --auto
+          else
+            python scripts/revoke_ios_cert.py --id "${{ inputs.revoke_cert_id }}"
+          fi
 
       # One-shot remedy for a distribution cert that was revoked on the Apple
       # Developer Portal but still lingers in match's git storage. In that state
