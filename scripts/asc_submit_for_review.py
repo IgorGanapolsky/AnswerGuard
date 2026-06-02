@@ -674,9 +674,10 @@ def verify_review_detail(client: ASCClient, version_id: str) -> None:
 
 
 def verify_age_rating(client: ASCClient, app_id: str, version_id: str | None = None) -> None:
-    # Current ASC API exposes a unified AgeRatingDeclaration relationship on the App Store Version:
-    #   GET /v1/appStoreVersions/{id}/ageRatingDeclaration
-    # Some older code paths used app/appInfo relationships which may not exist on newer APIs.
+    # ASC has exposed age-rating declarations through both version-level and
+    # app-level relationships over time. Treat either as valid; current ASC
+    # accounts commonly expose the singular app-level relationship:
+    #   GET /v1/apps/{id}/appStoreAgeRatingDeclaration
     errors: list[str] = []
     if version_id:
         try:
@@ -687,6 +688,13 @@ def verify_age_rating(client: ASCClient, app_id: str, version_id: str | None = N
             errors.append(f"version /appStoreVersions/{version_id}/ageRatingDeclaration: {e}")
     else:
         errors.append("version_id missing (cannot verify ageRatingDeclaration).")
+
+    try:
+        data = client.request("GET", f"/apps/{app_id}/appStoreAgeRatingDeclaration")
+        if data.get("data"):
+            return
+    except Exception as e:
+        errors.append(f"app /apps/{app_id}/appStoreAgeRatingDeclaration: {e}")
 
     detail = "\n  ".join(errors)
     die("Age Rating declaration not found. Complete Age Rating in App Store Connect.\n  " + detail)

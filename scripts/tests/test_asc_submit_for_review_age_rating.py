@@ -22,12 +22,25 @@ class AscSubmitForReviewVerifyAgeRatingTests(unittest.TestCase):
         client = RouterClient(
             {
                 ("GET", "/appStoreVersions/ver1/ageRatingDeclaration"): RuntimeError("404"),
+                ("GET", "/apps/app1/appStoreAgeRatingDeclaration"): RuntimeError("404"),
             }
         )
         with self.assertRaises(SystemExit):
             verify_age_rating(client, "app1", "ver1")
 
+    def test_verify_age_rating_falls_back_to_app_level_declaration(self):
+        from scripts.asc_submit_for_review import verify_age_rating
+
+        client = RouterClient(
+            {
+                ("GET", "/appStoreVersions/ver1/ageRatingDeclaration"): RuntimeError("404"),
+                ("GET", "/apps/app1/appStoreAgeRatingDeclaration"): {
+                    "data": {"id": "decl1", "type": "appStoreAgeRatingDeclarations", "attributes": {}}
+                },
+            }
+        )
+        verify_age_rating(client, "app1", "ver1")
+
 
 if __name__ == "__main__":
     unittest.main()
-
