@@ -32,6 +32,14 @@ on:
           - 'true'
         required: false
         default: 'false'
+      regenerate_signing:
+        description: 'iOS only: one-shot — let match mint a fresh distribution cert when the stored one was revoked on Apple. Leave false for normal releases.'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        required: false
+        default: 'false'
 
 concurrency:
   group: mobile-release-pipeline-${{ github.ref_name }}-${{ inputs.platform || 'both' }}
@@ -122,6 +130,10 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          # One-shot cert regeneration: only true when dispatched with
+          # regenerate_signing=true. Defaults false so normal releases never
+          # mint a new distribution cert.
+          MATCH_FORCE_NEW_CERT: ${{ inputs.regenerate_signing || 'false' }}
         run: fastlane setup
         working-directory: native-ios
 

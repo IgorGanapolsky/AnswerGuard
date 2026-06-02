@@ -358,6 +358,13 @@ platform :ios do
       # is present so match can generate any missing profile (calldirectory)
       # non-interactively; readonly otherwise. See the beta lane for the full
       # rationale.
+      #
+      # force_for_new_certificates is gated on MATCH_FORCE_NEW_CERT so it is
+      # OFF for normal CI runs (which must not mint a new distribution cert
+      # every build). It is flipped on for a ONE-SHOT regeneration run when the
+      # stored distribution cert has been revoked on Apple's portal — match
+      # then creates a single fresh cert via the API key and overwrites the
+      # stale storage entry, without nuking other certs on the account.
       match(
         type: "appstore",
         app_identifier: [
@@ -366,6 +373,7 @@ platform :ios do
           "com.igorganapolsky.answerguard.calldirectory"
         ],
         readonly: api_key.nil?,
+        force_for_new_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
         api_key: api_key
       )
     else
