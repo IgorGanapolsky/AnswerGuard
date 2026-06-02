@@ -89,7 +89,15 @@ platform :ios do
           "com.igorganapolsky.answerguard.widget",
           "com.igorganapolsky.answerguard.calldirectory"
         ],
-        readonly: true,
+        # With an App Store Connect API key available, run match read-write so
+        # it can GENERATE any missing provisioning profile (e.g. the
+        # calldirectory extension profile that was absent from the match repo
+        # and silently blocked every iOS release since 2026-05-13)
+        # non-interactively — no Apple ID 2FA. The distribution cert already
+        # exists in the repo, so match reuses it and only creates the missing
+        # profile. Falls back to readonly when no API key, to avoid cert churn
+        # in environments that can't authenticate to Apple.
+        readonly: defined?(api_key) ? false : true,
         api_key: defined?(api_key) ? api_key : nil
       )
 
@@ -346,7 +354,10 @@ platform :ios do
         )
       end
 
-      # Distribution profiles for App Store export
+      # Distribution profiles for App Store export. Read-write when an API key
+      # is present so match can generate any missing profile (calldirectory)
+      # non-interactively; readonly otherwise. See the beta lane for the full
+      # rationale.
       match(
         type: "appstore",
         app_identifier: [
@@ -354,7 +365,7 @@ platform :ios do
           "com.igorganapolsky.answerguard.widget",
           "com.igorganapolsky.answerguard.calldirectory"
         ],
-        readonly: true,
+        readonly: api_key.nil?,
         api_key: api_key
       )
     else
