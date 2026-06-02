@@ -61,7 +61,6 @@ class IosAppGroupEnsurer:
             f"/bundleIds/{bundle_id_resource_id}/bundleIdCapabilities",
             params={
                 "fields[bundleIdCapabilities]": "capabilityType,settings",
-                "limit": "200",
             },
         )
         for capability in capabilities:
