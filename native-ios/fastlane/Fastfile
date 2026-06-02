@@ -89,8 +89,21 @@ platform :ios do
           "com.igorganapolsky.answerguard.widget",
           "com.igorganapolsky.answerguard.calldirectory"
         ],
-        readonly: true,
-        api_key: defined?(api_key) ? api_key : nil
+        # With an App Store Connect API key available, run match read-write so
+        # it can GENERATE any missing provisioning profile (e.g. the
+        # calldirectory extension profile that was absent from the match repo
+        # and silently blocked every iOS release since 2026-05-13)
+        # non-interactively — no Apple ID 2FA.
+        #
+        # NB: use `api_key.nil?`, NOT `defined?(api_key)`. Ruby's parser marks
+        # `api_key` as a declared local for the whole lane the moment the
+        # `api_key = ...` assignment appears textually above — even when the
+        # enclosing `if` didn't run — so `defined?(api_key)` is ALWAYS truthy
+        # here and would force read-write mode even with no key. `api_key` is
+        # nil when unassigned, so `.nil?` is the correct presence check.
+        readonly: api_key.nil?,
+        force_for_new_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
+        api_key: api_key
       )
 
       app_profile = ENV["sigh_com.igorganapolsky.answerguard_appstore_profile-name"] ||
@@ -346,7 +359,17 @@ platform :ios do
         )
       end
 
-      # Distribution profiles for App Store export
+      # Distribution profiles for App Store export. Read-write when an API key
+      # is present so match can generate any missing profile (calldirectory)
+      # non-interactively; readonly otherwise. See the beta lane for the full
+      # rationale.
+      #
+      # force_for_new_certificates is gated on MATCH_FORCE_NEW_CERT so it is
+      # OFF for normal CI runs (which must not mint a new distribution cert
+      # every build). It is flipped on for a ONE-SHOT regeneration run when the
+      # stored distribution cert has been revoked on Apple's portal — match
+      # then creates a single fresh cert via the API key and overwrites the
+      # stale storage entry, without nuking other certs on the account.
       match(
         type: "appstore",
         app_identifier: [
@@ -354,7 +377,8 @@ platform :ios do
           "com.igorganapolsky.answerguard.widget",
           "com.igorganapolsky.answerguard.calldirectory"
         ],
-        readonly: true,
+        readonly: api_key.nil?,
+        force_for_new_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
         api_key: api_key
       )
     else
