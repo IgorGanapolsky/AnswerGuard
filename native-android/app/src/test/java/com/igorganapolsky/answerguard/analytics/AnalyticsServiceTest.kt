@@ -83,7 +83,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `initialize wires up PostHog and emits lifecycle plus first-open events`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         verify(exactly = 1) {
             PostHogAndroid.setup(application, any<PostHogAndroidConfig>())
@@ -95,9 +95,9 @@ class AnalyticsServiceTest {
 
     @Test
     fun `initialize is idempotent`() {
-        service.initialize(application)
-        service.initialize(application)
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
+        service.initialize(application, "test-posthog-key")
+        service.initialize(application, "test-posthog-key")
 
         verify(exactly = 1) {
             PostHogAndroid.setup(application, any<PostHogAndroidConfig>())
@@ -106,7 +106,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `initialize persists generated distinct id when none stored`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         verify { editor.putString(eq("posthog_distinct_id"), any()) }
     }
@@ -115,7 +115,7 @@ class AnalyticsServiceTest {
     fun `initialize reuses existing distinct id without regenerating`() {
         every { prefs.getString("posthog_distinct_id", null) } returns "existing-id"
 
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         verify { PostHog.identify(eq("existing-id"), any(), any()) }
         verify(exactly = 0) { editor.putString(eq("posthog_distinct_id"), any()) }
@@ -126,7 +126,7 @@ class AnalyticsServiceTest {
         every { prefs.getBoolean("has_tracked_application_installed", false) } returns true
         every { prefs.getBoolean("has_first_opened", false) } returns true
 
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         verify(exactly = 0) {
             PostHog.capture(eq(AnalyticsEvents.APPLICATION_INSTALLED), any(), any(), any(), any(), any())
@@ -207,7 +207,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `track forwards event with merged properties to PostHog`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         service.track("custom_event", mapOf("custom_key" to "custom_value"))
 
@@ -228,7 +228,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `track with null properties still includes context properties`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         service.track("plain_event", null)
 
@@ -246,7 +246,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `screen forwards screen name with merged properties to PostHog`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         service.screen(AnalyticsScreens.HOME, mapOf("entry_point" to "deeplink"))
 
@@ -263,7 +263,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `identify forwards user id and merged properties to PostHog`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         service.identify("user-42", mapOf("plan" to "pro"))
 
@@ -281,7 +281,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `screen with default null properties still forwards to PostHog`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         // Call without the properties argument to exercise the kotlin-generated
         // `screen$default` bridge.
@@ -292,7 +292,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `identify with default null properties still forwards to PostHog`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         // Call without the properties argument to exercise the kotlin-generated
         // `identify$default` bridge.
@@ -303,7 +303,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `reset forwards to PostHog`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         service.reset()
 
@@ -312,7 +312,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `flush forwards to PostHog`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         service.flush()
 
@@ -321,7 +321,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `trackFirstProtectionEnabledIfNeeded tracks once and persists`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
         every { prefs.getBoolean("has_first_configured", false) } returns false
 
         service.trackFirstProtectionEnabledIfNeeded()
@@ -341,7 +341,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `trackFirstProtectionEnabledIfNeeded does nothing when already tracked`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
         every { prefs.getBoolean("has_first_configured", false) } returns true
 
         service.trackFirstProtectionEnabledIfNeeded()
@@ -360,7 +360,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `trackFirstSpamBlockedIfNeeded tracks once and persists`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
         every { prefs.getBoolean("has_first_completed", false) } returns false
 
         service.trackFirstSpamBlockedIfNeeded()
@@ -380,7 +380,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `trackFirstSpamBlockedIfNeeded does nothing when already tracked`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
         every { prefs.getBoolean("has_first_completed", false) } returns true
 
         service.trackFirstSpamBlockedIfNeeded()
@@ -401,7 +401,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `trackDeepLink with valid utm params persists and emits deep_link_opened`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         val uri = Uri.parse(
             "https://answerguard.app/install?utm_source=twitter" +
@@ -440,7 +440,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `trackDeepLink with referring path only still emits attribution event`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         val uri = Uri.parse("https://answerguard.app/promo/special")
 
@@ -460,7 +460,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `trackDeepLink with no utm params and no path is a no-op`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         // Hierarchical URI with no query params and no path, so the UTM extractor
         // returns an empty map and no DEEP_LINK_OPENED event is emitted.
@@ -482,7 +482,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `trackDeepLink ignores blank utm values`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         val uri = Uri.parse("https://answerguard.app/?utm_source=&utm_medium=email")
 
@@ -502,7 +502,7 @@ class AnalyticsServiceTest {
         every { prefs.getString("utm_content", null) } returns null
         every { prefs.getString("utm_term", null) } returns null
 
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         val stored = service.getStoredAttribution()
 
@@ -571,7 +571,7 @@ class AnalyticsServiceTest {
 
     @Test
     fun `initialize publishes build context properties to identify`() {
-        service.initialize(application)
+        service.initialize(application, "test-posthog-key")
 
         verify(atLeast = 1) {
             PostHog.identify(
