@@ -696,6 +696,26 @@ def verify_age_rating(client: ASCClient, app_id: str, version_id: str | None = N
     except Exception as e:
         errors.append(f"app /apps/{app_id}/appStoreAgeRatingDeclaration: {e}")
 
+    try:
+        app_infos_payload = client.request(
+            "GET",
+            f"/apps/{app_id}/appInfos",
+            params={"limit": 10, "fields[appInfos]": "ageRatingDeclaration"},
+        )
+        app_infos = app_infos_payload.get("data") or []
+        for app_info in app_infos:
+            app_info_id = app_info.get("id")
+            if not app_info_id:
+                continue
+            try:
+                data = client.request("GET", f"/appInfos/{app_info_id}/ageRatingDeclaration")
+                if data.get("data"):
+                    return
+            except Exception as e:
+                errors.append(f"appInfo /appInfos/{app_info_id}/ageRatingDeclaration: {e}")
+    except Exception as e:
+        errors.append(f"appInfos /apps/{app_id}/appInfos: {e}")
+
     detail = "\n  ".join(errors)
     die("Age Rating declaration not found. Complete Age Rating in App Store Connect.\n  " + detail)
 
