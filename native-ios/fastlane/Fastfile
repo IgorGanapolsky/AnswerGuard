@@ -103,6 +103,7 @@ platform :ios do
         # nil when unassigned, so `.nil?` is the correct presence check.
         readonly: api_key.nil?,
         force_for_new_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
+        include_all_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
         api_key: api_key
       )
 
@@ -379,6 +380,7 @@ platform :ios do
         ],
         readonly: api_key.nil?,
         force_for_new_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
+        include_all_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
         api_key: api_key
       )
     else
