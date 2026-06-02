@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AnswerGuard — AI call screening &amp; deepfake protection</title>
+<meta name="description" content="On-device AI call screening for Android. Block spam, robocalls, and AI voice deepfakes — without uploading your call log.">
+<link rel="icon" type="image/png" href="images/icon.png">
+<meta property="og:title" content="AnswerGuard — AI call screening &amp; deepfake protection">
+<meta property="og:description" content="On-device AI call screening for Android. Block spam, robocalls, and AI voice deepfakes — without uploading your call log.">
+<meta property="og:image" content="https://igorganapolsky.github.io/AnswerGuard/images/icon.png">
+<meta property="og:url" content="https://igorganapolsky.github.io/AnswerGuard/">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  :root {
+    --bg: #0B1014;
+    --surface: #121A20;
+    --surface-muted: #182229;
+    --teal: #2DD4BF;
+    --teal-dim: #14B8A6;
+    --teal-deep: #06211E;
+    --text: #F8FAFC;
+    --text-dim: #B6C2CC;
+    --warn: #F59E0B;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    padding: 24px 0;
+    border-bottom: 1px solid var(--surface);
+  }
+  header .container { display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.1em; }
+  .brand img { width: 36px; height: 36px; border-radius: 8px; }
+  .nav { display: flex; gap: 24px; font-size: 0.95em; }
+  .nav a { color: var(--text-dim); }
+  .nav a:hover { color: var(--teal); }
+
+  .hero {
+    padding: 80px 0 60px;
+    text-align: center;
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(45,212,191,0.10), transparent 60%);
+  }
+  .hero h1 {
+    font-size: clamp(2em, 5vw, 3.4em);
+    line-height: 1.15;
+    margin: 0 0 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .hero .gradient {
+    background: linear-gradient(180deg, #5EEAD4 0%, #2DD4BF 50%, #14B8A6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero p.lede {
+    font-size: 1.2em;
+    max-width: 640px;
+    margin: 0 auto 32px;
+    color: var(--text-dim);
+  }
+  .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1em;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .btn-primary {
+    background: var(--teal);
+    color: var(--teal-deep);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(45,212,191,0.30);
+    text-decoration: none;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--surface-muted);
+  }
+  .btn-secondary:hover {
+    border-color: var(--teal);
+    text-decoration: none;
+  }
+  .badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(245,158,11,0.12);
+    color: var(--warn);
+    font-size: 0.85em;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+
+  section.features { padding: 60px 0; }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 40px;
+  }
+  .feature {
+    background: var(--surface);
+    border: 1px solid var(--surface-muted);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  .feature h3 {
+    font-size: 1.15em;
+    margin: 0 0 10px;
+    color: var(--teal);
+  }
+  .feature p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 0.97em;
+  }
+
+  section.screens { padding: 60px 0; }
+  section.screens h2 {
+    text-align: center;
+    font-size: 2em;
+    margin: 0 0 40px;
+    letter-spacing: -0.01em;
+  }
+  .screens-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+  }
+  .screens-grid img {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid var(--surface-muted);
+    background: var(--surface);
+  }
+
+  section.notify {
+    padding: 80px 0;
+    text-align: center;
+    background: radial-gradient(ellipse 60% 100% at 50% 50%, rgba(45,212,191,0.06), transparent 70%);
+  }
+  section.notify h2 {
+    font-size: 2em;
+    margin: 0 0 14px;
+    letter-spacing: -0.01em;
+  }
+  section.notify p {
+    max-width: 540px;
+    margin: 0 auto 32px;
+    color: var(--text-dim);
+  }
+
+  footer {
+    border-top: 1px solid var(--surface);
+    padding: 32px 0;
+    color: var(--text-dim);
+    font-size: 0.9em;
+  }
+  footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  footer .links { display: flex; gap: 20px; }
+  footer .links a { color: var(--text-dim); }
+  footer .links a:hover { color: var(--teal); }
+
+  @media (max-width: 600px) {
+    .hero { padding: 60px 0 40px; }
+    section.features, section.screens, section.notify { padding: 50px 0; }
+    .nav { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="brand">
+      <img src="images/icon.png" alt="AnswerGuard">
+      <span>AnswerGuard</span>
+    </div>
+    <nav class="nav">
+      <a href="#features">Features</a>
+      <a href="#screens">Screenshots</a>
+      <a href="privacy.html">Privacy</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <span class="badge">Launching soon on Google Play</span>
+    <h1>Stop spam calls. <span class="gradient">Stop deepfakes.</span><br>Stop them on-device.</h1>
+    <p class="lede">
+      AI call screening built for the 2026 threat landscape. Blocks spam, robocalls,
+      and AI voice deepfakes — without uploading your call log to anyone.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="mailto:iganapolsky@gmail.com?subject=AnswerGuard%20launch%20notification&amp;body=Please%20notify%20me%20when%20AnswerGuard%20launches%20on%20Google%20Play.">Get launch notification</a>
+      <a class="btn btn-secondary" href="#features">See how it works</a>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <div class="feature-grid">
+      <div class="feature">
+        <h3>On-device Gemini intelligence</h3>
+        <p>Gemini Nano analyzes unknown callers' intent in real time. No audio ever leaves your phone.</p>
+      </div>
+      <div class="feature">
+        <h3>Voice deepfake detection</h3>
+        <p>Catches voice-cloning scams (the "grandparent scam") before they reach you — even when the voice sounds familiar.</p>
+      </div>
+      <div class="feature">
+        <h3>Zero-knowledge privacy</h3>
+        <p>No accounts. No call-history uploads. No data-broker partnerships. Your call log stays yours.</p>
+      </div>
+      <div class="feature">
+        <h3>Personal &amp; family blocklists</h3>
+        <p>Block specific numbers or whole prefix ranges. Roll out shared blocklists to every device in the household.</p>
+      </div>
+      <div class="feature">
+        <h3>Transparent activity log</h3>
+        <p>See exactly why a call was blocked, silenced, or allowed — including DND-silenced and carrier-filtered calls.</p>
+      </div>
+      <div class="feature">
+        <h3>One-tap setup</h3>
+        <p>Guided role-based onboarding makes AnswerGuard your system-default caller-ID app in seconds.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="screens" id="screens">
+  <div class="container">
+    <h2>See it in action</h2>
+    <div class="screens-grid">
+      <img src="images/01_AI.png" alt="AI screening">
+      <img src="images/02_PRIVATE.png" alt="Private by default">
+      <img src="images/03_FRAUD.png" alt="Fraud protection">
+      <img src="images/04_HOUSEHOLD.png" alt="Household plan">
+    </div>
+  </div>
+</section>
+
+<section class="notify">
+  <div class="container">
+    <h2>Be first to know when we launch</h2>
+    <p>We're in final pre-launch testing on Google Play. Drop us a note and we'll email you when AnswerGuard is live.</p>
+    <a class="btn btn-primary" href="mailto:iganapolsky@gmail.com?subject=AnswerGuard%20launch%20notification&amp;body=Please%20notify%20me%20when%20AnswerGuard%20launches%20on%20Google%20Play.">Email us</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div>© 2026 AnswerGuard. Built by Igor Ganapolsky.</div>
+    <div class="links">
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/IgorGanapolsky/AnswerGuard">Source</a>
+      <a href="mailto:iganapolsky@gmail.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -19,6 +19,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Cheap Linux gate that decides which platform jobs need to run on this PR.
+  # On push to develop/main and on merge_group we always run everything (safety
+  # net). On PRs we look at the actual diff: iOS PRs trigger the macos-15 job,
+  # Android/docs PRs skip it. Skipping an `if:`-gated job leaves the required
+  # status check as "Skipped", which branch protection counts as a pass.
+  changes:
+    name: Detect Changed Areas
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      ios: ${{ steps.filter.outputs.ios }}
+      android: ${{ steps.filter.outputs.android }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            ios:
+              - 'native-ios/**'
+              - 'fastlane/**'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/ios-*.yml'
+              - 'scripts/source_versions.py'
+            android:
+              - 'native-android/**'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/android-*.yml'
+
   lint:
     name: Architecture Lint
     runs-on: ubuntu-latest
@@ -167,6 +196,24 @@ jobs:
 
   ios:
     name: Autonomous iOS Build Check
+    needs: [changes]
+    # macos-15 is billed 10× Linux. Only spin it up when iOS code actually
+    # changed on a PR, or unconditionally on push/merge_group (safety net).
+    # When `if:` is false the job is reported as "Skipped", which counts as
+    # a pass for the required "Autonomous iOS Build Check" branch-protection
+    # status (vs path-filtering the workflow, which would leave the check
+    # in a permanently-Pending state that blocks the merge).
+    # `always() && !cancelled()` ensures this `if:` is still evaluated when
+    # the `changes` job fails (e.g., dorny/paths-filter errors on a
+    # workflow_dispatch with no comparison ref). Without this, a failure in
+    # `changes` would mark this job Skipped regardless of intent, breaking
+    # the push/merge_group/workflow_dispatch safety net described above.
+    if: |
+      always() && !cancelled() &&
+      (needs.changes.outputs.ios == 'true' ||
+       github.event_name == 'push' ||
+       github.event_name == 'merge_group' ||
+       github.event_name == 'workflow_dispatch')
     runs-on: macos-15
     timeout-minutes: 20
     defaults:
