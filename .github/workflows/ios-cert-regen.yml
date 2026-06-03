@@ -1,0 +1,102 @@
+name: iOS Cert Regen (match nuke + regen Distribution)
+
+# One-off maintenance workflow, ported from Random-Timer's proven recipe. Run
+# when the Apple Distribution cert stored in the fastlane match repo has been
+# revoked at Apple's portal and release builds fail to decrypt/sign. Uses the
+# live ASC JWT (APPSTORE_* secrets) so the operation is non-interactive — no
+# Apple-ID 2FA.
+#
+# Effect (lane :regen_dist_certs in native-ios/fastlane/Fastfile):
+#   1. `match nuke` (type appstore) revokes the stale Distribution cert at
+#      Apple's portal (no-op if already revoked) and clears it + the App Store
+#      profiles from the match git repo (MATCH_GIT_URL).
+#   2. `match appstore force:true` mints a fresh Distribution cert + the three
+#      App Store profiles (answerguard, .widget, .calldirectory) and commits
+#      them back, encrypted with this repo's MATCH_PASSWORD.
+# After this runs, re-dispatch Native App Release (platform=ios).
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to check out (match ops are ref-agnostic; default develop)"
+        required: false
+        default: develop
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-cert-regen
+  cancel-in-progress: false
+
+jobs:
+  regen:
+    name: Nuke + regenerate Apple Distribution cert
+    runs-on: macos-26
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Fail fast on required secrets
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          for name in APPSTORE_KEY_ID APPSTORE_ISSUER_ID APPSTORE_PRIVATE_KEY MATCH_GIT_URL MATCH_PASSWORD MATCH_GIT_BASIC_AUTHORIZATION ADMIN_TOKEN; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing required secret: $name"
+              exit 1
+            fi
+          done
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@09a7688d3b55cf0e976497ff046b70949eeaccfd # v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: native-ios
+
+      - name: Install Fastlane
+        working-directory: native-ios
+        run: gem install fastlane
+
+      - name: Configure git credentials for match
+        env:
+          GIT_AUTH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf "https://github.com/"
+
+      - name: Write ASC private key
+        env:
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APPSTORE_PRIVATE_KEY" > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
+
+      - name: Match nuke + regenerate Distribution cert
+        working-directory: native-ios
+        env:
+          CI: "true"
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          # Literal "true" string — "1" makes match reject skip_confirmation.
+          MATCH_SKIP_CONFIRMATION: "true"
+          FASTLANE_SKIP_UPDATE_CHECK: "1"
+        run: fastlane regen_dist_certs
