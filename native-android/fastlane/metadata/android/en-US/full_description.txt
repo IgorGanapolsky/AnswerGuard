@@ -3,7 +3,7 @@ AnswerGuard is a privacy-first call screening app for Android. It silences spam,
 What's in the box today:
 
 - ON-DEVICE SCREENING: every incoming number is evaluated locally with heuristics tuned for 2026's spam landscape. Decisions in well under a second; no cloud round-trip, no audio leaves your phone.
-- TRANSPARENT ACTIVITY LOG: see whether each recent call was Allowed, Silenced, or Blocked, plus calls your carrier routed straight to voicemail or that Do Not Disturb silenced before AnswerGuard's screening hook could fire.
+- TRANSPARENT ACTIVITY LOG: see whether each screened call was Allowed, Silenced, or Blocked. The app also explains why carrier-routed voicemail and Do Not Disturb calls may not appear when Android routes them before AnswerGuard's screening hook can fire.
 - PERSONAL BLOCKLIST: tap to block any number from Recent Activity, or manage your full blocklist in one place.
 - CONTACTS ALLOWLIST: people saved in your contacts are never silenced. Contact lookup happens on-device only.
 - DELETE MY DATA: clear your screening history, blocklist, and allowlist any time, without uninstalling.
@@ -12,9 +12,9 @@ What's in the box today:
 Plans:
 
 - Basic (free): local heuristic screening, personal blocklist, contacts allowlist, transparent activity log.
-- AnswerGuard Pro: advanced spam rules and priority routing for high-risk numbers.
+- AnswerGuard Pro: local spam-screening controls and priority support.
 - AnswerGuard Family: Pro features for up to six family members via Google Play family sharing.
-- AnswerGuard Business: Pro plus business-tuned spam rules and priority support.
+- AnswerGuard Business: Pro plus business plan positioning and priority support.
 
 Roadmap (not yet in this release):
 

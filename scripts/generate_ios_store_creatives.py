@@ -29,49 +29,49 @@ class CreativeText:
 
 
 CREATIVE_COPY: Dict[str, CreativeText] = {
-    "1_setup.png": CreativeText(
-        title="SHARPEN YOUR DRAW",
-        subtitle="Randomized signals for dry-fire and target acquisition.",
-        badge="REACTION SPEED",
+    "01_AI.png": CreativeText(
+        title="SCREENED CALLS",
+        subtitle="Weekday, date, time, and handling reason for every screened call.",
+        badge="LOCAL",
     ),
-    "2_active.png": CreativeText(
-        title="STOP PREDICTING",
-        subtitle="Unpredictable intervals ensure you stay honest under stress.",
-        badge="ELIMINATE RHYTHM",
+    "02_PRIVATE.png": CreativeText(
+        title="PRIVATE BY DEFAULT",
+        subtitle="Your call log, blocklist, and contacts lookup stay on your device.",
+        badge="NO ACCOUNT",
     ),
-    "3_alarm.png": CreativeText(
-        title="RANGE COMMANDS",
-        subtitle="High-intensity audio arsenal designed for the noise of the gym.",
-        badge="SIGNAL HIT",
+    "03_FRAUD.png": CreativeText(
+        title="BLOCK SPAM FAST",
+        subtitle="Local number screening helps silence robocallers before they interrupt.",
+        badge="ANTI-SPAM",
     ),
-    "4_running.png": CreativeText(
-        title="BATTLE READY",
-        subtitle="Non-stop automated rounds for boxing, MMA, and HIIT.",
-        badge="RUN DRILLS",
+    "04_HOUSEHOLD.png": CreativeText(
+        title="FAMILY PLAN",
+        subtitle="Share AnswerGuard through Google Play family sharing.",
+        badge="HOUSEHOLD",
     ),
     "5_ipad_setup.png": CreativeText(
-        title="COACH VIEW",
-        subtitle="Class-optimized controls for class-wide reaction stress tests.",
-        badge="PRO UTILITY",
+        title="SCREENING DASHBOARD",
+        subtitle="A larger view of local protection, logs, and blocklist controls.",
+        badge="IPAD",
     ),
     "6_ipad_running.png": CreativeText(
-        title="VISIBLE BATTLESPACE",
-        subtitle="Large-scale UI ensures every athlete stays synchronized.",
-        badge="MISSION READY",
+        title="TRANSPARENT HISTORY",
+        subtitle="Understand why a screened call was allowed, silenced, or blocked.",
+        badge="CLEAR LOGS",
     ),
     "7_ipad_stopped.png": CreativeText(
-        title="RAPID RESET",
-        subtitle="Zero friction between rounds. Adjust and execute immediately.",
-        badge="GO AGAIN",
+        title="PRIVACY CONTROLS",
+        subtitle="Delete on-device screening history and blocklist data anytime.",
+        badge="DELETE DATA",
     ),
 }
 
 # Fixed SOURCE_MAP to avoid nested compositions.
 SOURCE_MAP: Dict[str, str] = {
-    "1_setup.png": "1_setup.png",
-    "2_active.png": "2_active.png",
-    "3_alarm.png": "3_alarm.png",
-    "4_running.png": "4_running.png",
+    "01_AI.png": "01_AI.png",
+    "02_PRIVATE.png": "02_PRIVATE.png",
+    "03_FRAUD.png": "03_FRAUD.png",
+    "04_HOUSEHOLD.png": "04_HOUSEHOLD.png",
     "5_ipad_setup.png": "5_ipad_setup.png",
     "6_ipad_running.png": "6_ipad_running.png",
     "7_ipad_stopped.png": "7_ipad_stopped.png",

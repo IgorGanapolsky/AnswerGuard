@@ -192,9 +192,9 @@ fun PaywallSheet(
                         color = Color(0xFFF8FAFC),
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    FeatureRow(title = "Advanced spam rules", desc = "Heuristics tuned for 2026's spam landscape, plus priority routing for high-risk numbers.", planBadge = "ALL PAID PLANS")
+                    FeatureRow(title = "Spam-screening controls", desc = "Local number screening, personal blocklist controls, and transparent handling reasons.", planBadge = "ALL PAID PLANS")
                     FeatureRow(title = "Google Play family sharing", desc = "Share your subscription with up to 6 family members via Google Play.", planBadge = "FAMILY & BUSINESS")
-                    FeatureRow(title = "Business-tuned rules + priority support", desc = "Stricter defaults for high-volume professional use plus direct support.", planBadge = "BUSINESS ONLY")
+                    FeatureRow(title = "Business priority support", desc = "Professional plan positioning with priority support for business owners.", planBadge = "BUSINESS ONLY")
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -340,7 +340,7 @@ private fun PlanComparisonCard() {
                             color = Color(0xFFB6C2CC)
                         )
                         Text(
-                            text = "Ultimate security for up to 5 household devices. Protect loved ones from deepfake scams and voice cloning.",
+                            text = "Share AnswerGuard with up to 5 household devices through Google Play family sharing.",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF94A3B8)
                         )
@@ -360,7 +360,7 @@ private fun PlanComparisonCard() {
                             color = Color(0xFF2DD4BF)
                         )
                         Text(
-                            text = "Adds strict scam defense and B2B Compliance. Professional-grade call filtering and priority support for business owners.",
+                            text = "Professional plan for business owners, with local call filtering and priority support.",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF94A3B8)
                         )

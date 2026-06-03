@@ -1073,7 +1073,7 @@ private fun Header(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "ON-DEVICE AI",
+                            text = "ON-DEVICE SCREENING",
                             color = AnswerGuardColors.Primary,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Black
