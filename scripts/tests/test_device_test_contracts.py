@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ANDROID_PACKAGE = "com.igorganapolsky.answerguard"
+ANDROID_DEBUG_PACKAGE = "com.igorganapolsky.answerguard.debug"
 
 
 def _read(path: str) -> str:
@@ -38,7 +39,10 @@ def test_maestro_flows_do_not_reference_random_timer_app():
 def test_ci_maestro_runner_installs_and_controls_answerguard():
     source = _read("scripts/device-tests/ci-maestro.sh")
 
-    assert ".maestro/ci-smoke-test.yaml" in source
+    assert "ci-smoke-test.yaml" in source
     assert ANDROID_PACKAGE in source
+    assert ANDROID_DEBUG_PACKAGE in source
+    assert "MAESTRO_APP_ID" in source
+    assert "answerguard-maestro-ci" in source
     assert "com.iganapolsky.randomtimer" not in source
     assert "com.igorganapolsky.randomtimer" not in source
