@@ -21,7 +21,14 @@ concurrency:
   # triggers the workflow. Without this, every issue_comment run shares the
   # github.ref group and they all cancel each other.
   group: claude-review-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
-  cancel-in-progress: true
+  # Do NOT cancel in-progress reviews. A PR commonly receives several events in
+  # quick succession (synchronize on rapid pushes, ready_for_review, etc). With
+  # cancel-in-progress: true the running "Claude Review" / "AI Auto-Approve" jobs
+  # were killed mid-flight with "Canceling since a higher priority waiting request
+  # exists", so the gate reported CANCELLED on nearly every PR (#148/#152/#153/#155).
+  # Letting the in-flight run finish makes the review actually complete; the group
+  # still serializes runs per PR so they queue rather than pile up. (2026-06-03)
+  cancel-in-progress: false
 
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
