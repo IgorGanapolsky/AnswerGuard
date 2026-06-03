@@ -1,0 +1,3 @@
+Fixes:
+- Removed the internal 'Enable testing features' prompt that appeared on every launch (now debug/internal builds only).
+- Privacy-first call screening runs fully on-device.
