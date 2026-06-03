@@ -1,5 +1,6 @@
 package com.igorganapolsky.answerguard
 
+import android.Manifest
 import android.app.role.RoleManager
 import android.content.Intent
 import android.net.Uri
@@ -75,8 +76,11 @@ import com.igorganapolsky.answerguard.billing.ProManager
 import com.igorganapolsky.answerguard.privacy.DataDeletion
 import com.igorganapolsky.answerguard.review.StoreReviewManager
 import com.igorganapolsky.answerguard.billing.EntitlementLevel
+import com.igorganapolsky.answerguard.screening.CallEventBackfill
+import com.igorganapolsky.answerguard.screening.CallSource
 import com.igorganapolsky.answerguard.screening.ScreenedCall
 import com.igorganapolsky.answerguard.screening.ScreeningLog
+import com.igorganapolsky.answerguard.screening.SeenSeeAllCallsPrompt
 import com.igorganapolsky.answerguard.screening.SpamVerdict
 import com.igorganapolsky.answerguard.screening.UserBlocklist
 import com.igorganapolsky.answerguard.screening.CarrierResolver
@@ -89,7 +93,9 @@ import com.igorganapolsky.answerguard.screening.RoleOnboardingActivity
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.lifecycleScope
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.igorganapolsky.answerguard.ui.screens.holdForHiddenUnlock
 import com.igorganapolsky.answerguard.ui.screens.HIDDEN_UNLOCK_HOLD_DURATION_MS
@@ -103,6 +109,8 @@ class MainActivity : ComponentActivity() {
     private var callScreeningEnabled by mutableStateOf(false)
     private var screeningPaused by mutableStateOf(false)
     private var contactsPermissionGranted by mutableStateOf(false)
+    private var callLogPermissionGranted by mutableStateOf(false)
+    private var voicemailPermissionGranted by mutableStateOf(false)
     private var recentCalls by mutableStateOf<List<ScreenedCall>>(emptyList())
     private var proActionInProgress by mutableStateOf(false)
     private var proStatusMessage by mutableStateOf<String?>(null)
@@ -135,6 +143,25 @@ class MainActivity : ComponentActivity() {
             } else {
                 emitFeedback("Contacts access denied - enable it in Settings")
             }
+        }
+
+    /**
+     * Combined request for CALL_LOG + VOICEMAIL — together these surface calls
+     * that AG's CallScreeningService never saw (DND-silenced and carrier-
+     * filtered direct-to-voicemail). Asked once on first launch of a build
+     * that includes this feature; tracked via [SeenSeeAllCallsPrompt].
+     */
+    private val seeAllCallsPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            callLogPermissionGranted =
+                grants[Manifest.permission.READ_CALL_LOG] ?: callLogPermissionGranted
+            voicemailPermissionGranted =
+                grants["com.android.voicemail.permission.READ_VOICEMAIL"]
+                    ?: voicemailPermissionGranted
+            if (callLogPermissionGranted || voicemailPermissionGranted) {
+                analyticsService.track("see_all_calls_permission_granted")
+            }
+            refreshStatus()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -238,7 +265,39 @@ class MainActivity : ComponentActivity() {
             androidx.core.content.ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.READ_CONTACTS
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        recentCalls = ScreeningLog.getRecent()
+        callLogPermissionGranted = CallEventBackfill.hasCallLogPermission(this)
+        voicemailPermissionGranted = CallEventBackfill.hasVoicemailPermission(this)
+
+        // Surface calls AG's CallScreeningService never saw (DND-silenced,
+        // carrier-filtered direct-to-voicemail). No-op if no permissions
+        // granted yet.
+        if (callLogPermissionGranted || voicemailPermissionGranted) {
+            // CallEventBackfill.merge() queries two content providers and reads
+            // the screening log from disk — both blocking I/O. Run off the main
+            // thread to avoid UI jank / ANR on devices with large call logs,
+            // then publish the refreshed list back on the main thread.
+            lifecycleScope.launch(Dispatchers.IO) {
+                CallEventBackfill.merge(this@MainActivity)
+                val recent = ScreeningLog.getRecent()
+                withContext(Dispatchers.Main) {
+                    recentCalls = recent
+                }
+            }
+        } else {
+            if (callScreeningEnabled && !SeenSeeAllCallsPrompt.wasShown(this)) {
+                // First time on a build with this feature, *after* AG is the
+                // default Caller ID app — piggyback the perm request on an
+                // already-engaged user, not a cold launch.
+                SeenSeeAllCallsPrompt.markShown(this)
+                seeAllCallsPermissionLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.READ_CALL_LOG,
+                        "com.android.voicemail.permission.READ_VOICEMAIL",
+                    ),
+                )
+            }
+            recentCalls = ScreeningLog.getRecent()
+        }
     }
 
     private fun togglePause() {
@@ -1421,6 +1480,11 @@ private fun ActivityRow(
 
         val (label, color) = when {
             isBlocked -> "Blocked" to Color.Red
+            call.source == CallSource.VOICEMAIL ->
+                "Carrier voicemail" to AnswerGuardColors.Warning
+            call.source == CallSource.SYSTEM_CALL_LOG &&
+                call.verdict == SpamVerdict.SILENCE ->
+                "Silenced (DND)" to AnswerGuardColors.Warning
             call.verdict == SpamVerdict.SILENCE -> "Silenced" to AnswerGuardColors.Warning
             else -> "Allowed" to AnswerGuardColors.Primary
         }
