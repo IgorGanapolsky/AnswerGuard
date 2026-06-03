@@ -81,6 +81,7 @@ import com.igorganapolsky.answerguard.screening.SpamVerdict
 import com.igorganapolsky.answerguard.screening.UserBlocklist
 import com.igorganapolsky.answerguard.screening.CarrierResolver
 import com.igorganapolsky.answerguard.screening.CallerIdDatabase
+import com.igorganapolsky.answerguard.ui.CallTimestampFormatter
 import com.igorganapolsky.answerguard.ui.screens.PaywallSheet
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.igorganapolsky.answerguard.screening.PauseState
@@ -1400,7 +1401,7 @@ private fun ActivityRow(
                 )
             }
 
-            val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(call.timestamp))
+            val time = CallTimestampFormatter.format(call.timestamp)
             val eventTypeLabel = if (isSms) "Received" else "Called"
             val historyText = "$eventTypeLabel $totalCalls time${if (totalCalls > 1) "s" else ""} ($blockedCalls blocked, $allowedCalls allowed)"
             
