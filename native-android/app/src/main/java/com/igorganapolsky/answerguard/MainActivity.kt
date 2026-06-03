@@ -1,6 +1,5 @@
 package com.igorganapolsky.answerguard
 
-import android.Manifest
 import android.app.role.RoleManager
 import android.content.Intent
 import android.net.Uri
@@ -80,7 +79,6 @@ import com.igorganapolsky.answerguard.screening.CallEventBackfill
 import com.igorganapolsky.answerguard.screening.CallSource
 import com.igorganapolsky.answerguard.screening.ScreenedCall
 import com.igorganapolsky.answerguard.screening.ScreeningLog
-import com.igorganapolsky.answerguard.screening.SeenSeeAllCallsPrompt
 import com.igorganapolsky.answerguard.screening.SpamVerdict
 import com.igorganapolsky.answerguard.screening.UserBlocklist
 import com.igorganapolsky.answerguard.screening.CarrierResolver
@@ -143,25 +141,6 @@ class MainActivity : ComponentActivity() {
             } else {
                 emitFeedback("Contacts access denied - enable it in Settings")
             }
-        }
-
-    /**
-     * Combined request for CALL_LOG + VOICEMAIL — together these surface calls
-     * that AG's CallScreeningService never saw (DND-silenced and carrier-
-     * filtered direct-to-voicemail). Asked once on first launch of a build
-     * that includes this feature; tracked via [SeenSeeAllCallsPrompt].
-     */
-    private val seeAllCallsPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-            callLogPermissionGranted =
-                grants[Manifest.permission.READ_CALL_LOG] ?: callLogPermissionGranted
-            voicemailPermissionGranted =
-                grants["com.android.voicemail.permission.READ_VOICEMAIL"]
-                    ?: voicemailPermissionGranted
-            if (callLogPermissionGranted || voicemailPermissionGranted) {
-                analyticsService.track("see_all_calls_permission_granted")
-            }
-            refreshStatus()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -268,9 +247,9 @@ class MainActivity : ComponentActivity() {
         callLogPermissionGranted = CallEventBackfill.hasCallLogPermission(this)
         voicemailPermissionGranted = CallEventBackfill.hasVoicemailPermission(this)
 
-        // Surface calls AG's CallScreeningService never saw (DND-silenced,
-        // carrier-filtered direct-to-voicemail). No-op if no permissions
-        // granted yet.
+        // Public Play builds do not request restricted Call Log / Voicemail
+        // permissions. This remains a no-op unless a non-Play build declares
+        // and receives those permissions.
         if (callLogPermissionGranted || voicemailPermissionGranted) {
             // CallEventBackfill.merge() queries two content providers and reads
             // the screening log from disk — both blocking I/O. Run off the main
@@ -284,18 +263,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } else {
-            if (callScreeningEnabled && !SeenSeeAllCallsPrompt.wasShown(this)) {
-                // First time on a build with this feature, *after* AG is the
-                // default Caller ID app — piggyback the perm request on an
-                // already-engaged user, not a cold launch.
-                SeenSeeAllCallsPrompt.markShown(this)
-                seeAllCallsPermissionLauncher.launch(
-                    arrayOf(
-                        Manifest.permission.READ_CALL_LOG,
-                        "com.android.voicemail.permission.READ_VOICEMAIL",
-                    ),
-                )
-            }
             recentCalls = ScreeningLog.getRecent()
         }
     }
@@ -969,9 +936,9 @@ private fun ProCard(
             
             val description = when (entitlementLevel) {
                 EntitlementLevel.BUSINESS -> "Enterprise-grade call defense active. Advanced scam shielding and priority B2B support fully engaged."
-                EntitlementLevel.FAMILY -> "Advanced protection active across your devices. Gemini-powered intent analysis enabled. Upgrade to Business for strict scam defense."
+                EntitlementLevel.FAMILY -> "Advanced protection active across your household. Upgrade to Business for stricter spam rules and priority support."
                 EntitlementLevel.PRO -> "Premium protection active. Compare Family and Business plans to add household sharing or business-tuned rules."
-                EntitlementLevel.NONE -> "Basic protection active. Upgrade to unlock advanced spam rules, voice deepfake defense, and household security."
+                EntitlementLevel.NONE -> "Basic protection active. Upgrade to unlock advanced spam rules, family sharing, and business-tuned rules."
             }
 
             Text(
@@ -1132,7 +1099,7 @@ private fun Header(
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "ON-DEVICE AI",
+                            text = "ON-DEVICE SCREENING",
                             color = AnswerGuardColors.Primary,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Black

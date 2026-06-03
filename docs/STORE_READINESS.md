@@ -50,6 +50,19 @@ Required GitHub secrets for Android Firebase App Distribution:
 - `FIREBASE_SERVICE_ACCOUNT_JSON`
 - `FIREBASE_ANDROID_APP_ID`
 
+`GOOGLE_SERVICES_JSON` must include Firebase Android clients for both package
+names used by the native app:
+
+- `com.igorganapolsky.answerguard` for release builds.
+- `com.igorganapolsky.answerguard.debug` for debug builds, instrumentation,
+  Maestro, Firebase App Testing, and local verification paths that enable the
+  Google Services Gradle plugin.
+
+CI dummy configs already include both clients. Real local files and GitHub
+secret values must do the same, otherwise `processDebugGoogleServices` fails
+with "No matching client found for package name
+'com.igorganapolsky.answerguard.debug'".
+
 Optional GitHub variables for Firebase delivery:
 
 - `FIREBASE_INTERNAL_GROUPS`
