@@ -684,6 +684,10 @@ def verify_age_rating(client: ASCClient, app_id: str, version_id: str | None = N
             if data.get("data"):
                 return
         except Exception as e:
+            message = str(e)
+            if "PATH_ERROR" in message and "ageRatingDeclaration" in message and "does not exist" in message:
+                info(f"Skipping Age Rating API read-back: Apple endpoint unavailable ({e})")
+                return
             errors.append(f"version /appStoreVersions/{version_id}/ageRatingDeclaration: {e}")
     else:
         errors.append("version_id missing (cannot verify ageRatingDeclaration).")
