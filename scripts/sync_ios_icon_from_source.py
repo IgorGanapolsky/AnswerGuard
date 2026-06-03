@@ -13,6 +13,8 @@ try:
 except ImportError as exc:  # pragma: no cover
     raise SystemExit(f"Pillow is required: {exc}")
 
+IOS_ICON_BACKGROUND = (6, 33, 30, 255)
+
 
 def _parse_pixels(entry: Dict[str, Any]) -> int:
     size_text = str(entry.get("size", "0x0")).strip().lower()
@@ -20,6 +22,13 @@ def _parse_pixels(entry: Dict[str, Any]) -> int:
     base = float(size_text.split("x")[0])
     scale = float(scale_text.replace("x", ""))
     return int(round(base * scale))
+
+
+def _flatten_for_ios_icon(image: Image.Image) -> Image.Image:
+    rgba = image.convert("RGBA")
+    background = Image.new("RGBA", rgba.size, IOS_ICON_BACKGROUND)
+    background.alpha_composite(rgba)
+    return background.convert("RGB")
 
 
 def run(source: Path, appiconset: Path) -> Dict[str, Any]:
@@ -42,11 +51,10 @@ def run(source: Path, appiconset: Path) -> Dict[str, Any]:
     if src.width != src.height:
         return {"status": "error", "reason": f"source icon is not square ({src.width}x{src.height})"}
     # iOS marketing/app icons must be FULLY OPAQUE (App Store rejects alpha on
-    # the 1024 marketing icon). Flatten any transparency onto an opaque base so
-    # every generated PNG has solid 255 alpha / no transparent pixels.
-    flat = Image.new("RGB", src.size, (255, 255, 255))
-    flat.paste(src, mask=src.split()[3])
-    src = flat
+    # the 1024 marketing icon). Each generated PNG is flattened onto an opaque
+    # brand-colored base via _flatten_for_ios_icon() below so there are no
+    # transparent pixels. The bold-shield source is already fully opaque, but
+    # this guarantees opacity regardless of source.
     written = []
     for image in images:
         if not isinstance(image, dict):
@@ -59,6 +67,7 @@ def run(source: Path, appiconset: Path) -> Dict[str, Any]:
             continue
         out = appiconset / str(filename)
         resized = src.resize((pixels, pixels), Image.Resampling.LANCZOS)
+        resized = _flatten_for_ios_icon(resized)
         resized.save(out, format="PNG")
         written.append({"file": str(out), "pixels": pixels})
 
