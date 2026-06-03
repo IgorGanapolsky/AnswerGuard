@@ -1,4 +1,5 @@
 What's new in v1.2.7:
+- Recent Activity now shows weekday, date, and time for screened calls so older entries are not just a time of day.
 - See calls your carrier routed direct to voicemail and calls Do Not Disturb silenced — now visible in Recent Activity with clear labels.
 - New launcher icon: shield + telephone handset, so the app is recognisable on your home screen at a glance.
 - "Delete my data" in the Privacy & Data card — clear your screening history and blocklist without uninstalling.
