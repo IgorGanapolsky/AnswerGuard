@@ -1,6 +1,6 @@
 What's new in v1.2.7:
-- Recent Activity now shows weekday, date, and time for screened calls so older entries are not just a time of day.
-- Recent Activity now explains why carrier-routed voicemail and Do Not Disturb calls may not appear when Android routes them before AnswerGuard can screen them.
-- New launcher icon: shield + telephone handset, so the app is recognisable on your home screen at a glance.
-- "Delete my data" in the Privacy & Data card — clear your screening history and blocklist without uninstalling.
-- Refreshed privacy policy with explicit sections for SMS, Family/Business plans, and on-device data deletion.
+- Recent Activity now shows weekday, date, and time for screened calls.
+- Carrier-routed voicemail and Do Not Disturb limitations are explained clearly.
+- New launcher icon: shield + telephone handset.
+- Delete my data clears screening history and blocklist without uninstalling.
+- Refreshed privacy policy and store assets for the shipped local-screening feature set.
