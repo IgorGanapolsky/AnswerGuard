@@ -11,11 +11,11 @@
     <!-- Allow identification of contacts to avoid blocking them -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
-    <!-- See-all-calls: surface calls that AG's CallScreeningService never saw
-         (DND-silenced, carrier spam-filtered, calls before AG was installed).
-         Default-handler exception applies — AG is the default Caller ID & Spam app. -->
-    <uses-permission android:name="android.permission.READ_CALL_LOG" />
-    <uses-permission android:name="com.android.voicemail.permission.READ_VOICEMAIL" />
+    <!-- Do not request system call-history / voicemail permissions in Play
+         builds. Google Play treats call-history access as restricted and
+         requires a Permissions Declaration review. AnswerGuard ships as a Call
+         Screening app, not a default Phone handler, so public builds rely on
+         the local screening log instead of system-wide call-log backfill. -->
 
     <!-- Remove AD_ID permission added by dependencies (Firebase/PostHog) — app does not use advertising ID -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
