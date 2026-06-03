@@ -32,9 +32,9 @@ jobs:
       ios: ${{ steps.filter.outputs.ios }}
       android: ${{ steps.filter.outputs.android }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             ios:
@@ -52,7 +52,7 @@ jobs:
     name: Architecture Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Architecture ban checks (Kotlin)
         run: |
@@ -110,10 +110,10 @@ jobs:
     name: Legacy Python Compile Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -140,9 +140,9 @@ jobs:
       run:
         working-directory: native-android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "17"
@@ -169,7 +169,7 @@ jobs:
 
       - name: Upload JaCoCo HTML report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jacoco-report
           path: native-android/app/build/reports/jacoco/jacocoDebugUnitTestReport/html/
@@ -179,14 +179,14 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-debug
           path: native-android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Android coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-unit-coverage
           path: |
@@ -220,7 +220,7 @@ jobs:
       run:
         working-directory: native-ios
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Select Xcode
         run: |
@@ -287,7 +287,7 @@ jobs:
 
       - name: Upload iOS xcresult
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ios-test-results-xcresult
           path: native-ios/build/TestResults.xcresult
@@ -300,10 +300,10 @@ jobs:
       run:
         working-directory: tests/playwright
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "20"
           cache: "npm"
@@ -317,7 +317,7 @@ jobs:
 
       - name: Upload Playwright artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-local-artifacts
           path: |
@@ -328,10 +328,10 @@ jobs:
     name: Python Script Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -343,7 +343,7 @@ jobs:
 
       - name: Upload Python coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-coverage-xml
           path: coverage-python.xml
@@ -351,7 +351,7 @@ jobs:
 
       - name: Upload Python coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v5
         with:
           files: coverage-python.xml
           flags: python-scripts
@@ -372,7 +372,7 @@ jobs:
 
       - name: Upload release readiness artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-readiness-local
           path: |
@@ -385,10 +385,10 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -430,7 +430,7 @@ jobs:
 
       - name: Upload north star artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: north-star-guardrail
           path: marketing/data/north_star.json
@@ -444,7 +444,7 @@ jobs:
       pull-requests: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -511,7 +511,7 @@ jobs:
       pull-requests: read
     steps:
       - name: Enforce AI review thread resolution
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const owner = context.repo.owner;
@@ -584,10 +584,10 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -603,7 +603,7 @@ jobs:
 
       - name: Authenticate to Google Cloud
         if: steps.crashlytics-creds.outputs.has_creds == 'true'
-        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
@@ -630,7 +630,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Comment on PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const androidResult = '${{ needs.android.result }}';
