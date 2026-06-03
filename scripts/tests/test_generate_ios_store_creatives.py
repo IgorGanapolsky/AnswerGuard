@@ -21,7 +21,7 @@ class GenerateIosStoreCreativesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             repo = Path(td)
             shots_dir = self._seed_screenshots(repo, size=(300, 600))
-            original_bytes = (shots_dir / "1_setup.png").read_bytes()
+            original_bytes = (shots_dir / "01_AI.png").read_bytes()
 
             report = creatives.generate(repo, "en-US")
 
@@ -37,11 +37,11 @@ class GenerateIosStoreCreativesTests(unittest.TestCase):
             backup_dir = backup_dirs[0]
             self.assertEqual(payload["backup_dir"], str(backup_dir))
             self.assertTrue(backup_dir.is_dir())
-            self.assertTrue((backup_dir / "1_setup.png").is_file())
+            self.assertTrue((backup_dir / "01_AI.png").is_file())
 
-            out = Image.open(shots_dir / "1_setup.png")
+            out = Image.open(shots_dir / "01_AI.png")
             self.assertEqual(out.size, (300, 600))
-            self.assertNotEqual(original_bytes, (shots_dir / "1_setup.png").read_bytes())
+            self.assertNotEqual(original_bytes, (shots_dir / "01_AI.png").read_bytes())
 
     def test_generate_fails_when_required_source_is_missing(self):
         with tempfile.TemporaryDirectory() as td:
