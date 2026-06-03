@@ -1,42 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  AnswerGuard ADAPTIVE-ICON foreground layer for Android API 26+.
-  Just the SOLID white shield + bold gradient check on a transparent
-  canvas. Android composites this over the brand-gradient background
-  drawable, then applies the launcher mask (squircle / circle / etc.).
-
-  Content stays inside the centre ~66% safe zone (≈ x/y 174..850) so the
-  mask never clips the shield apex. No glass, no alpha fills, no thin lines.
--->
+<!-- Android adaptive-icon foreground layer for AnswerGuard. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <linearGradient id="checkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#15C39A"/>
-      <stop offset="100%" stop-color="#0A7C5A"/>
+    <linearGradient id="shield" x1="326" y1="204" x2="710" y2="802" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67F7E8"/>
+      <stop offset="0.5" stop-color="#13C8B6"/>
+      <stop offset="1" stop-color="#058579"/>
     </linearGradient>
+    <linearGradient id="shieldRim" x1="300" y1="198" x2="724" y2="826" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#E9FFFB"/>
+      <stop offset="0.42" stop-color="#9EFDF4"/>
+      <stop offset="1" stop-color="#06635D"/>
+    </linearGradient>
+    <filter id="softShadow" x="-18%" y="-14%" width="136%" height="136%">
+      <feDropShadow dx="0" dy="22" stdDeviation="18" flood-color="#020B0A" flood-opacity="0.42"/>
+    </filter>
+    <filter id="innerLift" x="-12%" y="-12%" width="124%" height="124%">
+      <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#022320" flood-opacity="0.28"/>
+    </filter>
   </defs>
 
-  <!-- NO background rect — transparent so the adaptive background shows. -->
+  <g filter="url(#softShadow)">
+    <path d="M512 178 748 266v218c0 147-82 252-236 334C358 736 276 631 276 484V266Z"
+      fill="url(#shield)"
+      stroke="url(#shieldRim)"
+      stroke-width="22"
+      stroke-linejoin="round"/>
+    <path d="M512 212 708 286v54c-55-24-121-37-196-37s-141 13-196 37v-54Z"
+      fill="#E9FFFB"
+      opacity="0.22"/>
+  </g>
 
-  <!-- Solid white shield sized within the 66% safe zone. -->
-  <path d="
-    M 512 300
-    L 730 357
-    L 730 537
-    C 730 657, 645 738, 512 768
-    C 379 738, 294 657, 294 537
-    L 294 357
-    Z"
-    fill="#FFFFFF"/>
-
-  <!-- Bold gradient check knocked into the shield. -->
-  <path d="
-    M 412 535
-    L 482 598
-    L 618 450"
-    fill="none"
-    stroke="url(#checkGrad)"
-    stroke-width="70"
-    stroke-linecap="round"
-    stroke-linejoin="round"/>
+  <g filter="url(#innerLift)">
+    <path d="M403 360c-23 12-38 34-41 62-6 53 33 128 100 194 67 67 142 106 195 100 28-3 50-18 62-41l19-37c7-14 2-31-11-39l-75-42c-13-7-29-4-38 7l-31 36c-27-13-54-33-79-59-26-26-46-52-59-79l36-31c11-9 14-25 7-38l-42-75c-8-13-25-18-39-11Z"
+      fill="#F7FFFD"/>
+    <path d="M642 354c55 21 95 70 105 129"
+      fill="none"
+      stroke="#B9FFF6"
+      stroke-width="34"
+      stroke-linecap="round"
+      opacity="0.92"/>
+    <path d="M656 264c97 33 171 120 187 225"
+      fill="none"
+      stroke="#5EF3E3"
+      stroke-width="30"
+      stroke-linecap="round"
+      opacity="0.58"/>
+  </g>
 </svg>
