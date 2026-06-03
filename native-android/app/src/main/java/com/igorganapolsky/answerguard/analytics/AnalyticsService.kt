@@ -21,11 +21,21 @@ class AnalyticsService
         private var analyticsContextProperties: Map<String, Any> = emptyMap()
 
         fun initialize(application: Application) {
+            initialize(application, BuildConfig.POSTHOG_API_KEY)
+        }
+
+        // Internal seam so unit tests can drive a non-blank API key without
+        // having to mock `BuildConfig.POSTHOG_API_KEY` (which is a Kotlin
+        // `const val` — inlined at compile time and not interceptable via
+        // mockk static stubbing).
+        internal fun initialize(
+            application: Application,
+            apiKey: String,
+        ) {
             if (initialized) return
 
             prefs = application.getSharedPreferences(PREFS_NAME, Application.MODE_PRIVATE)
 
-            val apiKey = BuildConfig.POSTHOG_API_KEY
             if (apiKey.isBlank()) {
                 return
             }

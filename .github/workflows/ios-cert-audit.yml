@@ -1,0 +1,33 @@
+name: iOS Cert Audit (read-only)
+
+# Read-only: lists the Apple Developer account's signing certificates via the
+# App Store Connect API so we can see what is occupying the (capped)
+# Distribution-certificate slots before deciding which to revoke. Mutates
+# nothing — only GET /v1/certificates.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: python -m pip install pyjwt==2.11.0 cryptography==46.0.5 requests==2.32.5
+
+      - name: List signing certificates
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: python scripts/list_ios_certs.py
