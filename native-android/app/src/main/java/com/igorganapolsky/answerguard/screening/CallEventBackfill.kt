@@ -109,6 +109,14 @@ object CallEventBackfill {
                 val dateIdx = cursor.getColumnIndex(CallLog.Calls.DATE)
                 val typeIdx = cursor.getColumnIndex(CallLog.Calls.TYPE)
                 val nameIdx = cursor.getColumnIndex(CallLog.Calls.CACHED_NAME)
+                // Some OEM-modified providers omit projected columns and return
+                // -1. Passing -1 to cursor.getX() throws, which the outer catch
+                // would swallow for the *entire* batch. Bail early with what we
+                // have if any required column is missing.
+                if (numberIdx < 0 || dateIdx < 0 || typeIdx < 0) {
+                    Log.w(TAG, "CallLog missing required columns; skipping backfill")
+                    return out
+                }
                 while (cursor.moveToNext()) {
                     val number = cursor.getString(numberIdx).orEmpty()
                     if (number.digitsOnly().isEmpty()) continue
