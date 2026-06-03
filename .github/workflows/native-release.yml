@@ -171,12 +171,13 @@ jobs:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
           APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          REVOKE_CERT_ID: ${{ inputs.revoke_cert_id }}
         run: |
           python -m pip install pyjwt==2.11.0 cryptography==46.0.5 requests==2.32.5
-          if [ "${{ inputs.revoke_cert_id }}" = "auto" ]; then
+          if [ "$REVOKE_CERT_ID" = "auto" ]; then
             python scripts/revoke_ios_cert.py --auto
           else
-            python scripts/revoke_ios_cert.py --id "${{ inputs.revoke_cert_id }}"
+            python scripts/revoke_ios_cert.py --id "$REVOKE_CERT_ID"
           fi
 
       # One-shot remedy for a distribution cert that was revoked on the Apple
