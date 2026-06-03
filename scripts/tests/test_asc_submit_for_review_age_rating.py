@@ -27,7 +27,20 @@ class AscSubmitForReviewVerifyAgeRatingTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             verify_age_rating(client, "app1", "ver1")
 
+    def test_verify_age_rating_skips_when_apple_relationship_endpoint_is_unavailable(self):
+        from scripts.asc_submit_for_review import verify_age_rating
+
+        client = RouterClient(
+            {
+                ("GET", "/appStoreVersions/ver1/ageRatingDeclaration"): RuntimeError(
+                    "HTTP 404 {'errors': [{'code': 'PATH_ERROR', "
+                    "'detail': \"The relationship 'ageRatingDeclaration' does not exist\"}]}"
+                ),
+            }
+        )
+
+        verify_age_rating(client, "app1", "ver1")
+
 
 if __name__ == "__main__":
     unittest.main()
-
