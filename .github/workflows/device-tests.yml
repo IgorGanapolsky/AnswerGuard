@@ -77,7 +77,11 @@ jobs:
           api-level: 30
           target: google_apis
           arch: x86_64
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1080x2340
-          disable-animations: false
-          emulator-boot-timeout: 300
+          # -no-snapshot-load forces a cold boot every run. This avoids the
+          # intermittent "Failed to load snapshot 'default_boot'" infra flake
+          # that left the emulator half-booted and broke app launch on the
+          # very next (otherwise identical) re-run.
+          emulator-options: -no-snapshot-load -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1080x2340
+          disable-animations: true
+          emulator-boot-timeout: 600
           script: sh scripts/device-tests/ci-maestro.sh
