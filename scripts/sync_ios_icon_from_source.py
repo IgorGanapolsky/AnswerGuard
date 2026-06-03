@@ -41,6 +41,12 @@ def run(source: Path, appiconset: Path) -> Dict[str, Any]:
     src = Image.open(source).convert("RGBA")
     if src.width != src.height:
         return {"status": "error", "reason": f"source icon is not square ({src.width}x{src.height})"}
+    # iOS marketing/app icons must be FULLY OPAQUE (App Store rejects alpha on
+    # the 1024 marketing icon). Flatten any transparency onto an opaque base so
+    # every generated PNG has solid 255 alpha / no transparent pixels.
+    flat = Image.new("RGB", src.size, (255, 255, 255))
+    flat.paste(src, mask=src.split()[3])
+    src = flat
     written = []
     for image in images:
         if not isinstance(image, dict):
@@ -63,8 +69,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Regenerate iOS iconset from source PNG")
     parser.add_argument(
         "--source",
-        default="native-android/fastlane/metadata/android/en-US/images/icon.png",
-        help="Source icon PNG",
+        default="native-android/fastlane/metadata/android/en-US/images/icon-1024.png",
+        help="Source icon PNG (prefer the 1024 source so the iOS 1024 is downscaled, not upscaled)",
     )
     parser.add_argument(
         "--appiconset",
