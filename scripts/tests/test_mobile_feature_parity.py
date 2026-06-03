@@ -29,6 +29,14 @@ def test_android_declares_real_call_screening_capability():
     assert "RoleManager.ROLE_CALL_SCREENING" in role_onboarding
 
 
+def test_android_play_manifest_avoids_restricted_call_log_permissions():
+    manifest = _read(ANDROID_MANIFEST)
+
+    assert "android.permission.READ_CALL_LOG" not in manifest
+    assert "android.permission.WRITE_CALL_LOG" not in manifest
+    assert "com.android.voicemail.permission.READ_VOICEMAIL" not in manifest
+
+
 def test_android_removed_timer_runtime_surface():
     manifest = _read(ANDROID_MANIFEST)
     main = _read(ANDROID_MAIN)
