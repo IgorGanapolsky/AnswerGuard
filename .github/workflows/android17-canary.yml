@@ -23,24 +23,35 @@ jobs:
       run:
         working-directory: native-android
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
           cache: gradle
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install canary Android platform packages
         env:
           API_LEVEL: ${{ inputs.api_level || '37' }}
         run: |
           set -euo pipefail
-          yes | sdkmanager --licenses >/dev/null
+          # `yes` exits with SIGPIPE once sdkmanager closes stdin; pipefail
+          # would treat that harmless signal as a step failure. Disable
+          # pipefail only around the pipe and check sdkmanager's real exit
+          # code via PIPESTATUS so genuine license failures still fail.
+          set +o pipefail
+          yes 2>/dev/null | sdkmanager --licenses >/dev/null 2>&1
+          rc=${PIPESTATUS[1]}
+          set -o pipefail
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::sdkmanager --licenses failed (rc=$rc)"
+            exit "$rc"
+          fi
           sdkmanager "platforms;android-${API_LEVEL}" "build-tools;35.0.0"
 
       - name: Grant execute permission
@@ -72,7 +83,7 @@ jobs:
 
       - name: Upload canary test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android17-canary-artifacts
           path: |
