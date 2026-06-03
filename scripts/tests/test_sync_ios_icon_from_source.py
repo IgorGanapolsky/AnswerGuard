@@ -44,3 +44,23 @@ def test_run_generates_files(tmp_path: Path) -> None:
         assert path.exists()
         img = Image.open(path)
         assert img.size == expected_size
+        assert img.mode == "RGB"
+
+
+def test_run_flattens_transparent_source_for_app_store(tmp_path: Path) -> None:
+    source = tmp_path / "source.png"
+    Image.new("RGBA", (64, 64), color=(0, 0, 0, 0)).save(source)
+
+    appiconset = tmp_path / "AppIcon.appiconset"
+    appiconset.mkdir(parents=True, exist_ok=True)
+    contents = {
+        "images": [{"size": "1024x1024", "scale": "1x", "filename": "icon-1024.png"}],
+        "info": {"version": 1, "author": "xcode"},
+    }
+    (appiconset / "Contents.json").write_text(json.dumps(contents), encoding="utf-8")
+
+    result = syncer.run(source, appiconset)
+
+    assert result["status"] == "ok"
+    generated = Image.open(appiconset / "icon-1024.png")
+    assert generated.mode == "RGB"
