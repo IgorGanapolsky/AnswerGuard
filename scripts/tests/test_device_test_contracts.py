@@ -43,6 +43,8 @@ def test_ci_maestro_runner_installs_and_controls_answerguard():
     assert ANDROID_PACKAGE in source
     assert ANDROID_DEBUG_PACKAGE in source
     assert "MAESTRO_APP_ID" in source
+    assert "MAESTRO_FLOW_TIMEOUT_SECONDS" in source
+    assert 'timeout "$MAESTRO_FLOW_TIMEOUT_SECONDS" maestro test "$flow_path"' in source
     assert "answerguard-maestro-ci" in source
     assert "com.iganapolsky.randomtimer" not in source
     assert "com.igorganapolsky.randomtimer" not in source

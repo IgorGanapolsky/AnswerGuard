@@ -7,6 +7,7 @@ BASE_APP_ID="com.igorganapolsky.answerguard"
 CI_APP_ID="${MAESTRO_APP_ID:-com.igorganapolsky.answerguard.debug}"
 MAIN_ACTIVITY="com.igorganapolsky.answerguard.MainActivity"
 MAESTRO_TMP_DIR="${TMPDIR:-/tmp}/answerguard-maestro-ci"
+MAESTRO_FLOW_TIMEOUT_SECONDS="${MAESTRO_FLOW_TIMEOUT_SECONDS:-180}"
 
 adb install -r native-android/app/build/outputs/apk/debug/app-debug.apk
 adb shell pm grant "$CI_APP_ID" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
@@ -48,7 +49,7 @@ do
   echo "== Running: $flow_path =="
   adb shell am force-stop "$CI_APP_ID" 2>/dev/null || true
   sleep 2
-  if maestro test "$flow_path"; then
+  if timeout "$MAESTRO_FLOW_TIMEOUT_SECONDS" maestro test "$flow_path"; then
     echo "PASSED: $flow_path"
     PASS=$((PASS + 1))
   else
