@@ -94,9 +94,9 @@ class PaywallSheetTest {
     fun renders_all_feature_rows() {
         setPaywall()
         // Available today — features actually shipped in v1.2.x
-        composeTestRule.onNodeWithText("Advanced spam rules").assertExists()
+        composeTestRule.onNodeWithText("Spam-screening controls").assertExists()
         composeTestRule.onNodeWithText("Google Play family sharing").assertExists()
-        composeTestRule.onNodeWithText("Business-tuned rules + priority support").assertExists()
+        composeTestRule.onNodeWithText("Business priority support").assertExists()
         // Coming soon — clearly demarcated as not yet shipped (Play DBA policy compliance)
         composeTestRule.onNodeWithText("On-device AI intent analysis").assertExists()
         composeTestRule.onNodeWithText("Voice deepfake defense").assertExists()

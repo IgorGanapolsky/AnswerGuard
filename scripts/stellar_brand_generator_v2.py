@@ -87,7 +87,7 @@ def generate_stellar_feature():
     f_h1 = _load_font(100, bold=True)
     f_h2 = _load_font(30)
     draw.text((60, 140), "AnswerGuard", fill=COLORS["Emerald"], font=f_h1)
-    draw.text((65, 260), "AUTONOMOUS AI CALL SHIELD", fill=COLORS["Highlight"], font=f_h2)
+    draw.text((65, 260), "PRIVATE SPAM CALL SHIELD", fill=COLORS["Highlight"], font=f_h2)
     draw.text((65, 300), "JUNE 2026 SECURITY CORE", fill=COLORS["Muted"], font=f_h2)
     draw_glass_shield(draw, (w-200, h//2 + 20), 200, COLORS["Emerald"])
     path = ANDROID_IMAGES / "featureGraphic" / "feature.png"
@@ -98,10 +98,10 @@ def generate_stellar_feature():
 def generate_stellar_screenshots(target_dir, device="phone", width=1080, height=2340):
     target_dir.mkdir(parents=True, exist_ok=True)
     screens = [
-        ("01_AI", "AI INTENT ANALYSIS", "Gemini Nano decodes caller intent locally.", "GEMINI READY"),
-        ("02_PRIVATE", "ZERO-KNOWLEDGE LOGS", "Call data stays in your hardware enclave.", "100% PRIVATE"),
-        ("03_FRAUD", "DEEPFAKE DEFENSE", "Block AI voice clones in real-time.", "ANTI-FRAUD"),
-        ("04_HOUSEHOLD", "FAMILY PROTECTION", "Tactical security for your entire home.", "FAMILY")
+        ("01_AI", "SCREENED CALLS", "See weekday, date, time, and handling reason.", "LOCAL"),
+        ("02_PRIVATE", "PRIVATE BY DEFAULT", "Call logs and blocklists stay on your device.", "100% PRIVATE"),
+        ("03_FRAUD", "BLOCK SPAM FAST", "Silence robocallers with local number screening.", "ANTI-SPAM"),
+        ("04_HOUSEHOLD", "FAMILY PLAN", "Share through Google Play family sharing.", "FAMILY")
     ]
     for name, title, sub, badge in screens:
         img = Image.new("RGB", (width, height), COLORS["Void"])
@@ -119,12 +119,12 @@ def generate_stellar_screenshots(target_dir, device="phone", width=1080, height=
         print(f"🌟 Generated {device} Screenshot: {path}")
 
 def generate_release_notes():
-    notes = """JUNE 2026 SECURITY CORE UPDATE:
-- Autonomous AI Call Shield: Gemini Nano now analyzes unknown caller intent entirely on-device.
-- Voice Deepfake Defense: New biometric layers to detect and block AI-cloned voices in real-time.
-- Zero-Knowledge History: Activity logs are now 100% private and never leave your device.
-- Household Sync: Pro/Family members can now share blocklists via private encrypted channels.
-- Optimized for Android 17: Full support for the latest system-level call screening APIs."""
+    notes = """What's new in v1.2.7:
+- Recent Activity now shows weekday, date, and time for screened calls.
+- Carrier-routed voicemail and Do Not Disturb limitations are explained clearly.
+- New launcher icon: shield + telephone handset.
+- Delete my data clears screening history and blocklist without uninstalling.
+- Refreshed privacy policy and store assets for the shipped local-screening feature set."""
     path = ANDROID_IMAGES.parent / "changelogs" / "default.txt"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(notes)
@@ -170,4 +170,3 @@ if __name__ == "__main__":
             print(result_ios.stdout.strip())
     else:
         print("⏭️ Skipping iOS icon sync (script not yet available)")
-

@@ -19,10 +19,10 @@ except ImportError:
     sys.exit("Pillow is required: pip install Pillow")
 
 SCREENSHOT_SPECS: dict[str, tuple[int, int]] = {
-    "1_setup.png": (1290, 2796),
-    "2_active.png": (1290, 2796),
-    "3_alarm.png": (1290, 2796),
-    "4_running.png": (1290, 2796),
+    "01_AI.png": (1242, 2688),
+    "02_PRIVATE.png": (1242, 2688),
+    "03_FRAUD.png": (1242, 2688),
+    "04_HOUSEHOLD.png": (1242, 2688),
     "5_ipad_setup.png": (2048, 2732),
     "6_ipad_running.png": (2048, 2732),
     "7_ipad_stopped.png": (2048, 2732),
