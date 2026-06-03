@@ -48,7 +48,7 @@ android {
         applicationId = "com.igorganapolsky.answerguard"
         minSdk = 26
         targetSdk = ciTargetSdk ?: 35
-        versionCode = ciVersionCode ?: 1780499586
+        versionCode = ciVersionCode ?: 1780515848
         versionName = "1.2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -184,11 +184,14 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.analytics)
 
-    // Firebase App Distribution — self-prompts testers to install new builds.
-    // Production builds via Play Store should use the api-only stub; we ship
-    // the full SDK across all variants because every current AnswerGuard build
-    // is distributed via Firebase App Distribution.
-    implementation(libs.firebase.appdistribution)
+    // Firebase App Distribution — the full SDK self-prompts testers on every
+    // launch ("Enable testing features … new build alerts and in-app feedback")
+    // and checks for new internal builds. That prompt must NEVER reach Play
+    // Store / production users. Ship the real SDK in DEBUG/internal builds only;
+    // release builds get the api-only NO-OP stub, so MainActivity's
+    // updateIfNewReleaseAvailable() compiles but does nothing in production.
+    debugImplementation(libs.firebase.appdistribution)
+    releaseImplementation(libs.firebase.appdistribution.api)
 
     // Media Session (Bluetooth/Android Auto alarm dismiss)
     implementation(libs.androidx.media)
