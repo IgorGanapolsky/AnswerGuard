@@ -1,0 +1,35 @@
+name: iOS App Groups
+
+# Enables the App Groups capability (capabilityType APP_GROUPS) on AnswerGuard's
+# three App IDs via the App Store Connect REST API (API-key / ES256 JWT auth) and
+# probes the appGroups resource endpoints for definitive evidence of whether the
+# app group can be created/associated programmatically. See
+# scripts/ensure_ios_app_groups.py for details.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ensure-app-groups:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pyjwt==2.11.0 cryptography==46.0.5 requests==2.32.5
+
+      - name: Ensure iOS App Groups capability
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: python3 scripts/ensure_ios_app_groups.py
