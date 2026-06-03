@@ -20,6 +20,12 @@ COLORS = {
     "Warning": (244, 63, 94),       # Alert
 }
 
+# 2026 Bold high-contrast brand icon palette (SOLID, no alpha/glass).
+# Diagonal gradient between two analogous saturated greens/teals + pure white.
+ICON_GRAD_TL = (21, 195, 154)       # #15C39A  top-left, bright teal-green
+ICON_GRAD_BR = (10, 124, 90)        # #0A7C5A  bottom-right, deep emerald
+ICON_WHITE = (255, 255, 255)        # #FFFFFF  shield silhouette
+
 # Fix root detection
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ANDROID_IMAGES = REPO_ROOT / "native-android" / "fastlane" / "metadata" / "android" / "en-US" / "images"
@@ -36,47 +42,118 @@ def _load_font(size: int, bold: bool = False):
             except: continue
     return ImageFont.load_default()
 
-def draw_glass_shield(draw, center, size, color):
-    cx, cy = center
-    r = size // 2
-    pts = [
-        (cx, cy - r),
-        (cx + r * 0.8, cy - r * 0.6),
-        (cx + r, cy),
-        (cx + r * 0.8, cy + r * 0.8),
-        (cx, cy + r),
-        (cx - r * 0.8, cy + r * 0.8),
-        (cx - r, cy),
-        (cx - r * 0.8, cy - r * 0.6),
+def _lerp(a, b, t):
+    """Linear interpolation between two RGB tuples."""
+    return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
+
+
+def _diagonal_gradient(size, top_left, bottom_right):
+    """Build a fully-opaque RGB diagonal (TL->BR) gradient image."""
+    img = Image.new("RGB", (size, size))
+    px = img.load()
+    max_d = (size - 1) * 2.0
+    for y in range(size):
+        for x in range(size):
+            t = (x + y) / max_d
+            px[x, y] = _lerp(top_left, bottom_right, t)
+    return img
+
+
+def _shield_points(cx, cy, half_w, top_y, bottom_y):
+    """Return a smooth, modern shield silhouette polygon (vector-like)."""
+    import math
+    top = top_y
+    shoulder_y = top_y + (bottom_y - top_y) * 0.16
+    mid_y = top_y + (bottom_y - top_y) * 0.52
+    pts = [(cx, top), (cx + half_w, shoulder_y), (cx + half_w, mid_y)]
+    # Right curve sweeping into the bottom tip.
+    steps = 24
+    for i in range(1, steps + 1):
+        t = i / steps
+        ang = t * (math.pi / 2)
+        x = cx + half_w * math.cos(ang) * (1 - 0.10 * t)
+        y = mid_y + (bottom_y - mid_y) * math.sin(ang)
+        pts.append((x, y))
+    # Mirror left side.
+    right = pts[3:]
+    for x, y in reversed(right):
+        pts.append((cx - (x - cx), y))
+    pts.append((cx - half_w, mid_y))
+    pts.append((cx - half_w, shoulder_y))
+    return pts
+
+
+def draw_solid_shield(img, center, half_width, top_y, bottom_y, gradient_img):
+    """Draw a SOLID white shield with a knocked-out gradient check mark.
+
+    Uses a high-resolution supersampled mask so edges are crisp/anti-aliased
+    (vector-like) rather than blurred. No alpha gradients, no glass.
+    """
+    ss = 4  # supersample factor
+    w = img.width
+    big = w * ss
+    cx, cy = center[0] * ss, center[1] * ss
+    pts = _shield_points(cx, cy, half_width * ss, top_y * ss, bottom_y * ss)
+
+    # 1. Solid white shield silhouette.
+    shield = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(shield).polygon(pts, fill=255)
+
+    # 2. Bold check mark knocked out (drawn in gradient color over white).
+    sw = int(round(0.105 * big))  # stroke width >= ~10.5% of icon width
+    cw = half_width * ss
+    ch = (bottom_y - top_y) * ss
+    check = [
+        (cx - cw * 0.46, cy + ch * 0.02),
+        (cx - cw * 0.10, cy + ch * 0.30),
+        (cx + cw * 0.52, cy - ch * 0.30),
     ]
-    for i in range(10, 0, -1):
-        alpha = int(255 * (1 - i/15))
-        draw.polygon(pts, fill=color + (alpha,), outline=COLORS["Highlight"] + (50,))
-        pts = [(p[0], p[1] - 1) for p in pts]
+    check_mask = Image.new("L", (big, big), 0)
+    cdraw = ImageDraw.Draw(check_mask)
+    cdraw.line(check, fill=255, width=sw, joint="curve")
+    r = sw // 2
+    for px_, py_ in (check[0], check[-1]):
+        cdraw.ellipse((px_ - r, py_ - r, px_ + r, py_ + r), fill=255)
+
+    # Compose at high res: gradient base -> white shield -> gradient check.
+    base = gradient_img.resize((big, big), Image.Resampling.LANCZOS).convert("RGB")
+    white_layer = Image.new("RGB", (big, big), ICON_WHITE)
+    base.paste(white_layer, (0, 0), shield)
+    # Knock the check out of the white shield by painting gradient back in,
+    # but only where the shield exists (so the check never bleeds outside).
+    from PIL import ImageChops
+    check_in_shield = ImageChops.multiply(check_mask, shield)
+    base.paste(gradient_img.resize((big, big), Image.Resampling.LANCZOS).convert("RGB"),
+               (0, 0), check_in_shield)
+
+    out = base.resize((w, w), Image.Resampling.LANCZOS)
+    return out
+
 
 def generate_stellar_icon():
     size = 1024
-    img = Image.new("RGBA", (size, size), (0,0,0,0))
-    draw = ImageDraw.Draw(img)
-    draw.ellipse((20, 20, size-20, size-20), fill=COLORS["DeepNavy"])
-    
-    # Draw glowing highlight ring
-    draw.ellipse((28, 28, size-28, size-28), outline=COLORS["Highlight"] + (25,), width=8)
-    
-    # Draw glass shield
-    draw_glass_shield(draw, (size//2, size//2 + 50), size//2 - 100, COLORS["Emerald"])
-    
-    # Draw bold, high-contrast checkmark badge representing secure, approved protection
-    cx, cy = size // 2, size // 2 + 50
-    pts = [(cx - 90, cy - 10), (cx - 25, cy + 55), (cx + 110, cy - 80)]
-    draw.line(pts, fill=COLORS["Highlight"], width=32, joint="round")
-    for pt in [pts[0], pts[-1]]:
-        draw.ellipse((pt[0] - 16, pt[1] - 16, pt[0] + 16, pt[1] + 16), fill=COLORS["Highlight"])
+    # Fully-opaque diagonal gradient background (OS applies the rounded mask).
+    grad = _diagonal_gradient(size, ICON_GRAD_TL, ICON_GRAD_BR)
+
+    # Shield ~64% of canvas height, centered (slightly above center looks balanced).
+    shield_h = int(size * 0.64)
+    top_y = (size - shield_h) // 2
+    bottom_y = top_y + shield_h
+    half_w = int(size * 0.30)
+    cx, cy = size // 2, (top_y + bottom_y) // 2
+
+    composed = draw_solid_shield(grad, (cx, cy), half_w, top_y, bottom_y, grad)
+    # Flatten to RGB to GUARANTEE no transparency anywhere.
+    img = composed.convert("RGB")
 
     icon_path = ANDROID_IMAGES / "icon.png"
     icon_path.parent.mkdir(parents=True, exist_ok=True)
+    # Save a high-res 1024 source so iOS 1024 is downscaled (crisp), not upscaled.
+    source_1024 = ANDROID_IMAGES / "icon-1024.png"
+    img.save(source_1024)
     img.resize((512, 512), Image.Resampling.LANCZOS).save(icon_path)
-    print(f"🌟 Generated Stellar Icon: {icon_path}")
+    print(f"🌟 Generated Stellar Icon (solid 1024): {source_1024}")
+    print(f"🌟 Generated Stellar Icon (512 source): {icon_path}")
 
 def generate_stellar_feature():
     w, h = 1024, 500
@@ -89,7 +166,14 @@ def generate_stellar_feature():
     draw.text((60, 140), "AnswerGuard", fill=COLORS["Emerald"], font=f_h1)
     draw.text((65, 260), "PRIVATE SPAM CALL SHIELD", fill=COLORS["Highlight"], font=f_h2)
     draw.text((65, 300), "JUNE 2026 SECURITY CORE", fill=COLORS["Muted"], font=f_h2)
-    draw_glass_shield(draw, (w-200, h//2 + 20), 200, COLORS["Emerald"])
+    # Solid brand shield on the right (no glass). Reuse the icon mark.
+    mark_size = 360
+    grad = _diagonal_gradient(mark_size, ICON_GRAD_TL, ICON_GRAD_BR)
+    sh_h = int(mark_size * 0.64)
+    sty = (mark_size - sh_h) // 2
+    mark = draw_solid_shield(grad, (mark_size // 2, mark_size // 2),
+                             int(mark_size * 0.30), sty, sty + sh_h, grad).convert("RGB")
+    img.paste(mark, (w - mark_size - 60, (h - mark_size) // 2))
     path = ANDROID_IMAGES / "featureGraphic" / "feature.png"
     path.parent.mkdir(parents=True, exist_ok=True)
     img.save(path)
