@@ -11,9 +11,6 @@
     <!-- Allow identification of contacts to avoid blocking them -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
-    <!-- SMS permission for premium caller identification -->
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
-
     <!-- See-all-calls: surface calls that AG's CallScreeningService never saw
          (DND-silenced, carrier spam-filtered, calls before AG was installed).
          Default-handler exception applies — AG is the default Caller ID & Spam app. -->
@@ -22,6 +19,15 @@
 
     <!-- Remove AD_ID permission added by dependencies (Firebase/PostHog) — app does not use advertising ID -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+
+    <!-- Remove REQUEST_INSTALL_PACKAGES permission added by Firebase App Distribution.
+         Play Console flags this permission as needing a "permitted-use category"
+         declaration that AnswerGuard does not match (no app-installer/store/browser
+         core purpose). Internal tester delivery is moving to the Play Console
+         Internal Testing track (see docs/INTERNAL_TESTING.md), so FAD self-update
+         is no longer needed. Side effect: FirebaseAppDistribution.updateIfNewReleaseAvailable()
+         in MainActivity.kt will fail silently (already has addOnFailureListener noop). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
 
     <application
         android:name=".AnswerGuardApp"
@@ -85,16 +91,6 @@
             android:name=".screening.RoleOnboardingActivity"
             android:theme="@style/Theme.Transparent"
             android:exported="false" />
-
-        <!-- SMS Receiver for Pro SMS caller identification -->
-        <receiver
-            android:name=".screening.SmsReceiver"
-            android:permission="android.permission.BROADCAST_SMS"
-            android:exported="true">
-            <intent-filter android:priority="999">
-                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
-            </intent-filter>
-        </receiver>
 
     </application>
 

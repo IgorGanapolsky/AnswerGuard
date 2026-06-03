@@ -13,6 +13,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: autonomous-release-automerge-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   enable-automerge:
     if: |

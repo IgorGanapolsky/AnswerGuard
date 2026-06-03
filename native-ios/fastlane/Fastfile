@@ -89,8 +89,22 @@ platform :ios do
           "com.igorganapolsky.answerguard.widget",
           "com.igorganapolsky.answerguard.calldirectory"
         ],
-        readonly: true,
-        api_key: defined?(api_key) ? api_key : nil
+        # With an App Store Connect API key available, run match read-write so
+        # it can GENERATE any missing provisioning profile (e.g. the
+        # calldirectory extension profile that was absent from the match repo
+        # and silently blocked every iOS release since 2026-05-13)
+        # non-interactively — no Apple ID 2FA.
+        #
+        # NB: use `api_key.nil?`, NOT `defined?(api_key)`. Ruby's parser marks
+        # `api_key` as a declared local for the whole lane the moment the
+        # `api_key = ...` assignment appears textually above — even when the
+        # enclosing `if` didn't run — so `defined?(api_key)` is ALWAYS truthy
+        # here and would force read-write mode even with no key. `api_key` is
+        # nil when unassigned, so `.nil?` is the correct presence check.
+        readonly: api_key.nil?,
+        force_for_new_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
+        include_all_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
+        api_key: api_key
       )
 
       app_profile = ENV["sigh_com.igorganapolsky.answerguard_appstore_profile-name"] ||
@@ -346,7 +360,17 @@ platform :ios do
         )
       end
 
-      # Distribution profiles for App Store export
+      # Distribution profiles for App Store export. Read-write when an API key
+      # is present so match can generate any missing profile (calldirectory)
+      # non-interactively; readonly otherwise. See the beta lane for the full
+      # rationale.
+      #
+      # force_for_new_certificates is gated on MATCH_FORCE_NEW_CERT so it is
+      # OFF for normal CI runs (which must not mint a new distribution cert
+      # every build). It is flipped on for a ONE-SHOT regeneration run when the
+      # stored distribution cert has been revoked on Apple's portal — match
+      # then creates a single fresh cert via the API key and overwrites the
+      # stale storage entry, without nuking other certs on the account.
       match(
         type: "appstore",
         app_identifier: [
@@ -354,11 +378,61 @@ platform :ios do
           "com.igorganapolsky.answerguard.widget",
           "com.igorganapolsky.answerguard.calldirectory"
         ],
-        readonly: true,
+        readonly: api_key.nil?,
+        force_for_new_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
+        include_all_certificates: ENV["MATCH_FORCE_NEW_CERT"] == "true",
         api_key: api_key
       )
     else
       UI.message("No MATCH_GIT_URL set - using Xcode automatic signing")
     end
+  end
+
+  desc "One-shot: nuke revoked Distribution certs + regenerate a fresh one"
+  # Ported verbatim from Random-Timer's proven regen_dist_certs lane. Use when
+  # the match repo's stored Distribution cert was revoked on Apple's portal and
+  # the account is cluttered with stale/orphaned certs, so `match` can neither
+  # decrypt-and-use nor mint a fresh one. `match nuke` revokes the stale certs
+  # (no-op if already revoked) and clears storage; `match` then mints a fresh
+  # Distribution cert + the three App Store profiles, encrypted with this repo's
+  # MATCH_PASSWORD. Runs via the ios-cert-regen.yml workflow.
+  lane :regen_dist_certs do
+    setup_ci if ENV["CI"] == "true"
+
+    UI.user_error!("APPSTORE_KEY_ID required") if ENV["APPSTORE_KEY_ID"].to_s.empty?
+    UI.user_error!("APPSTORE_ISSUER_ID required") if ENV["APPSTORE_ISSUER_ID"].to_s.empty?
+    UI.user_error!("MATCH_GIT_URL required") if ENV["MATCH_GIT_URL"].to_s.empty?
+
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APPSTORE_KEY_ID"],
+      issuer_id: ENV["APPSTORE_ISSUER_ID"],
+      key_filepath: File.expand_path("~/.appstoreconnect/private_keys/AuthKey_#{ENV['APPSTORE_KEY_ID']}.p8")
+    )
+
+    app_ids = [
+      "com.igorganapolsky.answerguard",
+      "com.igorganapolsky.answerguard.widget",
+      "com.igorganapolsky.answerguard.calldirectory"
+    ]
+
+    # match_nuke takes the strict type enum (appstore), NOT the CLI-only
+    # "distribution" alias which throws "Unsupported environment distribution".
+    # readonly:false is explicit — setup_ci/Matchfile can otherwise default it
+    # to a readonly dry-run that refuses to delete anything.
+    match_nuke(
+      type: "appstore",
+      app_identifier: app_ids,
+      readonly: false,
+      api_key: api_key,
+      skip_confirmation: true
+    )
+
+    match(
+      type: "appstore",
+      app_identifier: app_ids,
+      readonly: false,
+      force: true,
+      api_key: api_key
+    )
   end
 end

@@ -1,11 +1,11 @@
 name: Wiki Sync
 
 on:
-  schedule:
-    # Was '*/15 * * * *' (2,880 runs/mo, ~$46/mo). Cut to daily — the push
-    # triggers below already cover real wiki/marketing updates; cron is just
-    # a sweeper. Use workflow_dispatch for manual sync.
-    - cron: '0 6 * * *'
+  # schedule:  # Disabled to optimize GitHub Actions budget
+    # # Was '*/15 * * * *' (2,880 runs/mo, ~$46/mo). Cut to daily — the push
+    # # triggers below already cover real wiki/marketing updates; cron is just
+    # # a sweeper. Use workflow_dispatch for manual sync.
+    # - cron: '0 6 * * *'
   workflow_dispatch:
   push:
     branches: [develop]
@@ -69,7 +69,7 @@ jobs:
         run: python scripts/wiki_sync.py
 
       - name: Publish wiki pages
-        uses: Andrew-Chen-Wang/github-wiki-action@50650fccf3a10f741995523cf9708c53cec8912a # v4
+        uses: Andrew-Chen-Wang/github-wiki-action@64efa0a9436db17670a2259e0ac249d6f08bb352 # v5.0.4
         with:
           strategy: init
           path: wiki/

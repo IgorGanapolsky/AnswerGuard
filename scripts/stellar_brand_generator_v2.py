@@ -6,9 +6,8 @@ Features: Glassmorphism, Dynamic Gradients, and Outcome-First Typography.
 """
 
 import os
-import math
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 
 # 2026 Premium Tactical Palette
 COLORS = {

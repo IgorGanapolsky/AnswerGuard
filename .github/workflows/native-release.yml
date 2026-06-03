@@ -32,6 +32,14 @@ on:
           - 'true'
         required: false
         default: 'false'
+      regenerate_signing:
+        description: 'iOS only: one-shot — let match mint a fresh distribution cert when the stored one was revoked on Apple. Leave false for normal releases.'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        required: false
+        default: 'false'
 
 concurrency:
   group: mobile-release-pipeline-${{ github.ref_name }}-${{ inputs.platform || 'both' }}
@@ -43,7 +51,7 @@ jobs:
     runs-on: macos-26
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Fail fast on required iOS release secrets
         env:
@@ -67,12 +75,12 @@ jobs:
         run: bash scripts/preflight-release.sh --platform ios --layer 1
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@09a7688d3b55cf0e976497ff046b70949eeaccfd # v1
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1
         with:
           ruby-version: '3.2'
           bundler-cache: true
@@ -115,6 +123,42 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf "https://github.com/"
 
+      # One-shot remedy for a distribution cert that was revoked on the Apple
+      # Developer Portal but still lingers in match's git storage. In that state
+      # `match` aborts ("Certificate ... is not available on the Developer
+      # Portal") BEFORE force_for_new_certificates can mint a replacement, and
+      # it will not auto-delete the dangling entry. Purging the stale cert (and
+      # the appstore profiles that reference it) from storage leaves match with
+      # empty distribution storage, so the next step mints a fresh cert.
+      # This revokes NOTHING on Apple (the cert is already gone there) and the
+      # match repo's git history retains the old files, so it is reversible.
+      # Strictly gated on regenerate_signing=true; normal releases skip it.
+      - name: Purge revoked distribution cert from match storage (one-shot)
+        if: ${{ inputs.regenerate_signing == 'true' }}
+        env:
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          git clone --depth 1 "$MATCH_GIT_URL" "$work/match-repo"
+          cd "$work/match-repo"
+          echo "Distribution certs currently in storage:"
+          ls -la certs/distribution/ 2>/dev/null || echo "  (none)"
+          if ls certs/distribution/* >/dev/null 2>&1; then
+            git rm certs/distribution/*
+            # Drop appstore profiles too; force_for_new_certificates regenerates
+            # them bound to the fresh cert. ignore-unmatch keeps this safe if the
+            # directory is absent.
+            git rm -r --ignore-unmatch profiles/appstore || true
+            git config user.email "ci@answerguard.app"
+            git config user.name "AnswerGuard CI"
+            git commit -m "chore(match): purge revoked distribution cert + appstore profiles (one-shot regen)"
+            git push
+            echo "✅ Purged stale distribution cert; match will mint a fresh one."
+          else
+            echo "No distribution certs in storage — nothing to purge."
+          fi
+
       - name: Setup signing certificates and profiles (match)
         env:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
@@ -122,6 +166,10 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          # One-shot cert regeneration: only true when dispatched with
+          # regenerate_signing=true. Defaults false so normal releases never
+          # mint a new distribution cert.
+          MATCH_FORCE_NEW_CERT: ${{ inputs.regenerate_signing || 'false' }}
         run: fastlane setup
         working-directory: native-ios
 
@@ -147,7 +195,7 @@ jobs:
         working-directory: native-ios
 
       - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: ios-ipa
@@ -166,7 +214,7 @@ jobs:
       precondition_blocked: ${{ steps.play_result.outputs.precondition_blocked }}
       version_code: ${{ steps.play_result.outputs.version_code }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Fail fast on required Android release secrets
         env:
@@ -188,18 +236,18 @@ jobs:
         run: bash scripts/preflight-release.sh --platform android --layer 1
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
 
       - name: Create google-services.json
         env:
@@ -320,7 +368,7 @@ jobs:
           echo "play_result requested=$REQUESTED_TRACK effective=$EFFECTIVE_TRACK version_code=$VERSION_CODE fallback_used=$FALLBACK_USED precondition_blocked=$PRECONDITION_BLOCKED"
 
       - name: Upload Play upload result (if any)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: play-upload-result
@@ -328,7 +376,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Play upload error (if any)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: play-upload-error
@@ -336,7 +384,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload AAB artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: android-aab
@@ -353,10 +401,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -463,7 +511,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Gate submit-for-review (no secrets)
         id: gate
@@ -488,7 +536,7 @@ jobs:
 
       - name: Setup Python
         if: steps.gate.outputs.enabled == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -533,7 +581,7 @@ jobs:
 
       - name: Setup Ruby
         if: steps.gate.outputs.enabled == 'true'
-        uses: ruby/setup-ruby@09a7688d3b55cf0e976497ff046b70949eeaccfd # v1
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1
         with:
           ruby-version: '3.2'
           bundler-cache: true
@@ -602,7 +650,7 @@ jobs:
             --enforce
 
       - name: Upload readiness report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ steps.gate.outputs.enabled == 'true' && always() }}
         with:
           name: asc-ready-report
@@ -635,7 +683,7 @@ jobs:
             --require-appstore-submission
 
       - name: Upload version resolution report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ steps.gate.outputs.enabled == 'true' && always() }}
         with:
           name: asc-version-resolution
@@ -655,7 +703,7 @@ jobs:
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -731,7 +779,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 

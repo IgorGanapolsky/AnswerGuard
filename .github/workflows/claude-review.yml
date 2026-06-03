@@ -3,9 +3,25 @@ name: AI Code Review
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - ".thumbgate/**"
+      - ".github/ISSUE_TEMPLATE/**"
   issue_comment:
     types: [created]
-  push:
+  # NOTE: `push:` trigger removed 2026-05-27 to cut Actions burn. Was
+  # unbounded — fired on every push to every feature branch (~10 runs/week
+  # per the audit) to render a "Claude Review Advisory" no-op for required
+  # checks. PR + comment triggers cover the real review flows.
+
+concurrency:
+  # issue_comment events have undefined github.event.pull_request — fall through
+  # to github.event.issue.number so per-PR isolation still holds when a comment
+  # triggers the workflow. Without this, every issue_comment run shares the
+  # github.ref group and they all cancel each other.
+  group: claude-review-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

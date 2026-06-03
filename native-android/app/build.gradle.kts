@@ -48,7 +48,7 @@ android {
         applicationId = "com.igorganapolsky.answerguard"
         minSdk = 26
         targetSdk = ciTargetSdk ?: 35
-        versionCode = ciVersionCode ?: 1779206548
+        versionCode = ciVersionCode ?: 1780499586
         versionName = "1.2.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -250,6 +250,21 @@ tasks.register<JacocoReport>("jacocoDebugUnitTestReport") {
         // lambdas are excluded.
         "**/MainActivity*.*",
         "**/*ComposableSingletons*.*",
+        // Hilt/Dagger generated code — KSP-emitted, not authored. Including
+        // these skews INSTRUCTION coverage (Hilt_MainActivity alone is 117
+        // instr at 0%, dragging the suite from ~82% down to 79.99%).
+        "**/Hilt_*.*",
+        "**/Dagger*.*",
+        "**/*_HiltModules*.*",
+        "**/*_Factory.*",
+        "**/*_MembersInjector.*",
+        "**/*_Impl.*",
+        "**/*_Provide*Factory.*",
+        // Design tokens — pure data, nothing to test.
+        "**/AnswerGuardColors.*",
+        // Hilt @Module — declaration-only @Provides scaffolding; validated by
+        // Hilt's compile-time checks, not unit tests.
+        "**/di/AppModule*.*",
     )
 
     val buildDirFile = layout.buildDirectory.get().asFile
@@ -291,7 +306,7 @@ tasks.register<JacocoCoverageVerification>("jacocoCoverageVerification") {
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = BigDecimal("0.07")
+                minimum = BigDecimal("0.80")
             }
         }
     }
