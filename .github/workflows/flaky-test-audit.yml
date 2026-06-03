@@ -144,7 +144,10 @@ jobs:
           cat > native-android/app/google-services.json << 'GSEOF'
           {
             "project_info": { "project_number": "000000000000", "project_id": "answerguard-ci", "storage_bucket": "answerguard-ci.appspot.com" },
-            "client": [{ "client_info": { "mobilesdk_app_id": "1:000000000000:android:0000000000000000", "android_client_info": { "package_name": "com.igorganapolsky.answerguard" } }, "api_key": [{ "current_key": "CI_PLACEHOLDER" }] }],
+            "client": [
+              { "client_info": { "mobilesdk_app_id": "1:000000000000:android:0000000000000000", "android_client_info": { "package_name": "com.igorganapolsky.answerguard" } }, "api_key": [{ "current_key": "CI_PLACEHOLDER" }] },
+              { "client_info": { "mobilesdk_app_id": "1:000000000000:android:0000000000000001", "android_client_info": { "package_name": "com.igorganapolsky.answerguard.debug" } }, "api_key": [{ "current_key": "CI_PLACEHOLDER" }] }
+            ],
             "configuration_version": "1"
           }
           GSEOF
