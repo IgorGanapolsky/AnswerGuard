@@ -11,7 +11,7 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit(f"Pillow is required: {exc}")
 
 
-def run(source: Path, res_dir: Path) -> bool:
+def run(source: Path, res_dir: Path, foreground_source: Path | None = None) -> bool:
     if not source.exists():
         print(f"❌ Error: source icon missing at {source}", file=sys.stderr)
         return False
@@ -25,6 +25,22 @@ def run(source: Path, res_dir: Path) -> bool:
         return False
     if src.width < 512:
         print(f"⚠️ Warning: source icon is small ({src.width}x{src.height}), quality may be degraded", file=sys.stderr)
+
+    fg_src = src
+    if foreground_source:
+        if foreground_source.exists():
+            fg_src = Image.open(foreground_source).convert("RGBA")
+            if fg_src.width != fg_src.height:
+                print(
+                    f"❌ Error: foreground source is not square ({fg_src.width}x{fg_src.height})",
+                    file=sys.stderr,
+                )
+                return False
+        else:
+            print(
+                f"⚠️ Warning: foreground source not found at {foreground_source}, using base icon",
+                file=sys.stderr,
+            )
 
     # Standard densities and their target resolutions (in pixels)
     # Legacy: Standard launcher icon size
@@ -53,9 +69,7 @@ def run(source: Path, res_dir: Path) -> bool:
         # 2. Foreground and monochrome adaptive layers
         fg_size = sizes["foreground"]
         
-        # Crop or pad if necessary. Since our source icon (512x512) is already beautifully
-        # centered, clean direct resizing to foreground dimensions works flawlessly.
-        fg_img = src.resize((fg_size, fg_size), Image.Resampling.LANCZOS)
+        fg_img = fg_src.resize((fg_size, fg_size), Image.Resampling.LANCZOS)
         for name in ["ic_launcher_foreground.png", "ic_launcher_monochrome.png"]:
             out_path = target_folder / name
             fg_img.save(out_path, format="PNG")
@@ -77,13 +91,19 @@ def main() -> int:
         default="native-android/app/src/main/res",
         help="Path to main Android res/ folder",
     )
+    parser.add_argument(
+        "--foreground-source",
+        default="native-android/branding/icon-foreground.png",
+        help="Optional adaptive foreground source PNG",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[1]
     source_path = repo_root / args.source
     res_path = repo_root / args.res
 
-    success = run(source_path, res_path)
+    foreground_path = repo_root / args.foreground_source if args.foreground_source else None
+    success = run(source_path, res_path, foreground_path)
     return 0 if success else 1
 
 
