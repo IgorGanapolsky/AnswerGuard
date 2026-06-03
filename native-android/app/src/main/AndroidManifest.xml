@@ -11,6 +11,12 @@
     <!-- Allow identification of contacts to avoid blocking them -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
+    <!-- See-all-calls: surface calls that AG's CallScreeningService never saw
+         (DND-silenced, carrier spam-filtered, calls before AG was installed).
+         Default-handler exception applies — AG is the default Caller ID & Spam app. -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="com.android.voicemail.permission.READ_VOICEMAIL" />
+
     <!-- Remove AD_ID permission added by dependencies (Firebase/PostHog) — app does not use advertising ID -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
 
