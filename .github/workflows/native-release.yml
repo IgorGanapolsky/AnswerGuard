@@ -32,6 +32,14 @@ on:
           - 'true'
         required: false
         default: 'false'
+      regenerate_signing:
+        description: 'iOS only: one-shot — let match mint a fresh distribution cert when the stored one was revoked on Apple. Leave false for normal releases.'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        required: false
+        default: 'false'
 
 concurrency:
   group: mobile-release-pipeline-${{ github.ref_name }}-${{ inputs.platform || 'both' }}
@@ -115,6 +123,42 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${GIT_AUTH_TOKEN}@github.com/".insteadOf "https://github.com/"
 
+      # One-shot remedy for a distribution cert that was revoked on the Apple
+      # Developer Portal but still lingers in match's git storage. In that state
+      # `match` aborts ("Certificate ... is not available on the Developer
+      # Portal") BEFORE force_for_new_certificates can mint a replacement, and
+      # it will not auto-delete the dangling entry. Purging the stale cert (and
+      # the appstore profiles that reference it) from storage leaves match with
+      # empty distribution storage, so the next step mints a fresh cert.
+      # This revokes NOTHING on Apple (the cert is already gone there) and the
+      # match repo's git history retains the old files, so it is reversible.
+      # Strictly gated on regenerate_signing=true; normal releases skip it.
+      - name: Purge revoked distribution cert from match storage (one-shot)
+        if: ${{ inputs.regenerate_signing == 'true' }}
+        env:
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          git clone --depth 1 "$MATCH_GIT_URL" "$work/match-repo"
+          cd "$work/match-repo"
+          echo "Distribution certs currently in storage:"
+          ls -la certs/distribution/ 2>/dev/null || echo "  (none)"
+          if ls certs/distribution/* >/dev/null 2>&1; then
+            git rm certs/distribution/*
+            # Drop appstore profiles too; force_for_new_certificates regenerates
+            # them bound to the fresh cert. ignore-unmatch keeps this safe if the
+            # directory is absent.
+            git rm -r --ignore-unmatch profiles/appstore || true
+            git config user.email "ci@answerguard.app"
+            git config user.name "AnswerGuard CI"
+            git commit -m "chore(match): purge revoked distribution cert + appstore profiles (one-shot regen)"
+            git push
+            echo "✅ Purged stale distribution cert; match will mint a fresh one."
+          else
+            echo "No distribution certs in storage — nothing to purge."
+          fi
+
       - name: Setup signing certificates and profiles (match)
         env:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
@@ -122,6 +166,10 @@ jobs:
           MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
           MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          # One-shot cert regeneration: only true when dispatched with
+          # regenerate_signing=true. Defaults false so normal releases never
+          # mint a new distribution cert.
+          MATCH_FORCE_NEW_CERT: ${{ inputs.regenerate_signing || 'false' }}
         run: fastlane setup
         working-directory: native-ios
 

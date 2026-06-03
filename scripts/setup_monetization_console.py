@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """GSD script to setup AnswerGuard In-App Products and Subscriptions in Play Console."""
 
-import time
 import os
 import asyncio
-from pathlib import Path
 from playwright.async_api import async_playwright
 
 DEV = "8239620436488925047"

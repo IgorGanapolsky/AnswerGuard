@@ -52,9 +52,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 internal const val HIDDEN_UNLOCK_HOLD_DURATION_MS = 8_000L
 
-internal const val PAYWALL_HEADLINE = "Upgrade to AI Call Shield"
+internal const val PAYWALL_HEADLINE = "Upgrade your AnswerGuard plan"
 internal const val PAYWALL_SUBHEADLINE =
-    "Unlock on-device AI intent analysis, voice deepfake defense, and strict consumer and business-grade scam shielding."
+    "Pick the plan that fits how you want to be protected. Cancel anytime in Google Play."
 internal const val PAYWALL_PRICING_FOOTER = "Cancel anytime. Subscription auto-renews until cancelled."
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -177,20 +177,37 @@ fun PaywallSheet(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                PlanComparisonCard()
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    FeatureRow(title = "Autonomous AI Agents", desc = "On-device Gemini Nano decodes intent in real-time.", planBadge = "ALL PLANS")
-                    FeatureRow(title = "Deepfake Voice Defense", desc = "Detect AI-cloned voices with local biometrics.", planBadge = "ALL PLANS")
-                    FeatureRow(title = "Household Security", desc = "Multi-device coverage for up to 5 family members.", planBadge = "FAMILY & BUSINESS")
-                    FeatureRow(title = "Strict Scam Defense", desc = "100% reliable call analysis with zero false positives.", planBadge = "BUSINESS ONLY")
-                    FeatureRow(title = "B2B Compliance", desc = "Priority data safety updates and professional support.", planBadge = "BUSINESS ONLY")
+                    Text(
+                        text = "Available today",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFF8FAFC),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    FeatureRow(title = "Advanced spam rules", desc = "Heuristics tuned for 2026's spam landscape, plus priority routing for high-risk numbers.", planBadge = "ALL PAID PLANS")
+                    FeatureRow(title = "Google Play family sharing", desc = "Share your subscription with up to 6 family members via Google Play.", planBadge = "FAMILY & BUSINESS")
+                    FeatureRow(title = "Business-tuned rules + priority support", desc = "Stricter defaults for high-volume professional use plus direct support.", planBadge = "BUSINESS ONLY")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Coming soon (not yet shipped)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB6C2CC),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    FeatureRow(title = "On-device AI intent analysis", desc = "Gemini Nano decodes call intent in real-time.", planBadge = "ROADMAP")
+                    FeatureRow(title = "Voice deepfake defense", desc = "Detect AI-cloned voices with local biometrics.", planBadge = "ROADMAP")
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                PlanComparisonCard()
 
                 Spacer(modifier = Modifier.height(16.dp))
 

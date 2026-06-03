@@ -31,8 +31,8 @@ on:
         required: false
         type: string
         default: "24"
-  schedule:
-    - cron: "17 */6 * * *"
+  # schedule:  # Disabled to optimize GitHub Actions budget
+    # - cron: "17 */6 * * *"
 
 permissions:
   contents: read

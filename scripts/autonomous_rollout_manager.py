@@ -5,13 +5,11 @@ Promotes builds from internal to production based on stability metrics.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 # Add scripts to path for common helpers
 SCRIPTS = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS))
 
-import json
 import argparse
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
