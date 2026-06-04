@@ -346,6 +346,7 @@ jobs:
           name: ios-release-verification
           path: /tmp/ios-release-verification.json
           if-no-files-found: warn
+          retention-days: 3
 
       - name: Ensure TestFlight internal distribution visibility
         if: steps.ios_lineage.outputs.uploadable == 'true'
@@ -373,6 +374,7 @@ jobs:
             native-ios/AnswerGuard.ipa
             native-ios/*.ipa
           if-no-files-found: warn
+          retention-days: 5
 
   ios-testflight-signoff:
     name: iOS TestFlight Signoff
@@ -551,6 +553,7 @@ jobs:
           name: android-release-verification
           path: /tmp/android-release-verification.json
           if-no-files-found: warn
+          retention-days: 3
 
       - name: Upload Android AAB artifact
         uses: actions/upload-artifact@v7
@@ -559,6 +562,7 @@ jobs:
           name: android-aab-internal
           path: native-android/app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: warn
+          retention-days: 5
 
       - name: Cleanup secrets
         if: always()
@@ -725,6 +729,7 @@ jobs:
           name: android-apk-firebase-internal
           path: native-android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: warn
+          retention-days: 5
 
       - name: Cleanup secrets
         if: always()
