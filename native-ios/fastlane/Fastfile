@@ -282,6 +282,20 @@ platform :ios do
     end
   end
 
+  desc "Publish App Store Connect App Privacy details"
+  lane :publish_app_privacy do |options|
+    json_path = options[:json_path] || "fastlane/app_privacy_details.json"
+    skip_publish = [true, "true", "1", 1, "yes", "on"].include?(options[:skip_publish])
+
+    upload_app_privacy_details_to_app_store(
+      username: ENV["FASTLANE_USER"] || "igor.ganapolsky@icloud.com",
+      app_identifier: "com.igorganapolsky.answerguard",
+      team_id: ENV["FASTLANE_ITC_TEAM_ID"] || "128096325",
+      json_path: json_path,
+      skip_publish: skip_publish
+    )
+  end
+
   desc "Submit a given version for App Review (uploads metadata + attaches build)"
   lane :submit_review do |options|
     setup_ci if ENV["CI"] == "true"
