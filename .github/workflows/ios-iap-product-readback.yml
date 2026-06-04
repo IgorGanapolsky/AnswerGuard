@@ -52,3 +52,4 @@ jobs:
           name: ios-iap-product-readback
           path: ios-iap-product-readback.json
           if-no-files-found: ignore
+          retention-days: 3

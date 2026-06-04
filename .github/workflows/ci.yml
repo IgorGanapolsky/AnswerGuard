@@ -177,15 +177,20 @@ jobs:
           name: jacoco-report
           path: native-android/app/build/reports/jacoco/jacocoDebugUnitTestReport/html/
           if-no-files-found: warn
+          retention-days: 3
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload debug APK
+        # Only archive the debug APK when a build fails (for diagnosis); green
+        # runs don't archive ~18MB each. Kept 1 day to avoid filling storage.
+        if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: app-debug
           path: native-android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 1
 
       - name: Upload Android coverage report
         if: always()
@@ -196,6 +201,7 @@ jobs:
             native-android/app/build/reports/tests/testDebugUnitTest
             native-android/app/build/reports/jacoco/jacocoDebugUnitTestReport
             native-android/app/build/jacoco/testDebugUnitTest.exec
+          retention-days: 3
 
   ios:
     name: Autonomous iOS Build Check
@@ -295,6 +301,7 @@ jobs:
           name: ios-test-results-xcresult
           path: native-ios/build/TestResults.xcresult
           if-no-files-found: warn
+          retention-days: 3
 
   playwright-local:
     name: Playwright Local Checks
@@ -326,6 +333,7 @@ jobs:
           path: |
             tests/playwright/playwright-report
             tests/playwright/test-results
+          retention-days: 3
 
   python-scripts:
     name: Python Script Tests
@@ -351,6 +359,7 @@ jobs:
           name: python-coverage-xml
           path: coverage-python.xml
           if-no-files-found: error
+          retention-days: 3
 
       - name: Upload Python coverage to Codecov
         if: always()
@@ -382,6 +391,7 @@ jobs:
             /tmp/release-context-ci.json
             /tmp/release-delegation-contract-ci.json
           if-no-files-found: warn
+          retention-days: 3
 
   north-star-guardrail:
     name: North Star Guardrail
