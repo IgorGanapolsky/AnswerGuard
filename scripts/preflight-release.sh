@@ -252,6 +252,12 @@ if [[ "$PLATFORM" == "ios" || "$PLATFORM" == "both" ]]; then
     fi
   fi
 
+  IOS_APP_PRIVACY_JSON="$PROJECT_ROOT/native-ios/fastlane/app_privacy_details.json"
+  if check_file_nonempty "$IOS_APP_PRIVACY_JSON" "iOS app_privacy_details.json"; then
+    python3 "$PROJECT_ROOT/scripts/validate_ios_app_privacy_details.py" "$IOS_APP_PRIVACY_JSON" >/dev/null || \
+      err "iOS app_privacy_details.json failed validation"
+  fi
+
   # Support URL
   check_file_nonempty "$IOS_META/support_url.txt" "iOS support_url.txt" || true
 

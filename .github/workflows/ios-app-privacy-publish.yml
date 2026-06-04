@@ -1,0 +1,50 @@
+name: iOS App Privacy Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_publish:
+        description: "Upload data usages without publishing"
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: ios-app-privacy-publish-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate App Privacy details JSON
+        run: python3 scripts/validate_ios_app_privacy_details.py native-ios/fastlane/app_privacy_details.json
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: native-ios
+
+      - name: Install Fastlane
+        run: gem install fastlane
+        working-directory: native-ios
+
+      - name: Publish App Privacy details
+        env:
+          FASTLANE_USER: igor.ganapolsky@icloud.com
+          FASTLANE_ITC_TEAM_ID: "128096325"
+          FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
+          SPACESHIP_SESSION: ${{ secrets.FASTLANE_SESSION }}
+          SKIP_PUBLISH: ${{ inputs.skip_publish }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FASTLANE_SESSION:-}" ]; then
+            echo "::error::FASTLANE_SESSION is not set, so CI cannot publish App Privacy data usages. App Store Connect API keys cannot publish this private Apple endpoint as of June 2026."
+            exit 1
+          fi
+          fastlane publish_app_privacy json_path:fastlane/app_privacy_details.json skip_publish:"$SKIP_PUBLISH"
+        working-directory: native-ios
