@@ -2,7 +2,7 @@
 <!--
   Android adaptive-icon FOREGROUND layer for AnswerGuard (FLAT, 2026).
 
-  ONE flat white glyph (shield with a phone handset knocked out) on a fully
+  ONE flat white glyph (shield with a CHECKMARK knocked out) on a fully
   TRANSPARENT background. The glyph is inset so its content radius stays well
   inside the adaptive safe zone (content radius <= 0.60 of the layer half-size,
   comfortably inside the 0.66 safe circle) with a clear transparent margin ring
@@ -14,17 +14,16 @@
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Glyph mask: white shield with the phone handset knocked out (black). -->
+    <!-- Glyph mask: white shield with a CHECKMARK knocked out (black). The
+         check is a round-capped, round-joined stroked polyline (the classic
+         tick: START -> low VERTEX -> high END), NOT a filled freeform blob. -->
     <mask id="glyph">
       <rect width="1024" height="1024" fill="black"/>
       <path d="M512 195 L819 320 L819 528 C819 698 700 808 512 890 C324 808 205 698 205 528 L205 320 Z"
             fill="white"/>
-      <g fill="black" stroke="black" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M412 614 C455 555 500 505 555 460 C588 433 615 416 615 416"
-              fill="none" stroke-width="96"/>
-        <circle cx="412" cy="614" r="84"/>
-        <circle cx="615" cy="416" r="84"/>
-      </g>
+      <path d="M405 520 L480 605 L640 425"
+            fill="none" stroke="black" stroke-width="70"
+            stroke-linecap="round" stroke-linejoin="round"/>
     </mask>
   </defs>
 
