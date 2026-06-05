@@ -20,11 +20,18 @@ COLORS = {
     "Warning": (244, 63, 94),       # Alert
 }
 
-# 2026 Bold high-contrast brand icon palette (SOLID, no alpha/glass).
-# Diagonal gradient between two analogous saturated greens/teals + pure white.
-ICON_GRAD_TL = (21, 195, 154)       # #15C39A  top-left, bright teal-green
-ICON_GRAD_BR = (10, 124, 90)        # #0A7C5A  bottom-right, deep emerald
-ICON_WHITE = (255, 255, 255)        # #FFFFFF  shield silhouette
+# 2026 FLAT, high-contrast brand icon palette.
+# Two colors total: a gentle (low-contrast, 2-stop) teal->emerald VERTICAL fill
+# plus ONE flat white glyph. No gloss, no radial glow, no drop shadows, no
+# bevel/3D, no decorative swoosh. Clean like Spotify / Visual Voicemail.
+ICON_GRAD_TOP = (21, 195, 154)      # #15C39A  bright teal-green (top)
+ICON_GRAD_BOTTOM = (14, 158, 134)   # #0E9E86  deep emerald (bottom)
+ICON_WHITE = (255, 255, 255)        # #FFFFFF  flat shield + phone glyph
+
+# Content radius (as a fraction of the half-canvas) for the Android adaptive
+# foreground glyph. Must stay <= 0.60 so it sits comfortably inside the 0.66
+# adaptive safe circle with a clear transparent margin ring.
+ADAPTIVE_CONTENT_RADIUS_FRAC = 0.58
 
 # Fix root detection
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -47,104 +54,167 @@ def _lerp(a, b, t):
     return tuple(int(round(a[i] + (b[i] - a[i]) * t)) for i in range(3))
 
 
-def _diagonal_gradient(size, top_left, bottom_right):
-    """Build a fully-opaque RGB diagonal (TL->BR) gradient image."""
+def _vertical_gradient(size, top, bottom):
+    """Build a fully-opaque RGB vertical (top->bottom) 2-stop gradient image.
+
+    Low-contrast / gentle on purpose: a flat-looking fill, NOT a gloss. The two
+    stops are close in luminance so the result reads as a single solid teal.
+    """
     img = Image.new("RGB", (size, size))
     px = img.load()
-    max_d = (size - 1) * 2.0
+    denom = max(size - 1, 1)
     for y in range(size):
+        t = y / denom
+        row = _lerp(top, bottom, t)
         for x in range(size):
-            t = (x + y) / max_d
-            px[x, y] = _lerp(top_left, bottom_right, t)
+            px[x, y] = row
     return img
 
 
-def _shield_points(cx, cy, half_w, top_y, bottom_y):
-    """Return a smooth, modern shield silhouette polygon (vector-like)."""
+def _shield_mask(big, cx, cy, half_w, top_y, bottom_y):
+    """Return an L-mode mask of a clean, modern flat shield silhouette."""
     import math
     top = top_y
     shoulder_y = top_y + (bottom_y - top_y) * 0.16
     mid_y = top_y + (bottom_y - top_y) * 0.52
     pts = [(cx, top), (cx + half_w, shoulder_y), (cx + half_w, mid_y)]
-    # Right curve sweeping into the bottom tip.
-    steps = 24
+    steps = 28
     for i in range(1, steps + 1):
         t = i / steps
         ang = t * (math.pi / 2)
         x = cx + half_w * math.cos(ang) * (1 - 0.10 * t)
         y = mid_y + (bottom_y - mid_y) * math.sin(ang)
         pts.append((x, y))
-    # Mirror left side.
     right = pts[3:]
     for x, y in reversed(right):
         pts.append((cx - (x - cx), y))
     pts.append((cx - half_w, mid_y))
     pts.append((cx - half_w, shoulder_y))
-    return pts
+    mask = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(mask).polygon(pts, fill=255)
+    return mask
 
 
-def draw_solid_shield(img, center, half_width, top_y, bottom_y, gradient_img):
-    """Draw a SOLID white shield with a knocked-out gradient check mark.
+def _phone_mask(big, cx, cy, half_w, top_y, bottom_y):
+    """Return an L-mode mask of a bold, flat phone handset (rounded caps).
 
-    Uses a high-resolution supersampled mask so edges are crisp/anti-aliased
-    (vector-like) rather than blurred. No alpha gradients, no glass.
+    Classic "call" handset: two round ear/mouth pods joined by a thick bowed
+    bar, rotated -40deg. Built from a dense set of overlapping circles along a
+    parabola so there are NO thin rasterization slivers, then two larger pods.
     """
-    ss = 4  # supersample factor
-    w = img.width
-    big = w * ss
+    import math
+    mask = Image.new("L", (big, big), 0)
+    d = ImageDraw.Draw(mask)
+    ch = (bottom_y - top_y)
+    bar_r = ch * 0.082            # half-thickness of the bowed bar
+    pod_r = ch * 0.140            # radius of the two earpieces/pods
+    span = half_w * 0.82          # distance between the two pods
+    bow = ch * 0.205              # how far the bar bows downward
+    ang = math.radians(-40)
+    ca, sa = math.cos(ang), math.sin(ang)
+
+    def place(px, py):
+        return (cx + px * ca - py * sa, cy + px * sa + py * ca)
+
+    # Stamp overlapping disks along the bowed centerline (no slivers).
+    steps = 120
+    for i in range(steps + 1):
+        t = i / steps
+        x = (-0.5 + t) * span
+        y = bow * (1.0 - (2.0 * t - 1.0) ** 2) + ch * 0.04
+        bx, by = place(x, y)
+        d.ellipse((bx - bar_r, by - bar_r, bx + bar_r, by + bar_r), fill=255)
+    # Two bold round pods at the ends (the earpiece + mouthpiece).
+    for ex in (-0.5 * span, 0.5 * span):
+        px, py = place(ex, ch * 0.04)
+        d.ellipse((px - pod_r, py - pod_r, px + pod_r, py + pod_r), fill=255)
+    return mask
+
+
+def shield_phone_masks(size, center, half_width, top_y, bottom_y, ss=6):
+    """Return (shield_mask, phone_mask) at full `size` resolution.
+
+    Masks are supersampled then downscaled for crisp, anti-aliased flat edges.
+    """
+    big = size * ss
     cx, cy = center[0] * ss, center[1] * ss
-    pts = _shield_points(cx, cy, half_width * ss, top_y * ss, bottom_y * ss)
+    shield = _shield_mask(big, cx, cy, half_width * ss, top_y * ss, bottom_y * ss)
+    phone = _phone_mask(big, cx, cy, half_width * ss, top_y * ss, bottom_y * ss)
+    shield = shield.resize((size, size), Image.Resampling.LANCZOS)
+    phone = phone.resize((size, size), Image.Resampling.LANCZOS)
+    return shield, phone
 
-    # 1. Solid white shield silhouette.
-    shield = Image.new("L", (big, big), 0)
-    ImageDraw.Draw(shield).polygon(pts, fill=255)
 
-    # 2. Bold check mark knocked out (drawn in gradient color over white).
-    sw = int(round(0.105 * big))  # stroke width >= ~10.5% of icon width
-    cw = half_width * ss
-    ch = (bottom_y - top_y) * ss
-    check = [
-        (cx - cw * 0.46, cy + ch * 0.02),
-        (cx - cw * 0.10, cy + ch * 0.30),
-        (cx + cw * 0.52, cy - ch * 0.30),
-    ]
-    check_mask = Image.new("L", (big, big), 0)
-    cdraw = ImageDraw.Draw(check_mask)
-    cdraw.line(check, fill=255, width=sw, joint="curve")
-    r = sw // 2
-    for px_, py_ in (check[0], check[-1]):
-        cdraw.ellipse((px_ - r, py_ - r, px_ + r, py_ + r), fill=255)
+def _glyph_alpha(shield, phone):
+    """Flat white glyph alpha = shield with the phone knocked out.
 
-    # Compose at high res: gradient base -> white shield -> gradient check.
-    base = gradient_img.resize((big, big), Image.Resampling.LANCZOS).convert("RGB")
-    white_layer = Image.new("RGB", (big, big), ICON_WHITE)
-    base.paste(white_layer, (0, 0), shield)
-    # Knock the check out of the white shield by painting gradient back in,
-    # but only where the shield exists (so the check never bleeds outside).
+    Returns an L-mode alpha mask (white where the glyph is opaque).
+    """
     from PIL import ImageChops
-    check_in_shield = ImageChops.multiply(check_mask, shield)
-    base.paste(gradient_img.resize((big, big), Image.Resampling.LANCZOS).convert("RGB"),
-               (0, 0), check_in_shield)
-
-    out = base.resize((w, w), Image.Resampling.LANCZOS)
-    return out
+    # Knock the phone out of the shield (only inside the shield).
+    phone_in = ImageChops.multiply(phone, shield)
+    glyph = ImageChops.subtract(shield, phone_in)
+    return glyph
 
 
-def generate_stellar_icon():
-    size = 1024
-    # Fully-opaque diagonal gradient background (OS applies the rounded mask).
-    grad = _diagonal_gradient(size, ICON_GRAD_TL, ICON_GRAD_BR)
+def render_flat_icon(size, opaque=True):
+    """Full-bleed flat icon: teal gradient bg + white shield (phone knocked out).
 
-    # Shield ~64% of canvas height, centered (slightly above center looks balanced).
-    shield_h = int(size * 0.64)
+    Returns an RGB image when opaque=True (iOS/legacy), else RGBA.
+    """
+    grad = _vertical_gradient(size, ICON_GRAD_TOP, ICON_GRAD_BOTTOM)
+    shield_h = int(size * 0.62)
     top_y = (size - shield_h) // 2
     bottom_y = top_y + shield_h
     half_w = int(size * 0.30)
     cx, cy = size // 2, (top_y + bottom_y) // 2
+    shield, phone = shield_phone_masks(size, (cx, cy), half_w, top_y, bottom_y)
+    glyph = _glyph_alpha(shield, phone)
+    white = Image.new("RGB", (size, size), ICON_WHITE)
+    out = grad.copy()
+    out.paste(white, (0, 0), glyph)
+    if opaque:
+        return out.convert("RGB")
+    rgba = out.convert("RGBA")
+    return rgba
 
-    composed = draw_solid_shield(grad, (cx, cy), half_w, top_y, bottom_y, grad)
-    # Flatten to RGB to GUARANTEE no transparency anywhere.
-    img = composed.convert("RGB")
+
+def render_adaptive_foreground(size):
+    """Android adaptive FOREGROUND: white glyph on TRANSPARENT bg.
+
+    The glyph is sized so its content radius stays <= ADAPTIVE_CONTENT_RADIUS_FRAC
+    of the half-canvas, leaving a clear transparent margin inside the safe zone.
+    """
+    # Fit the shield's bounding box inside the target content circle.
+    half = size / 2.0
+    content_r = ADAPTIVE_CONTENT_RADIUS_FRAC * half
+    # Shield bbox: height = shield_h, width ~= 2*half_w. Use the larger to fit.
+    # Pick a shield whose half-diagonal of its bbox == content_r.
+    # Use ratios consistent with render_flat_icon (h=0.62*s, w=0.60*s of the
+    # mark box). We solve for a mark box `m` centered on the canvas.
+    h_ratio, w_ratio = 0.62, 0.60
+    # half-diagonal of the mark bbox in units of m:
+    import math
+    half_diag_per_m = 0.5 * math.hypot(h_ratio, w_ratio)
+    m = content_r / half_diag_per_m
+    shield_h = int(m * h_ratio)
+    half_w = int(m * w_ratio / 2.0)
+    cx = cy = size // 2
+    top_y = cy - shield_h // 2
+    bottom_y = top_y + shield_h
+    shield, phone = shield_phone_masks(size, (cx, cy), half_w, top_y, bottom_y)
+    glyph = _glyph_alpha(shield, phone)
+    fg = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+    white = Image.new("RGBA", (size, size), (255, 255, 255, 255))
+    fg.paste(white, (0, 0), glyph)
+    return fg
+
+
+def generate_stellar_icon():
+    size = 1024
+    # FLAT full-bleed mark: gentle teal gradient bg + ONE white shield with the
+    # phone handset knocked out. Fully opaque (OS applies the rounded mask).
+    img = render_flat_icon(size, opaque=True)
 
     icon_path = ANDROID_IMAGES / "icon.png"
     icon_path.parent.mkdir(parents=True, exist_ok=True)
@@ -152,8 +222,16 @@ def generate_stellar_icon():
     source_1024 = ANDROID_IMAGES / "icon-1024.png"
     img.save(source_1024)
     img.resize((512, 512), Image.Resampling.LANCZOS).save(icon_path)
-    print(f"🌟 Generated Stellar Icon (solid 1024): {source_1024}")
-    print(f"🌟 Generated Stellar Icon (512 source): {icon_path}")
+    print(f"🌟 Generated Flat Icon (opaque 1024): {source_1024}")
+    print(f"🌟 Generated Flat Icon (512 source): {icon_path}")
+
+    # Android adaptive FOREGROUND: white glyph on transparent bg, inset inside
+    # the adaptive safe zone (content radius <= 0.60 of half-canvas).
+    fg = render_adaptive_foreground(size)
+    fg_path = REPO_ROOT / "native-android" / "branding" / "icon-foreground.png"
+    fg_path.parent.mkdir(parents=True, exist_ok=True)
+    fg.save(fg_path)
+    print(f"🌟 Generated Adaptive Foreground (transparent 1024): {fg_path}")
 
 def generate_stellar_feature():
     w, h = 1024, 500
@@ -166,13 +244,9 @@ def generate_stellar_feature():
     draw.text((60, 140), "AnswerGuard", fill=COLORS["Emerald"], font=f_h1)
     draw.text((65, 260), "PRIVATE SPAM CALL SHIELD", fill=COLORS["Highlight"], font=f_h2)
     draw.text((65, 300), "JUNE 2026 SECURITY CORE", fill=COLORS["Muted"], font=f_h2)
-    # Solid brand shield on the right (no glass). Reuse the icon mark.
+    # Flat brand mark on the right (reuse the icon mark, no gloss).
     mark_size = 360
-    grad = _diagonal_gradient(mark_size, ICON_GRAD_TL, ICON_GRAD_BR)
-    sh_h = int(mark_size * 0.64)
-    sty = (mark_size - sh_h) // 2
-    mark = draw_solid_shield(grad, (mark_size // 2, mark_size // 2),
-                             int(mark_size * 0.30), sty, sty + sh_h, grad).convert("RGB")
+    mark = render_flat_icon(mark_size, opaque=True)
     img.paste(mark, (w - mark_size - 60, (h - mark_size) // 2))
     path = ANDROID_IMAGES / "featureGraphic" / "feature.png"
     path.parent.mkdir(parents=True, exist_ok=True)

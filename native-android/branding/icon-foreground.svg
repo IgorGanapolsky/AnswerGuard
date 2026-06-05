@@ -1,68 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Android adaptive-icon FOREGROUND layer for AnswerGuard.
+  Android adaptive-icon FOREGROUND layer for AnswerGuard (FLAT, 2026).
 
-  The full 1024x1024 canvas is the adaptive foreground. Launcher masks
-  (circle / squircle / rounded-square) crop everything outside a centered
-  circle of radius ~338px (the inner 66% "safe zone"). To guarantee nothing
-  is ever clipped, ALL visible art (shield + phone glyph + accent arcs) is
-  inset inside a centered circle of radius ~300px (~58% diameter) via the
-  groupwide transform below. Heavy outer drop-shadows were removed because
-  they overflow the mask and look muddy at launcher sizes; only a subtle
-  inner lift remains.
+  ONE flat white glyph (shield with a phone handset knocked out) on a fully
+  TRANSPARENT background. The glyph is inset so its content radius stays well
+  inside the adaptive safe zone (content radius <= 0.60 of the layer half-size,
+  comfortably inside the 0.66 safe circle) with a clear transparent margin ring
+  on every launcher mask (circle / squircle / rounded-square).
+
+  The shipped PNG is produced by scripts/stellar_brand_generator_v2.py
+  (render_adaptive_foreground); this SVG documents the same flat design.
+  NO gloss, NO glow, NO drop shadows, NO bevel/3D, NO decorative swoosh.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <linearGradient id="shield" x1="326" y1="204" x2="710" y2="802" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#67F7E8"/>
-      <stop offset="0.5" stop-color="#13C8B6"/>
-      <stop offset="1" stop-color="#058579"/>
-    </linearGradient>
-    <linearGradient id="shieldRim" x1="300" y1="198" x2="724" y2="826" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#E9FFFB"/>
-      <stop offset="0.42" stop-color="#9EFDF4"/>
-      <stop offset="1" stop-color="#06635D"/>
-    </linearGradient>
-    <filter id="innerLift" x="-12%" y="-12%" width="124%" height="124%">
-      <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#022320" flood-opacity="0.24"/>
-    </filter>
+    <!-- Glyph mask: white shield with the phone handset knocked out (black). -->
+    <mask id="glyph">
+      <rect width="1024" height="1024" fill="black"/>
+      <path d="M512 195 L819 320 L819 528 C819 698 700 808 512 890 C324 808 205 698 205 528 L205 320 Z"
+            fill="white"/>
+      <g fill="black" stroke="black" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M412 614 C455 555 500 505 555 460 C588 433 615 416 615 416"
+              fill="none" stroke-width="96"/>
+        <circle cx="412" cy="614" r="84"/>
+        <circle cx="615" cy="416" r="84"/>
+      </g>
+    </mask>
   </defs>
 
   <!--
-    INSET TRANSFORM (verified). The original artwork spanned roughly the whole
-    canvas and overflowed the adaptive safe zone, so launcher masks clipped the
-    shield shoulders/bottom. We scale the art about its own centre and re-centre
-    it on the canvas so the rendered content sits inside the ~338px safe radius
-    with a clear transparent margin ring on every mask shape. See the PR body
-    for the measured before/after bounding-box numbers.
+    INSET: scale the glyph about the canvas centre (512,512) to ~0.80 so the
+    rendered content sits inside the ~0.58 content radius with a clear
+    transparent margin on every adaptive mask shape.
   -->
-  <g transform="translate(72.02,124.54) scale(0.7780)">
-    <g>
-      <path d="M512 178 748 266v218c0 147-82 252-236 334C358 736 276 631 276 484V266Z"
-        fill="url(#shield)"
-        stroke="url(#shieldRim)"
-        stroke-width="22"
-        stroke-linejoin="round"/>
-      <path d="M512 212 708 286v54c-55-24-121-37-196-37s-141 13-196 37v-54Z"
-        fill="#E9FFFB"
-        opacity="0.22"/>
-    </g>
-
-    <g filter="url(#innerLift)">
-      <path d="M403 360c-23 12-38 34-41 62-6 53 33 128 100 194 67 67 142 106 195 100 28-3 50-18 62-41l19-37c7-14 2-31-11-39l-75-42c-13-7-29-4-38 7l-31 36c-27-13-54-33-79-59-26-26-46-52-59-79l36-31c11-9 14-25 7-38l-42-75c-8-13-25-18-39-11Z"
-        fill="#F7FFFD"/>
-      <path d="M642 354c55 21 95 70 105 129"
-        fill="none"
-        stroke="#B9FFF6"
-        stroke-width="34"
-        stroke-linecap="round"
-        opacity="0.92"/>
-      <path d="M656 264c97 33 171 120 187 225"
-        fill="none"
-        stroke="#5EF3E3"
-        stroke-width="30"
-        stroke-linecap="round"
-        opacity="0.58"/>
-    </g>
+  <g transform="translate(512 512) scale(0.80) translate(-512 -512)">
+    <rect width="1024" height="1024" fill="#FFFFFF" mask="url(#glyph)"/>
   </g>
 </svg>
