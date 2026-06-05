@@ -503,6 +503,11 @@ jobs:
           if [ -n "${{ steps.versions.outputs.ios_version }}" ]; then
             ARGS="$ARGS --version ${{ steps.versions.outputs.ios_version }}"
           fi
+          if [[ "${{ steps.platform.outputs.flag }}" == "ios" || "${{ steps.platform.outputs.flag }}" == "both" ]]; then
+            # Before submit_review runs, only require the uploaded TestFlight build to be VALID.
+            # App Store version state is verified after submission below.
+            ARGS="$ARGS --ios-scope testflight"
+          fi
           python scripts/verify_release.py $ARGS
 
       - name: Cleanup secrets
@@ -689,6 +694,7 @@ jobs:
             --version "${{ steps.asc_version.outputs.selected_version }}" \
             --wait \
             --timeout 600 \
+            --ios-scope both \
             --require-appstore-submission
 
       - name: Upload version resolution report

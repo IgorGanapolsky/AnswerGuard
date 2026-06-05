@@ -137,6 +137,7 @@ jobs:
             --platform ios \
             --version "$IOS_VERSION" \
             --wait \
+            --ios-scope testflight \
             --timeout 1200
 
       - name: Ensure App Review contact details
