@@ -286,7 +286,9 @@ jobs:
 
       - name: Install Fastlane
         if: steps.ios_lineage.outputs.uploadable == 'true'
-        run: gem install fastlane
+        run: |
+          gem install multi_json -v 1.17.0 --no-document
+          gem install fastlane -v 2.234.0 --no-document
         working-directory: native-ios
 
       - name: Configure git credentials for match
@@ -452,7 +454,9 @@ jobs:
           working-directory: native-android
 
       - name: Install Fastlane
-        run: gem install fastlane
+        run: |
+          gem install multi_json -v 1.17.0 --no-document
+          gem install fastlane -v 2.234.0 --no-document
         working-directory: native-android
 
       - name: Resolve source versions
