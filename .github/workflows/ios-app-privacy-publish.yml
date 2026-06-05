@@ -43,8 +43,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${FASTLANE_SESSION:-}" ]; then
-            echo "::error::FASTLANE_SESSION is not set, so CI cannot publish App Privacy data usages. App Store Connect API keys cannot publish this private Apple endpoint as of June 2026."
-            exit 1
+            echo "::warning::FASTLANE_SESSION is not set, so CI cannot publish App Privacy data usages automatically. Publishing App Privacy / Data Usages requires an Apple-ID web session (FASTLANE_SESSION); App Store Connect API keys cannot publish this private Apple endpoint as of June 2026. Complete the App Privacy declaration MANUALLY in App Store Connect (App > App Privacy). Skipping gracefully."
+            exit 0
           fi
           fastlane publish_app_privacy json_path:fastlane/app_privacy_details.json skip_publish:"$SKIP_PUBLISH"
         working-directory: native-ios

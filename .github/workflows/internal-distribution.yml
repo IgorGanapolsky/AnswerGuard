@@ -286,7 +286,16 @@ jobs:
 
       - name: Install Fastlane
         if: steps.ios_lineage.outputs.uploadable == 'true'
-        run: gem install fastlane
+        run: |
+          set -euo pipefail
+          # multi_json (>=1.14.1) is a transitive dependency of fastlane's
+          # App Store Connect upload chain (signet/googleauth/faraday used by
+          # upload_to_testflight). With a plain `gem install fastlane` and no
+          # Gemfile.lock, its runtime spec is occasionally not resolved on the
+          # runner, producing `Gem::MissingSpecError: Could not find 'multi_json'`.
+          # Install it explicitly (pinned) so the spec is always resolvable.
+          gem install multi_json -v '~> 1.15'
+          gem install fastlane
         working-directory: native-ios
 
       - name: Configure git credentials for match
