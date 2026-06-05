@@ -1,0 +1,4 @@
+Fixes:
+- App icon no longer clipped by the launcher mask (inset into the adaptive safe zone).
+- No internal testing prompt on launch.
+- Privacy-first call screening, fully on-device.
