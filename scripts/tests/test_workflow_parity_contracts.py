@@ -138,3 +138,15 @@ def test_ios_submit_review_can_skip_metadata_upload_for_fast_resubmission():
     )
     assert metadata_step is not None
     assert "inputs.skip_metadata_upload == false" in metadata_step.group("body")
+
+
+def test_ios_submit_review_treats_already_in_progress_as_idempotent_success():
+    ios_submit = _workflow("ios-submit-review.yml")
+    native_release = _workflow("native-release.yml")
+
+    expected = "Cannot submit for review - A review submission is already in progress"
+    assert expected in ios_submit
+    assert expected in native_release
+    assert "SUBMIT_ALREADY_IN_PROGRESS=\"true\"" in ios_submit
+    assert "idempotent success" in ios_submit
+    assert "idempotent success" in native_release

@@ -679,7 +679,18 @@ jobs:
           CI: "true"
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-        run: fastlane submit_review version:${{ steps.asc_version.outputs.selected_version }}
+        run: |
+          set +e
+          fastlane submit_review version:${{ steps.asc_version.outputs.selected_version }} 2>&1 | tee /tmp/fastlane-submit-review.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if grep -Fq "Cannot submit for review - A review submission is already in progress" /tmp/fastlane-submit-review.log; then
+              echo "::warning::Apple reports an App Review submission is already in progress; treating submit_review as idempotent success."
+            else
+              exit "$status"
+            fi
+          fi
         working-directory: native-ios
 
       - name: Verify App Store submission state
