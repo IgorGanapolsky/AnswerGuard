@@ -111,3 +111,30 @@ def test_ios_release_gates_do_not_require_app_store_state_before_submission():
     )
     assert post_submit_verify is not None
     assert "--ios-scope both" in post_submit_verify.group("body")
+
+
+def test_fastfile_retries_apple_buildupload_409_rejections():
+    fastfile = (ROOT / "native-ios" / "fastlane" / "Fastfile").read_text(encoding="utf-8")
+
+    duplicate_classifier = re.search(
+        r"def duplicate_testflight_build_error\?\(error\)(?P<body>.*?)\n  end",
+        fastfile,
+        re.S,
+    )
+    assert duplicate_classifier is not None
+    assert "state of the relationship 'buildUpload'" in duplicate_classifier.group("body")
+    assert "/data/relationships/buildUpload" in duplicate_classifier.group("body")
+    assert "Retrying TestFlight upload with build" in fastfile
+
+
+def test_ios_submit_review_can_skip_metadata_upload_for_fast_resubmission():
+    workflow = _workflow("ios-submit-review.yml")
+
+    assert "skip_metadata_upload:" in workflow
+    metadata_step = re.search(
+        r"name: Upload App Store metadata \+ screenshots(?P<body>.*?)\n      - name:",
+        workflow,
+        re.S,
+    )
+    assert metadata_step is not None
+    assert "inputs.skip_metadata_upload == false" in metadata_step.group("body")
