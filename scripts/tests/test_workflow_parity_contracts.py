@@ -72,3 +72,11 @@ def test_workflow_dispatch_surfaces_are_guarded():
     assert "base.ref == 'main'" in automerge
     assert "startsWith(github.event.pull_request.head.ref, 'release/')" in automerge
     assert "python scripts/source_versions.py --format value --key IOS_VERSION_NAME" in watcher
+
+
+def test_app_privacy_publish_workflows_allow_fastlane_session_auth():
+    for workflow_name in ["ios-app-privacy-publish.yml", "ios-submit-review.yml"]:
+        workflow = _workflow(workflow_name)
+        assert "FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}" in workflow
+        assert "SPACESHIP_SESSION: ${{ secrets.FASTLANE_SESSION }}" in workflow
+        assert "FASTLANE_PASSWORD: session-auth-placeholder" in workflow

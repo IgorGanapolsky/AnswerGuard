@@ -29,21 +29,17 @@ fi
 
 SESSION="$(
   python3 - "$OUT_FILE" <<'PY'
-import re
 import sys
 from pathlib import Path
 
+from scripts.fastlane_session import FastlaneSessionError, extract_fastlane_session
+
 text = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
-patterns = [
-    r"FASTLANE_SESSION=['\"]([^'\"]+)['\"]",
-    r"export FASTLANE_SESSION=['\"]([^'\"]+)['\"]",
-]
-for pattern in patterns:
-    match = re.search(pattern, text)
-    if match:
-        print(match.group(1))
-        raise SystemExit(0)
-raise SystemExit(1)
+try:
+    print(extract_fastlane_session(text), end="")
+except FastlaneSessionError as exc:
+    print(str(exc), file=sys.stderr)
+    raise SystemExit(1)
 PY
 )"
 
