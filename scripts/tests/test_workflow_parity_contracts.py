@@ -80,3 +80,5 @@ def test_app_privacy_publish_workflows_allow_fastlane_session_auth():
         assert "FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}" in workflow
         assert "SPACESHIP_SESSION: ${{ secrets.FASTLANE_SESSION }}" in workflow
         assert "FASTLANE_PASSWORD: session-auth-placeholder" in workflow
+        assert "Session loaded from environment variable is not valid" in workflow
+        assert "Apple rejected the FASTLANE_SESSION on this GitHub runner" in workflow
