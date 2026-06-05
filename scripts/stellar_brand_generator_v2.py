@@ -22,11 +22,13 @@ COLORS = {
 
 # 2026 FLAT, high-contrast brand icon palette.
 # Two colors total: a gentle (low-contrast, 2-stop) teal->emerald VERTICAL fill
-# plus ONE flat white glyph. No gloss, no radial glow, no drop shadows, no
-# bevel/3D, no decorative swoosh. Clean like Spotify / Visual Voicemail.
+# plus ONE flat white shield with a CHECKMARK knocked out (the teal gradient
+# shows through the check = "answered / verified / safe"). No gloss, no radial
+# glow, no drop shadows, no bevel/3D, no decorative swoosh. Clean like
+# Spotify / Visual Voicemail.
 ICON_GRAD_TOP = (21, 195, 154)      # #15C39A  bright teal-green (top)
 ICON_GRAD_BOTTOM = (14, 158, 134)   # #0E9E86  deep emerald (bottom)
-ICON_WHITE = (255, 255, 255)        # #FFFFFF  flat shield + phone glyph
+ICON_WHITE = (255, 255, 255)        # #FFFFFF  flat shield glyph
 
 # Content radius (as a fraction of the half-canvas) for the Android adaptive
 # foreground glyph. Must stay <= 0.60 so it sits comfortably inside the 0.66
@@ -95,70 +97,71 @@ def _shield_mask(big, cx, cy, half_w, top_y, bottom_y):
     return mask
 
 
-def _phone_mask(big, cx, cy, half_w, top_y, bottom_y):
-    """Return an L-mode mask of a bold, flat phone handset (rounded caps).
+def _check_mask(big, cx, cy, half_w, top_y, bottom_y):
+    """Return an L-mode mask of a bold, unambiguous CHECKMARK (round caps/joins).
 
-    Classic "call" handset: two round ear/mouth pods joined by a thick bowed
-    bar, rotated -40deg. Built from a dense set of overlapping circles along a
-    parabola so there are NO thin rasterization slivers, then two larger pods.
+    The classic two-segment tick: START -> low VERTEX -> high END, drawn as a
+    round-capped, round-joined stroked polyline (NOT a filled freeform blob).
+    Geometry is expressed as fractions of the shield bounding box so it scales
+    with any icon size and sits fully inside the white shield with margin.
+
+    Reference (1024 canvas, shield centred ~(512,500)):
+        START (405,520) -> VERTEX (480,605) -> END (640,425), stroke ~70px.
     """
-    import math
+    ch = bottom_y - top_y          # shield box height
+    w = 2.0 * half_w               # shield box width
+
+    # Vertices as fractions of the shield bounding box (x from left edge,
+    # y from top edge). Derived from the 1024 reference vertices above.
+    left = cx - half_w
+    pts = [
+        (left + 0.337 * w, top_y + 0.514 * ch),  # START  ~(405,520)
+        (left + 0.460 * w, top_y + 0.648 * ch),  # VERTEX ~(480,605)
+        (left + 0.722 * w, top_y + 0.364 * ch),  # END    ~(640,425)
+    ]
+    stroke_w = ch * 0.110          # ~70px on a 635px-tall shield box
+    r = stroke_w / 2.0
+
     mask = Image.new("L", (big, big), 0)
     d = ImageDraw.Draw(mask)
-    ch = (bottom_y - top_y)
-    bar_r = ch * 0.082            # half-thickness of the bowed bar
-    pod_r = ch * 0.140            # radius of the two earpieces/pods
-    span = half_w * 0.82          # distance between the two pods
-    bow = ch * 0.205              # how far the bar bows downward
-    ang = math.radians(-40)
-    ca, sa = math.cos(ang), math.sin(ang)
-
-    def place(px, py):
-        return (cx + px * ca - py * sa, cy + px * sa + py * ca)
-
-    # Stamp overlapping disks along the bowed centerline (no slivers).
-    steps = 120
-    for i in range(steps + 1):
-        t = i / steps
-        x = (-0.5 + t) * span
-        y = bow * (1.0 - (2.0 * t - 1.0) ** 2) + ch * 0.04
-        bx, by = place(x, y)
-        d.ellipse((bx - bar_r, by - bar_r, bx + bar_r, by + bar_r), fill=255)
-    # Two bold round pods at the ends (the earpiece + mouthpiece).
-    for ex in (-0.5 * span, 0.5 * span):
-        px, py = place(ex, ch * 0.04)
-        d.ellipse((px - pod_r, py - pod_r, px + pod_r, py + pod_r), fill=255)
+    # Stroke the polyline with ROUND joins+caps: thick line per segment plus a
+    # disk at every vertex/endpoint (this is exactly round line caps + joins,
+    # with no thin rasterization slivers).
+    d.line(pts, fill=255, width=int(round(stroke_w)), joint="curve")
+    for (px, py) in pts:
+        d.ellipse((px - r, py - r, px + r, py + r), fill=255)
     return mask
 
 
-def shield_phone_masks(size, center, half_width, top_y, bottom_y, ss=6):
-    """Return (shield_mask, phone_mask) at full `size` resolution.
+def shield_glyph_masks(size, center, half_width, top_y, bottom_y, ss=6):
+    """Return (shield_mask, check_mask) at full `size` resolution.
 
     Masks are supersampled then downscaled for crisp, anti-aliased flat edges.
     """
     big = size * ss
     cx, cy = center[0] * ss, center[1] * ss
     shield = _shield_mask(big, cx, cy, half_width * ss, top_y * ss, bottom_y * ss)
-    phone = _phone_mask(big, cx, cy, half_width * ss, top_y * ss, bottom_y * ss)
+    check = _check_mask(big, cx, cy, half_width * ss, top_y * ss, bottom_y * ss)
     shield = shield.resize((size, size), Image.Resampling.LANCZOS)
-    phone = phone.resize((size, size), Image.Resampling.LANCZOS)
-    return shield, phone
+    check = check.resize((size, size), Image.Resampling.LANCZOS)
+    return shield, check
 
 
-def _glyph_alpha(shield, phone):
-    """Flat white glyph alpha = shield with the phone knocked out.
+def _glyph_alpha(shield, check):
+    """Flat white glyph alpha = shield with the CHECKMARK knocked out.
 
-    Returns an L-mode alpha mask (white where the glyph is opaque).
+    Returns an L-mode alpha mask (white where the glyph is opaque); the teal
+    gradient shows through the knocked-out check.
     """
     from PIL import ImageChops
-    # Knock the phone out of the shield (only inside the shield).
-    phone_in = ImageChops.multiply(phone, shield)
-    glyph = ImageChops.subtract(shield, phone_in)
+    # Knock the check out of the shield (only inside the shield).
+    check_in = ImageChops.multiply(check, shield)
+    glyph = ImageChops.subtract(shield, check_in)
     return glyph
 
 
 def render_flat_icon(size, opaque=True):
-    """Full-bleed flat icon: teal gradient bg + white shield (phone knocked out).
+    """Full-bleed flat icon: teal gradient bg + white shield (check knocked out).
 
     Returns an RGB image when opaque=True (iOS/legacy), else RGBA.
     """
@@ -168,8 +171,8 @@ def render_flat_icon(size, opaque=True):
     bottom_y = top_y + shield_h
     half_w = int(size * 0.30)
     cx, cy = size // 2, (top_y + bottom_y) // 2
-    shield, phone = shield_phone_masks(size, (cx, cy), half_w, top_y, bottom_y)
-    glyph = _glyph_alpha(shield, phone)
+    shield, check = shield_glyph_masks(size, (cx, cy), half_w, top_y, bottom_y)
+    glyph = _glyph_alpha(shield, check)
     white = Image.new("RGB", (size, size), ICON_WHITE)
     out = grad.copy()
     out.paste(white, (0, 0), glyph)
@@ -202,8 +205,8 @@ def render_adaptive_foreground(size):
     cx = cy = size // 2
     top_y = cy - shield_h // 2
     bottom_y = top_y + shield_h
-    shield, phone = shield_phone_masks(size, (cx, cy), half_w, top_y, bottom_y)
-    glyph = _glyph_alpha(shield, phone)
+    shield, check = shield_glyph_masks(size, (cx, cy), half_w, top_y, bottom_y)
+    glyph = _glyph_alpha(shield, check)
     fg = Image.new("RGBA", (size, size), (255, 255, 255, 0))
     white = Image.new("RGBA", (size, size), (255, 255, 255, 255))
     fg.paste(white, (0, 0), glyph)
@@ -212,8 +215,8 @@ def render_adaptive_foreground(size):
 
 def generate_stellar_icon():
     size = 1024
-    # FLAT full-bleed mark: gentle teal gradient bg + ONE white shield with the
-    # phone handset knocked out. Fully opaque (OS applies the rounded mask).
+    # FLAT full-bleed mark: gentle teal gradient bg + ONE white shield with a
+    # CHECKMARK knocked out. Fully opaque (OS applies the rounded mask).
     img = render_flat_icon(size, opaque=True)
 
     icon_path = ANDROID_IMAGES / "icon.png"
@@ -280,7 +283,7 @@ def generate_release_notes():
     notes = """What's new in v1.2.7:
 - Recent Activity now shows weekday, date, and time for screened calls.
 - Carrier-routed voicemail and Do Not Disturb limitations are explained clearly.
-- New launcher icon: shield + telephone handset.
+- New launcher icon: clean shield with a verified checkmark.
 - Delete my data clears screening history and blocklist without uninstalling.
 - Refreshed privacy policy and store assets for the shipped local-screening feature set."""
     path = ANDROID_IMAGES.parent / "changelogs" / "default.txt"

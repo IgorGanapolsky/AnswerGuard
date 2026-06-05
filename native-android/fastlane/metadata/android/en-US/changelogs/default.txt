@@ -1,6 +1,6 @@
 What's new in v1.2.7:
 - Recent Activity now shows weekday, date, and time for screened calls.
 - Carrier-routed voicemail and Do Not Disturb limitations are explained clearly.
-- New launcher icon: shield + telephone handset.
+- New launcher icon: clean shield with a verified checkmark.
 - Delete my data clears screening history and blocklist without uninstalling.
 - Refreshed privacy policy and store assets for the shipped local-screening feature set.
