@@ -82,3 +82,32 @@ def test_app_privacy_publish_workflows_allow_fastlane_session_auth():
         assert "FASTLANE_PASSWORD: session-auth-placeholder" in workflow
         assert "Session loaded from environment variable is not valid" in workflow
         assert "Apple rejected the FASTLANE_SESSION on this GitHub runner" in workflow
+
+
+def test_ios_release_gates_do_not_require_app_store_state_before_submission():
+    native_release = _workflow("native-release.yml")
+    ios_submit = _workflow("ios-submit-review.yml")
+
+    pre_submit_verify = re.search(
+        r"name: Verify releases(?P<body>.*?)python scripts/verify_release.py \$ARGS",
+        native_release,
+        re.S,
+    )
+    assert pre_submit_verify is not None
+    assert "--ios-scope testflight" in pre_submit_verify.group("body")
+
+    standalone_testflight_verify = re.search(
+        r"name: Verify TestFlight build is VALID(?P<body>.*?)timeout 1200",
+        ios_submit,
+        re.S,
+    )
+    assert standalone_testflight_verify is not None
+    assert "--ios-scope testflight" in standalone_testflight_verify.group("body")
+
+    post_submit_verify = re.search(
+        r"name: Verify App Store submission state(?P<body>.*?)--require-appstore-submission",
+        native_release,
+        re.S,
+    )
+    assert post_submit_verify is not None
+    assert "--ios-scope both" in post_submit_verify.group("body")
