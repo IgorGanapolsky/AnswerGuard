@@ -265,16 +265,33 @@ jobs:
 
           if [[ "$STATE" == "WAITING_FOR_REVIEW" || "$STATE" == "IN_REVIEW" || "$STATE" == "PENDING_DEVELOPER_RELEASE" || "$STATE" == "READY_FOR_SALE" ]]; then
             echo "Already submitted ($STATE); skipping submit_review."
+            SUBMIT_ALREADY_IN_PROGRESS="false"
           else
             # Use our ASC preflight script for hard validation, then submit via Fastlane deliver.
             python scripts/asc_submit_for_review.py --version "$IOS_VERSION" --locale "$LOCALE" --dry-run
 
             cd native-ios
-            fastlane submit_review version:"$IOS_VERSION"
+            set +e
+            fastlane submit_review version:"$IOS_VERSION" 2>&1 | tee /tmp/fastlane-submit-review.log
+            submit_status=${PIPESTATUS[0]}
+            set -e
             cd ..
+            SUBMIT_ALREADY_IN_PROGRESS="false"
+            if [ "$submit_status" -ne 0 ]; then
+              if grep -Fq "Cannot submit for review - A review submission is already in progress" /tmp/fastlane-submit-review.log; then
+                echo "::warning::Apple reports an App Review submission is already in progress; treating submit_review as idempotent success."
+                SUBMIT_ALREADY_IN_PROGRESS="true"
+              else
+                exit "$submit_status"
+              fi
+            fi
           fi
 
-          if [[ "$WAIT_FOR_STATE" == "true" ]]; then
+          if [[ "${SUBMIT_ALREADY_IN_PROGRESS:-false}" == "true" ]]; then
+            # ASC can keep appStoreState=REJECTED while a reviewSubmission object is active.
+            # fastlane's deliver error above is the authoritative idempotency signal for this rerun.
+            python scripts/asc_poll_version_state.py --version "$IOS_VERSION" || true
+          elif [[ "$WAIT_FOR_STATE" == "true" ]]; then
             python scripts/asc_poll_version_state.py --version "$IOS_VERSION" --wait --timeout 1800 --poll-interval 20
           else
             python scripts/asc_poll_version_state.py --version "$IOS_VERSION"
