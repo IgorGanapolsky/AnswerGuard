@@ -1,69 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  AnswerGuard composed launcher icon.
+  AnswerGuard composed launcher icon (FLAT, 2026).
 
   Source for Play Store, iOS App Store, and legacy Android launcher PNGs.
-  The mark is intentionally simple at small sizes: protected phone calls,
-  not a stopwatch or generic checkmark.
+  Design: ONE bold white shield with a phone handset knocked out, on a gentle
+  (low-contrast, 2-stop) teal->emerald vertical fill. Two colors total.
+  NO gloss, NO radial glow, NO drop shadows, NO bevel/3D, NO decorative swoosh.
+
+  The shipped PNGs are produced by scripts/stellar_brand_generator_v2.py
+  (the canonical renderer); this SVG documents the same flat design.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <linearGradient id="bg" x1="190" y1="70" x2="835" y2="955" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#112D34"/>
-      <stop offset="0.52" stop-color="#073F3A"/>
-      <stop offset="1" stop-color="#061816"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#15C39A"/>
+      <stop offset="1" stop-color="#0E9E86"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="38%" r="54%">
-      <stop offset="0" stop-color="#4EFFF0" stop-opacity="0.36"/>
-      <stop offset="0.72" stop-color="#1BC7B5" stop-opacity="0.08"/>
-      <stop offset="1" stop-color="#061816" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="shield" x1="326" y1="188" x2="730" y2="820" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#67F7E8"/>
-      <stop offset="0.5" stop-color="#13C8B6"/>
-      <stop offset="1" stop-color="#058579"/>
-    </linearGradient>
-    <linearGradient id="shieldRim" x1="300" y1="180" x2="724" y2="845" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#E9FFFB"/>
-      <stop offset="0.42" stop-color="#9EFDF4"/>
-      <stop offset="1" stop-color="#06635D"/>
-    </linearGradient>
-    <filter id="softShadow" x="-20%" y="-16%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="26" stdDeviation="22" flood-color="#020B0A" flood-opacity="0.42"/>
-    </filter>
-    <filter id="innerLift" x="-12%" y="-12%" width="124%" height="124%">
-      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#022320" flood-opacity="0.28"/>
-    </filter>
+    <!-- Glyph mask: white shield with the phone handset knocked out (black). -->
+    <mask id="glyph">
+      <rect width="1024" height="1024" fill="black"/>
+      <path d="M512 195 L819 320 L819 528 C819 698 700 808 512 890 C324 808 205 698 205 528 L205 320 Z"
+            fill="white"/>
+      <g fill="black" stroke="black" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M412 614 C436 678 520 690 575 632 C622 583 596 470 615 416"
+              fill="none" stroke-width="96"/>
+        <circle cx="412" cy="614" r="84"/>
+        <circle cx="615" cy="416" r="84"/>
+      </g>
+    </mask>
   </defs>
 
   <rect width="1024" height="1024" fill="url(#bg)"/>
-  <rect width="1024" height="1024" fill="url(#glow)"/>
-
-  <g filter="url(#softShadow)">
-    <path d="M512 146 782 246v250c0 168-94 288-270 382C336 784 242 664 242 496V246Z"
-      fill="url(#shield)"
-      stroke="url(#shieldRim)"
-      stroke-width="24"
-      stroke-linejoin="round"/>
-    <path d="M512 184 736 268v62c-63-28-139-43-224-43s-161 15-224 43v-62Z"
-      fill="#E9FFFB"
-      opacity="0.22"/>
-  </g>
-
-  <g filter="url(#innerLift)">
-    <path d="M387 346c-26 14-43 38-47 70-7 61 38 146 114 222 77 77 162 122 223 114 32-4 57-21 70-47l22-42c8-16 2-35-13-44l-86-48c-14-8-32-5-43 8l-35 41c-31-15-61-38-90-67-30-30-52-60-67-91l41-35c13-11 16-29 8-43l-48-86c-9-15-28-21-44-13Z"
-      fill="#F7FFFD"/>
-    <path d="M661 330c63 24 109 80 120 147"
-      fill="none"
-      stroke="#B9FFF6"
-      stroke-width="38"
-      stroke-linecap="round"
-      opacity="0.92"/>
-    <path d="M676 226c111 38 195 137 214 257"
-      fill="none"
-      stroke="#5EF3E3"
-      stroke-width="34"
-      stroke-linecap="round"
-      opacity="0.58"/>
-  </g>
+  <rect width="1024" height="1024" fill="#FFFFFF" mask="url(#glyph)"/>
 </svg>
