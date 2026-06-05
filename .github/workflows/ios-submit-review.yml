@@ -22,6 +22,11 @@ on:
         required: true
         type: boolean
         default: true
+      skip_metadata_upload:
+        description: "Skip fastlane metadata/screenshots upload when App Store metadata is already current"
+        required: true
+        type: boolean
+        default: false
 
 concurrency:
   group: ios-submit-review-${{ github.ref_name }}-${{ inputs.version || 'auto' }}-${{ inputs.locale }}
@@ -158,6 +163,7 @@ jobs:
           python scripts/asc_ensure_review_detail.py --version "$IOS_VERSION"
 
       - name: Upload App Store metadata + screenshots
+        if: ${{ inputs.skip_metadata_upload == false }}
         env:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
