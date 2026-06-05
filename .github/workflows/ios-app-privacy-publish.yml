@@ -41,6 +41,9 @@ jobs:
           FASTLANE_ITC_TEAM_ID: "128096325"
           FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
           SPACESHIP_SESSION: ${{ secrets.FASTLANE_SESSION }}
+          # fastlane 2.234.0 reads FASTLANE_PASSWORD before it checks FASTLANE_SESSION.
+          # This placeholder lets the session check run; it is not a real Apple password.
+          FASTLANE_PASSWORD: session-auth-placeholder
           SKIP_PUBLISH: ${{ inputs.skip_publish }}
         run: |
           set -euo pipefail
