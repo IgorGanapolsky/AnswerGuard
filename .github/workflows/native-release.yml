@@ -690,6 +690,7 @@ jobs:
           CI: "true"
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
         run: |
           set +e
           fastlane submit_review version:${{ steps.asc_version.outputs.selected_version }} 2>&1 | tee /tmp/fastlane-submit-review.log
@@ -697,7 +698,19 @@ jobs:
           set -e
           if [ "$status" -ne 0 ]; then
             if grep -Fq "Cannot submit for review - A review submission is already in progress" /tmp/fastlane-submit-review.log; then
-              echo "::warning::Apple reports an App Review submission is already in progress; treating submit_review as idempotent success."
+              # Do NOT blanket-treat "already in progress" as success. That masked a
+              # genuine Apple REJECTION (reviewSubmission state UNRESOLVED_ISSUES with a
+              # REJECTED item) for weeks while the pipeline kept reporting green. Only
+              # idempotent-pass when the existing submission is genuinely IN_REVIEW;
+              # otherwise fail loudly with the ground-truth verdict.
+              echo "submit_review reports an existing submission — checking its ACTUAL state..."
+              python "$GITHUB_WORKSPACE/scripts/asc_review_submission_state.py" | tee /tmp/rsstate.txt || true
+              if grep -q "VERDICT: IN_REVIEW" /tmp/rsstate.txt; then
+                echo "::notice::Existing reviewSubmission is genuinely IN_REVIEW — idempotent success."
+              else
+                echo "::error::submit_review is blocked by a non-review submission (see VERDICT above). A prior submission is REJECTED/UNRESOLVED and must be resolved in App Store Connect Resolution Center, then cancelled, before re-submitting. Failing loudly instead of masking."
+                exit 1
+              fi
             else
               exit "$status"
             fi
