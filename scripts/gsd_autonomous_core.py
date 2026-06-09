@@ -63,6 +63,15 @@ async def promote_to_production(page, base_url):
     # Final Submission Overview
     await page.goto(f"{base_url}/publishing-overview", wait_until="networkidle")
     await asyncio.sleep(4)
+
+    # Click 'Publish changes' if the app is already approved under Managed Publishing
+    publish_btn = await page.query_selector("button:has-text('Publish changes')")
+    if publish_btn:
+        await publish_btn.click()
+        log("  🚀 App approved! Clicked 'Publish changes' to make the release live on Google Play.")
+        await asyncio.sleep(5)
+        return
+
     submit_btn = await page.query_selector("button:has-text('Send for review')")
     if submit_btn:
         await submit_btn.click()

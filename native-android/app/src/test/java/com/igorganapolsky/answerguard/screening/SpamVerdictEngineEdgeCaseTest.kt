@@ -40,6 +40,12 @@ class SpamVerdictEngineEdgeCaseTest {
         }
         every { editor.apply() } just Runs
 
+        val statePrefs = mockk<SharedPreferences>()
+        every {
+            context.getSharedPreferences("answerguard_state", Context.MODE_PRIVATE)
+        } returns statePrefs
+        every { statePrefs.getBoolean("contact_identification_enabled", true) } returns true
+
         UserBlocklist.init(context)
     }
 

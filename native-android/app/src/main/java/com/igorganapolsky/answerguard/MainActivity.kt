@@ -19,7 +19,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -107,6 +110,7 @@ class MainActivity : ComponentActivity() {
     private var callScreeningEnabled by mutableStateOf(false)
     private var screeningPaused by mutableStateOf(false)
     private var contactsPermissionGranted by mutableStateOf(false)
+    private var contactsEnabled by mutableStateOf(true)
     private var callLogPermissionGranted by mutableStateOf(false)
     private var voicemailPermissionGranted by mutableStateOf(false)
     private var recentCalls by mutableStateOf<List<ScreenedCall>>(emptyList())
@@ -166,10 +170,12 @@ class MainActivity : ComponentActivity() {
                         callScreeningEnabled = callScreeningEnabled,
                         screeningPaused = screeningPaused,
                         contactsPermissionGranted = contactsPermissionGranted,
+                        contactsEnabled = contactsEnabled,
                         onEnable = ::requestCallScreeningRole,
                         onTogglePause = ::togglePause,
                         onSwitchApp = { showDisableInstruction = true },
                         onEnableContacts = ::requestContactsPermission,
+                        onToggleContacts = ::toggleContacts,
                         onUpgrade = ::launchProPurchase,
                         onRestore = ::restorePurchases,
                         recentCalls = recentCalls,
@@ -240,6 +246,7 @@ class MainActivity : ComponentActivity() {
                 false
             }
         screeningPaused = PauseState.isPaused(this)
+        contactsEnabled = PauseState.isContactIdentificationEnabled(this)
         contactsPermissionGranted =
             androidx.core.content.ContextCompat.checkSelfPermission(
                 this, android.Manifest.permission.READ_CONTACTS
@@ -275,6 +282,16 @@ class MainActivity : ComponentActivity() {
             if (nowPaused) "screening_paused" else "screening_resumed",
         )
         emitFeedback(if (nowPaused) "Paused. No calls will be screened." else "Resumed. Screening is active.")
+    }
+
+    private fun toggleContacts() {
+        val nowEnabled = !contactsEnabled
+        PauseState.setContactIdentificationEnabled(this, nowEnabled)
+        contactsEnabled = nowEnabled
+        analyticsService.track(
+            if (nowEnabled) "contacts_enabled" else "contacts_disabled"
+        )
+        emitFeedback(if (nowEnabled) "Contact identification enabled" else "Contact identification disabled")
     }
 
     private fun requestCallScreeningRole() {
@@ -412,10 +429,12 @@ private fun AnswerGuardHome(
     callScreeningEnabled: Boolean,
     screeningPaused: Boolean,
     contactsPermissionGranted: Boolean,
+    contactsEnabled: Boolean,
     onEnable: () -> Unit,
     onTogglePause: () -> Unit,
     onSwitchApp: () -> Unit,
     onEnableContacts: () -> Unit,
+    onToggleContacts: () -> Unit,
     onUpgrade: () -> Unit,
     onRestore: () -> Unit,
     recentCalls: List<ScreenedCall>,
@@ -498,6 +517,11 @@ private fun AnswerGuardHome(
                     proStatusMessage = proStatusMessage,
                     onDeleteData = { showDeleteDataConfirm = true },
                     showSnackbar = showSnackbar,
+                    contactsPermissionGranted = contactsPermissionGranted,
+                    contactsEnabled = contactsEnabled,
+                    onToggleContacts = onToggleContacts,
+                    onEnableContacts = onEnableContacts,
+                    onEnableScreening = onEnable,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -1507,6 +1531,11 @@ private fun SettingsScreen(
     proStatusMessage: String?,
     onDeleteData: () -> Unit,
     showSnackbar: (String) -> Unit,
+    contactsPermissionGranted: Boolean,
+    contactsEnabled: Boolean,
+    onToggleContacts: () -> Unit,
+    onEnableContacts: () -> Unit,
+    onEnableScreening: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Intercept Android's back gesture / button so swipe-back returns to the
@@ -1539,14 +1568,133 @@ private fun SettingsScreen(
             )
         }
 
-        // Pause/resume the screener — only meaningful once it's the active
-        // call-screening app, so gate the control on that.
-        if (callScreeningEnabled) {
-            SettingsSectionLabel("SCREENING")
-            PauseScreeningCard(
-                screeningPaused = screeningPaused,
-                onTogglePause = onTogglePause,
-            )
+        SettingsSectionLabel("PROTECTION SETTINGS")
+        Card(
+            colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                // Call Screening
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Call Screening",
+                            color = AnswerGuardColors.TextPrimary,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        if (callScreeningEnabled) {
+                            Switch(
+                                checked = !screeningPaused,
+                                onCheckedChange = { onTogglePause() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color(0xFF06211E),
+                                    checkedTrackColor = AnswerGuardColors.Primary,
+                                    uncheckedThumbColor = AnswerGuardColors.TextSecondary,
+                                    uncheckedTrackColor = AnswerGuardColors.SurfaceMuted
+                                ),
+                                modifier = Modifier.testTag("settings_call_screening_switch")
+                            )
+                        }
+                    }
+                    if (!callScreeningEnabled) {
+                        Text(
+                            text = "Enable Call Screening to filter spam calls locally.",
+                            color = AnswerGuardColors.TextSecondary,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Button(
+                            onClick = onEnableScreening,
+                            colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("settings_enable_screening_button")
+                        ) {
+                            Text(
+                                text = "Enable Call Screening",
+                                color = Color(0xFF06211E),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = if (screeningPaused) "Paused — calls are not screened" else "Active — on-device protection is running",
+                            color = if (screeningPaused) AnswerGuardColors.Warning else AnswerGuardColors.Primary,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(AnswerGuardColors.SurfaceMuted)
+                )
+
+                // Contact Identification
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Contact Identification",
+                            color = AnswerGuardColors.TextPrimary,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        if (contactsPermissionGranted) {
+                            Switch(
+                                checked = contactsEnabled,
+                                onCheckedChange = { onToggleContacts() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color(0xFF06211E),
+                                    checkedTrackColor = AnswerGuardColors.Primary,
+                                    uncheckedThumbColor = AnswerGuardColors.TextSecondary,
+                                    uncheckedTrackColor = AnswerGuardColors.SurfaceMuted
+                                ),
+                                modifier = Modifier.testTag("settings_contacts_switch")
+                            )
+                        }
+                    }
+                    if (!contactsPermissionGranted) {
+                        Text(
+                            text = "Allow contacts access so known numbers are never accidentally blocked.",
+                            color = AnswerGuardColors.TextSecondary,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Button(
+                            onClick = onEnableContacts,
+                            colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.Primary),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("settings_enable_contacts_button")
+                        ) {
+                            Text(
+                                text = "Allow Contacts Access",
+                                color = Color(0xFF06211E),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = if (contactsEnabled) "Active — contacts are automatically allowed" else "Disabled — contacts will be screened like normal calls",
+                            color = if (contactsEnabled) AnswerGuardColors.Primary else AnswerGuardColors.Warning,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            }
         }
 
         SettingsSectionLabel("BLOCKLIST")
@@ -1570,62 +1718,6 @@ private fun SettingsScreen(
         PrivacyCard()
 
         Spacer(modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun SettingsSectionLabel(text: String) {
-    Text(
-        text = text,
-        color = AnswerGuardColors.TextSecondary,
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(top = 8.dp),
-    )
-}
-
-@Composable
-private fun PauseScreeningCard(
-    screeningPaused: Boolean,
-    onTogglePause: () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = if (screeningPaused) "Screening paused" else "Screening active",
-                color = AnswerGuardColors.TextPrimary,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = if (screeningPaused)
-                    "Incoming calls are not being screened. Resume to re-enable on-device protection."
-                else
-                    "Incoming calls are screened on-device against confirmed spam patterns.",
-                color = AnswerGuardColors.TextSecondary,
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Button(
-                onClick = onTogglePause,
-                colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("settings_pause_toggle"),
-            ) {
-                Text(
-                    text = if (screeningPaused) "Resume screening" else "Pause screening",
-                    color = AnswerGuardColors.TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
     }
 }
 @Composable
@@ -1665,3 +1757,15 @@ private fun PrivacyCard() {
         }
     }
 }
+
+@Composable
+private fun SettingsSectionLabel(text: String) {
+    Text(
+        text = text,
+        color = AnswerGuardColors.TextSecondary,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+}
+
