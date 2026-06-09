@@ -140,13 +140,23 @@ def test_ios_submit_review_can_skip_metadata_upload_for_fast_resubmission():
     assert "inputs.skip_metadata_upload == false" in metadata_step.group("body")
 
 
-def test_ios_submit_review_treats_already_in_progress_as_idempotent_success():
-    ios_submit = _workflow("ios-submit-review.yml")
+def test_ios_submit_review_fails_loud_unless_in_review():
+    """submit_review must NOT mask a blocking non-review submission.
+
+    A reviewSubmission stuck in UNRESOLVED_ISSUES (e.g. a REJECTED item) was
+    swallowed for weeks because the shim treated Apple's "already in progress"
+    error as blanket idempotent success. The contract now: on that error, query
+    the real reviewSubmission state and only idempotent-pass when IN_REVIEW;
+    otherwise fail loudly with the ground-truth verdict.
+    """
     native_release = _workflow("native-release.yml")
 
     expected = "Cannot submit for review - A review submission is already in progress"
-    assert expected in ios_submit
     assert expected in native_release
-    assert "SUBMIT_ALREADY_IN_PROGRESS=\"true\"" in ios_submit
-    assert "idempotent success" in ios_submit
+    # Ground-truth state check, not a blanket pass.
+    assert "asc_review_submission_state.py" in native_release
+    assert "VERDICT: IN_REVIEW" in native_release
+    # Idempotent success is now conditional on a genuinely in-review submission...
     assert "idempotent success" in native_release
+    # ...and any other (blocking) state fails the job loudly.
+    assert "Failing loudly instead of masking" in native_release
