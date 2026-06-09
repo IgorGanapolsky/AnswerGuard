@@ -36,7 +36,26 @@ class AnalyticsService
 
             prefs = application.getSharedPreferences(PREFS_NAME, Application.MODE_PRIVATE)
 
+            val distributionChannel = resolveDistributionChannel(application)
+            val isInternalUser =
+                BuildConfig.DEBUG ||
+                    isEmulator() ||
+                    isUiTestSession(application) ||
+                    distributionChannel == AndroidInstallChannel.NON_PLAY_INSTALL
+
             if (apiKey.isBlank()) {
+                analyticsContextProperties =
+                    mapOf(
+                        "platform" to "android",
+                        "app_name" to APP_NAME,
+                        "app_version" to BuildConfig.VERSION_NAME,
+                        AnalyticsProperties.ENVIRONMENT to environment(),
+                        AnalyticsProperties.BUILD_AUDIENCE to buildAudience(),
+                        AnalyticsProperties.BUILD_TYPE to if (BuildConfig.DEBUG) "debug" else "release",
+                        AnalyticsProperties.RUNTIME_TARGET to if (isEmulator()) "emulator" else "device",
+                        AnalyticsProperties.DISTRIBUTION_CHANNEL to distributionChannel,
+                        "is_internal" to isInternalUser,
+                    )
                 return
             }
 
@@ -55,11 +74,14 @@ class AnalyticsService
             analyticsContextProperties =
                 mapOf(
                     "platform" to "android",
+                    "app_name" to APP_NAME,
                     "app_version" to BuildConfig.VERSION_NAME,
                     AnalyticsProperties.ENVIRONMENT to environment(),
                     AnalyticsProperties.BUILD_AUDIENCE to buildAudience(),
                     AnalyticsProperties.BUILD_TYPE to if (BuildConfig.DEBUG) "debug" else "release",
                     AnalyticsProperties.RUNTIME_TARGET to if (isEmulator()) "emulator" else "device",
+                    AnalyticsProperties.DISTRIBUTION_CHANNEL to distributionChannel,
+                    "is_internal" to isInternalUser,
                 )
             initialized = true
             identify(
@@ -210,6 +232,28 @@ class AnalyticsService
             return if (isEmulator()) "dev" else "live"
         }
 
+        private fun resolveDistributionChannel(application: Application): String {
+            if (BuildConfig.DEBUG) return AndroidInstallChannel.DEV
+            if (isEmulator()) return AndroidInstallChannel.EMULATOR
+            if (isUiTestSession(application)) return AndroidInstallChannel.UI_TEST
+            val installer =
+                AndroidInstallChannel.installingPackageName(
+                    application.packageManager,
+                    application.packageName,
+                )
+            return AndroidInstallChannel.fromInstallerPackageName(installer)
+        }
+
+        private fun isUiTestSession(application: Application): Boolean {
+            if (System.getProperty("maestro.test") != null) return true
+            return try {
+                Class.forName("androidx.test.espresso.Espresso")
+                true
+            } catch (_: ClassNotFoundException) {
+                false
+            }
+        }
+
         private fun environment(): String = if (buildAudience() == "live") "production" else "development"
 
         private fun isEmulator(): Boolean {
@@ -233,6 +277,7 @@ class AnalyticsService
         }
 
         companion object {
+            private const val APP_NAME = "answerguard"
             private const val PREFS_NAME = "answerguard_analytics"
             private const val KEY_DISTINCT_ID = "posthog_distinct_id"
             private const val KEY_HAS_OPENED = "has_first_opened"
@@ -269,6 +314,8 @@ object AnalyticsEvents {
     const val PAYWALL_PURCHASE_RESULT = "paywall_purchase_result"
     const val PAYWALL_PURCHASE_FAILED = "paywall_purchase_failed"
     const val PAYWALL_RESTORE_RESULT = "paywall_restore_result"
+    const val SCREENING_SERVICE_ERROR = "screening_service_error"
+    const val BILLING_DIAGNOSTIC = "billing_diagnostic"
 
     // Attribution
     const val DEEP_LINK_OPENED = "deep_link_opened"
@@ -293,6 +340,8 @@ object AnalyticsProperties {
     const val BUILD_AUDIENCE = "build_audience"
     const val BUILD_TYPE = "build_type"
     const val RUNTIME_TARGET = "runtime_target"
+    const val DISTRIBUTION_CHANNEL = "distribution_channel"
+    const val APP_NAME = "app_name"
 }
 
 object AnalyticsScreens {

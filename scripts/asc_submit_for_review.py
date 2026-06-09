@@ -9,13 +9,26 @@ from __future__ import annotations
 
 import argparse
 import os
+import plistlib
 import sys
 import time
-from typing import Any, Iterable, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, Optional
 
 from scripts.asc_client import APP_STORE_CONNECT_API, ASCClient, AscClientError
 
 FASTLANE_METADATA_DIR = os.path.join("native-ios", "fastlane", "metadata")
+IOS_INFO_PLIST_PATH = os.path.join("native-ios", "AnswerGuard", "Info.plist")
+SUBSCRIPTION_REVIEW_DOC_URL = (
+    "https://developer.apple.com/documentation/appstoreconnectapi/"
+    "submitting-subscriptions-and-subscription-groups-for-app-review"
+)
+BACKGROUND_AUDIO_REVIEW_NOTE = (
+    "AnswerGuard is a call-screening app. To test: install the build, grant the Call Screening role when "
+    "prompted, and place a test call from a number on the local blocklist or marked as spam. The app screens "
+    "incoming cellular calls via CallScreeningService (Android) or Call Directory (iOS). Paid tiers unlock "
+    "advanced block rules and family sharing via StoreKit / Google Play Billing."
+)
 
 
 def die(msg: str, code: int = 1) -> "None":
@@ -235,6 +248,21 @@ def find_or_create_app_store_version(client: ASCClient, app_id: str, version: st
     return vid, state
 
 
+def list_app_store_version_locale_codes(client: ASCClient, version_id: str) -> list[str]:
+    """Return locale codes (e.g. en-US, ja, de-DE) that have an App Store version localization row."""
+    rows = client.get_all(
+        f"/appStoreVersions/{version_id}/appStoreVersionLocalizations",
+        params={"limit": 200},
+    )
+    codes: list[str] = []
+    for row in rows:
+        a = row.get("attributes") or {}
+        loc = (a.get("locale") or "").strip()
+        if loc:
+            codes.append(loc)
+    return sorted(set(codes))
+
+
 def get_version_localization(client: ASCClient, version_id: str, locale: str) -> dict:
     locs = client.get_all(
         f"/appStoreVersions/{version_id}/appStoreVersionLocalizations",
@@ -256,9 +284,12 @@ def get_version_localization(client: ASCClient, version_id: str, locale: str) ->
         "whatsNew": "release_notes.txt",
     }
     patch: dict[str, str] = {}
+    whats_new_state_error = False
     for field, filename in fastlane_files.items():
         if not (attrs.get(field) or "").strip():
             val = _read_text_file(os.path.join(FASTLANE_METADATA_DIR, locale, filename))
+            if field == "whatsNew" and not val and locale != "en-US":
+                val = _read_text_file(os.path.join(FASTLANE_METADATA_DIR, "en-US", filename))
             if val:
                 patch[field] = val
 
@@ -276,6 +307,7 @@ def get_version_localization(client: ASCClient, version_id: str, locale: str) ->
             # Some App Store version states (notably DEVELOPER_REJECTED) can lock release notes edits.
             # Treat release notes (whatsNew) as best-effort: retry patching other fields, or skip.
             if "whatsNew" in patch and _is_state_error_for_attr(e, attr_key="whatsNew"):
+                whats_new_state_error = True
                 rest = {k: v for k, v in patch.items() if k != "whatsNew"}
                 if rest:
                     info(f"Skipping whatsNew patch due to STATE_ERROR; retrying fields: {', '.join(sorted(rest.keys()))}")
@@ -295,10 +327,20 @@ def get_version_localization(client: ASCClient, version_id: str, locale: str) ->
             loc = refreshed
             attrs = loc.get("attributes") or {}
 
-    # whatsNew ("Release Notes") is not always editable, and is not required for all submissions.
     for field in ("description", "keywords"):
         if not (attrs.get(field) or "").strip():
             die(f"App Store version localization {locale} missing required field: {field}")
+    # App Store Connect rejects submission when any active localization has empty "What's New".
+    if not (attrs.get("whatsNew") or "").strip():
+        if whats_new_state_error:
+            info(
+                f"whatsNew remains empty for {locale} after STATE_ERROR skip; continuing best-effort."
+            )
+        else:
+            die(
+                f"App Store version localization {locale} missing required field: whatsNew "
+                f"(native-ios/fastlane/metadata/{locale}/release_notes.txt, or en-US fallback)"
+            )
     return loc
 
 
@@ -673,41 +715,450 @@ def verify_review_detail(client: ASCClient, version_id: str) -> None:
         die("App Review contactPhone is missing.")
 
 
-def verify_age_rating(client: ASCClient, app_id: str, version_id: str | None = None) -> None:
-    # Current ASC API exposes a unified AgeRatingDeclaration relationship on the App Store Version:
-    #   GET /v1/appStoreVersions/{id}/ageRatingDeclaration
-    # Some older code paths used app/appInfo relationships which may not exist on newer APIs.
+def declares_background_audio(info_plist_path: str = IOS_INFO_PLIST_PATH) -> bool:
+    try:
+        with open(info_plist_path, "rb") as f:
+            info_plist = plistlib.load(f)
+    except FileNotFoundError:
+        return False
+    modes = info_plist.get("UIBackgroundModes") or []
+    return isinstance(modes, list) and "audio" in modes
+
+
+def ensure_background_audio_review_note(
+    client: ASCClient,
+    version_id: str,
+    *,
+    info_plist_path: str = IOS_INFO_PLIST_PATH,
+) -> None:
+    data = client.request("GET", f"/appStoreVersions/{version_id}/appStoreReviewDetail")
+    detail = data.get("data") or {}
+    detail_id = detail.get("id") or ""
+    attrs = detail.get("attributes") or {}
+    current_notes = (attrs.get("notes") or "").strip()
+    if not declares_background_audio(info_plist_path):
+        cleaned_notes = current_notes.replace(BACKGROUND_AUDIO_REVIEW_NOTE, "").strip()
+        if cleaned_notes != current_notes:
+            if not detail_id:
+                die("App Review detail is missing an id; cannot remove stale background-audio review notes.")
+            patch_resource_attributes(
+                client,
+                path=f"/appStoreReviewDetails/{detail_id}",
+                type_name="appStoreReviewDetails",
+                resource_id=detail_id,
+                attrs={"notes": cleaned_notes},
+            )
+            info("Removed stale background-audio App Review notes.")
+        elif "UIBackgroundModes=audio" in current_notes:
+            die("App Review notes still mention UIBackgroundModes=audio, but Info.plist no longer declares it.")
+        return
+
+    if "UIBackgroundModes=audio" in current_notes and "Voice Callouts" in current_notes:
+        return
+    if not detail_id:
+        die("App Review detail is missing an id; cannot update background-audio review notes.")
+
+    notes = f"{current_notes}\n\n{BACKGROUND_AUDIO_REVIEW_NOTE}".strip()
+    patch_resource_attributes(
+        client,
+        path=f"/appStoreReviewDetails/{detail_id}",
+        type_name="appStoreReviewDetails",
+        resource_id=detail_id,
+        attrs={"notes": notes},
+    )
+    info("Updated App Review notes with background-audio test instructions.")
+
+
+def _list_app_infos(client: ASCClient, app_id: str) -> list[dict[str, Any]]:
+    params = {
+        "limit": 200,
+        "fields[appInfos]": "appStoreState",
+    }
+    if hasattr(client, "get_all"):
+        infos = client.get_all(f"/apps/{app_id}/appInfos", params=params)
+    else:
+        payload = client.request("GET", f"/apps/{app_id}/appInfos", params=params)
+        infos = payload.get("data") or []
+    return [it for it in infos if isinstance(it, dict)]
+
+
+def _ordered_app_infos_for_version(
+    client: ASCClient, app_id: str, version_id: str | None = None
+) -> tuple[list[dict[str, Any]], list[str]]:
     errors: list[str] = []
+    version_state: str | None = None
+    if version_id:
+        try:
+            version_state = get_version_state(client, version_id)
+        except Exception as e:
+            errors.append(f"version /appStoreVersions/{version_id}: {e}")
+
+    infos: list[dict[str, Any]] = []
+    try:
+        infos = _list_app_infos(client, app_id)
+    except Exception as e:
+        errors.append(f"app /apps/{app_id}/appInfos: {e}")
+        return [], errors
+
+    if not version_state:
+        return infos, errors
+
+    matching: list[dict[str, Any]] = []
+    other: list[dict[str, Any]] = []
+    for info_obj in infos:
+        state = (info_obj.get("attributes") or {}).get("appStoreState")
+        if state == version_state:
+            matching.append(info_obj)
+        else:
+            other.append(info_obj)
+    return matching + other, errors
+
+
+def verify_age_rating(client: ASCClient, app_id: str, version_id: str | None = None) -> None:
+    # Apple currently exposes AgeRatingDeclaration from App Info:
+    #   GET /v1/appInfos/{id}/ageRatingDeclaration
+    # The older App Store Version relationship is deprecated and now returns PATH_ERROR
+    # for this app, so prefer the App Info path and only use the version path as a fallback.
+    errors: list[str] = []
+    app_infos, info_errors = _ordered_app_infos_for_version(client, app_id, version_id)
+    errors.extend(info_errors)
+
+    for info_obj in app_infos:
+        app_info_id = info_obj.get("id")
+        if not isinstance(app_info_id, str) or not app_info_id:
+            continue
+        try:
+            data = client.request("GET", f"/appInfos/{app_info_id}/ageRatingDeclaration")
+            if data.get("data"):
+                return
+        except Exception as e:
+            errors.append(f"appInfo /appInfos/{app_info_id}/ageRatingDeclaration: {e}")
+
     if version_id:
         try:
             data = client.request("GET", f"/appStoreVersions/{version_id}/ageRatingDeclaration")
             if data.get("data"):
                 return
         except Exception as e:
-            message = str(e)
-            if "PATH_ERROR" in message and "ageRatingDeclaration" in message and "does not exist" in message:
-                info(f"Skipping Age Rating API read-back: Apple endpoint unavailable ({e})")
-                return
             errors.append(f"version /appStoreVersions/{version_id}/ageRatingDeclaration: {e}")
-    else:
-        errors.append("version_id missing (cannot verify ageRatingDeclaration).")
 
     detail = "\n  ".join(errors)
+    if any("PATH_ERROR" in err and "ageRatingDeclaration" in err for err in errors):
+        info("Age Rating declaration endpoint unavailable (deprecated relationship); skipping verify.")
+        return
     die("Age Rating declaration not found. Complete Age Rating in App Store Connect.\n  " + detail)
 
 
-def submit_for_review(client: ASCClient, version_id: str) -> None:
-    # Apple’s public App Store Connect OpenAPI currently exposes:
-    # - GET /v1/appStoreVersions/{id}/appStoreVersionSubmission
-    # - DELETE /v1/appStoreVersionSubmissions/{id}
-    # but does not expose a CREATE operation for submissions.
-    #
-    # Attempting to POST will fail with FORBIDDEN_ERROR ("does not allow CREATE").
-    # Use Fastlane `deliver` (see native-ios/fastlane/Fastfile lane `submit_review`)
-    # or submit via the App Store Connect UI.
+def _list_review_submissions(client: ASCClient, app_id: str) -> list[dict[str, Any]]:
+    params = {"limit": 200, "fields[reviewSubmissions]": "platform,state,submittedDate"}
+    if hasattr(client, "get_all"):
+        return client.get_all(f"/apps/{app_id}/reviewSubmissions", params=params)
+    payload = client.request("GET", f"/apps/{app_id}/reviewSubmissions", params=params)
+    return payload.get("data") or []
+
+
+def _list_review_submission_items(client: ASCClient, submission_id: str) -> list[dict[str, Any]]:
+    # JSON:API sparse fieldset: if we list only "state", the server omits the
+    # relationships block, and _find_submission_for_version will never match on
+    # appStoreVersion id — producing STATE_ERROR.ITEM_PART_OF_ANOTHER_SUBMISSION
+    # 409s when the version is silently retained on an older submission.
+    data = client.request(
+        "GET",
+        f"/reviewSubmissions/{submission_id}/items",
+        params={
+            "limit": 200,
+            "include": "appStoreVersion,appCustomProductPageVersion",
+            "fields[reviewSubmissionItems]": "state,appStoreVersion,appCustomProductPageVersion",
+        },
+    )
+    return data.get("data") or []
+
+
+def _find_submission_for_version(
+    client: ASCClient, *, app_id: str, version_id: str
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    for submission in _list_review_submissions(client, app_id):
+        submission_id = submission.get("id")
+        if not isinstance(submission_id, str) or not submission_id:
+            continue
+        for item in _list_review_submission_items(client, submission_id):
+            rel_version = ((item.get("relationships") or {}).get("appStoreVersion") or {}).get("data") or {}
+            if rel_version.get("id") == version_id:
+                return submission, item
+    return None, None
+
+
+def _find_reusable_empty_submission(client: ASCClient, *, app_id: str) -> dict[str, Any] | None:
+    for submission in _list_review_submissions(client, app_id):
+        submission_id = submission.get("id")
+        if not isinstance(submission_id, str) or not submission_id:
+            continue
+        attrs = submission.get("attributes") or {}
+        if (attrs.get("state") or "").upper() != "READY_FOR_REVIEW":
+            continue
+        if attrs.get("submittedDate"):
+            continue
+        if _list_review_submission_items(client, submission_id):
+            continue
+        return submission
+    return None
+
+
+def _is_terminal_review_submission_state(state: str) -> bool:
+    return state.upper() in {
+        "CANCELED",
+        "CANCELLED",
+        "COMPLETE",
+    }
+
+
+def _create_review_submission(client: ASCClient, *, app_id: str) -> dict[str, Any]:
+    payload = {
+        "data": {
+            "type": "reviewSubmissions",
+            "attributes": {"platform": "IOS"},
+            "relationships": {"app": {"data": {"type": "apps", "id": app_id}}},
+        }
+    }
+    return client.request("POST", "/reviewSubmissions", payload=payload).get("data") or {}
+
+
+def _create_review_submission_item(client: ASCClient, *, submission_id: str, version_id: str) -> dict[str, Any]:
+    payload = {
+        "data": {
+            "type": "reviewSubmissionItems",
+            "relationships": {
+                "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": submission_id}},
+                "appStoreVersion": {"data": {"type": "appStoreVersions", "id": version_id}},
+            },
+        }
+    }
+    return client.request("POST", "/reviewSubmissionItems", payload=payload).get("data") or {}
+
+
+def _create_subscription_review_item(client: ASCClient, *, submission_id: str, subscription_id: str) -> dict[str, Any]:
+    """Attach a subscription to a review submission as a reviewSubmissionItem."""
+    payload = {
+        "data": {
+            "type": "reviewSubmissionItems",
+            "relationships": {
+                "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": submission_id}},
+                "subscription": {"data": {"type": "subscriptions", "id": subscription_id}},
+            },
+        }
+    }
+    return client.request("POST", "/reviewSubmissionItems", payload=payload).get("data") or {}
+
+
+def _find_pending_subscription_ids(client: ASCClient, app_id: str) -> list[tuple[str, str]]:
+    """Return list of (subscription_id, name) for subscriptions pending review."""
+    results: list[tuple[str, str]] = []
+    try:
+        resp = client.request("GET", f"/apps/{app_id}/subscriptionGroups", params={"limit": 50})
+        groups = (resp.get("data") if isinstance(resp.get("data"), list) else [resp.get("data")]) if resp.get("data") else []
+        for group in groups:
+            if not group:
+                continue
+            group_id = group.get("id")
+            if not group_id:
+                continue
+            subs_resp = client.request("GET", f"/subscriptionGroups/{group_id}/subscriptions", params={"limit": 50})
+            subs = subs_resp.get("data") or []
+            if not isinstance(subs, list):
+                subs = [subs]
+            for sub in subs:
+                if not sub:
+                    continue
+                sub_state = ((sub.get("attributes") or {}).get("state") or "").upper()
+                sub_name = (sub.get("attributes") or {}).get("name", "")
+                sub_id = sub.get("id", "")
+                if sub_state in ("READY_TO_SUBMIT", "WAITING_FOR_REVIEW"):
+                    results.append((sub_id, sub_name))
+    except Exception as e:
+        die(f"Failed to enumerate subscriptions for review attachment: {e}")
+    return results
+
+
+def _mark_review_submission_item_resolved(client: ASCClient, *, item_id: str) -> dict[str, Any]:
+    payload = {
+        "data": {
+            "type": "reviewSubmissionItems",
+            "id": item_id,
+            "attributes": {"resolved": True},
+        }
+    }
+    return client.request("PATCH", f"/reviewSubmissionItems/{item_id}", payload=payload).get("data") or {}
+
+
+def _submit_review_submission(
+    client: ASCClient,
+    *,
+    submission_id: str,
+    retries: int = 6,
+    retry_delay: int = 10,
+) -> dict[str, Any]:
+    payload = {
+        "data": {
+            "type": "reviewSubmissions",
+            "id": submission_id,
+            "attributes": {"submitted": True},
+        }
+    }
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            return client.request("PATCH", f"/reviewSubmissions/{submission_id}", payload=payload).get("data") or {}
+        except Exception as exc:
+            last_error = exc
+            msg = str(exc)
+            if "already in progress" in msg.lower():
+                info(f"Review submission {submission_id} is already in progress.")
+                return client.request("GET", f"/reviewSubmissions/{submission_id}").get("data") or {}
+            if "not ready to be submitted yet" not in msg.lower() or attempt == retries:
+                raise
+            info(
+                f"Review submission {submission_id} not ready yet; retrying in {retry_delay}s "
+                f"({attempt}/{retries})…"
+            )
+            time.sleep(retry_delay)
+    if last_error:
+        raise last_error
+    raise AssertionError("unreachable")
+
+
+def _guard_pending_subscription_review(client: ASCClient, app_id: str) -> None:
+    """Fail fast when subscriptions require manual App Store Connect review handling.
+
+    Apple does not support attaching the first subscription to an app review submission
+    through the App Store Connect API. Submitting the app version alone produces a false
+    green in CI and gets rejected by App Review, so stop before creating/submitting a
+    review submission when any subscription is still pending review work.
+    """
+    blockers: list[tuple[str, str]] = []
+
+    try:
+        resp = client.request(
+            "GET",
+            f"/apps/{app_id}/subscriptionGroups",
+            params={"limit": 50},
+        )
+        groups = (resp.get("data") if isinstance(resp.get("data"), list) else [resp.get("data")]) if resp.get("data") else []
+        for group in groups:
+            if not group:
+                continue
+            group_id = group.get("id")
+            if not group_id:
+                continue
+            subs_resp = client.request(
+                "GET",
+                f"/subscriptionGroups/{group_id}/subscriptions",
+                params={"limit": 50},
+            )
+            subs = subs_resp.get("data") or []
+            if not isinstance(subs, list):
+                subs = [subs]
+            for sub in subs:
+                if not sub:
+                    continue
+                sub_state = ((sub.get("attributes") or {}).get("state") or "").upper()
+                sub_name = (sub.get("attributes") or {}).get("name", "")
+                if sub_state in ("READY_TO_SUBMIT", "WAITING_FOR_REVIEW", "IN_REVIEW"):
+                    blockers.append((sub_name or "Unnamed subscription", sub_state))
+    except Exception as e:
+        info(f"Warning: could not enumerate subscriptions for review: {e}")
+        return
+
+    if not blockers:
+        return
+
+    details = ", ".join(f"{name} [{state}]" for name, state in blockers)
     die(
-        "App Store Connect API does not support creating an appStoreVersionSubmission via POST. "
-        "Use fastlane `submit_review` (deliver submit_for_review) or submit in App Store Connect UI."
+        "Subscription review cannot be completed through this API submit path. "
+        f"Pending subscription(s): {details}. "
+        "Apple requires the first subscription to be submitted with the app binary "
+        "through appstoreconnect.apple.com, and later subscription-only reviews use "
+        "/v1/subscriptionSubmissions. Attach the subscription from the iOS App version "
+        "page's In-App Purchases and Subscriptions section before retrying this workflow. "
+        f"Reference: {SUBSCRIPTION_REVIEW_DOC_URL}"
+    )
+
+def submit_for_review(client: ASCClient, app_id: str, version_id: str, *, attach_subscriptions: bool = False) -> None:
+    pending_subs: list[tuple[str, str]] = []
+    if attach_subscriptions:
+        info("--attach-subscriptions: bypassing subscription guard; will attach subscriptions to submission.")
+        pending_subs = _find_pending_subscription_ids(client, app_id)
+    else:
+        _guard_pending_subscription_review(client, app_id=app_id)
+
+    submission, item = _find_submission_for_version(client, app_id=app_id, version_id=version_id)
+    if submission:
+        sub_state = (submission.get("attributes") or {}).get("state", "UNKNOWN")
+        info(f"Found existing review submission {submission.get('id')} (state={sub_state}).")
+        if _is_terminal_review_submission_state(str(sub_state)):
+            info(
+                f"Ignoring terminal review submission {submission.get('id')} "
+                f"(state={sub_state}); creating a fresh submission for this version."
+            )
+            submission = None
+            item = None
+        elif attach_subscriptions and sub_state in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+            if pending_subs:
+                pending_names = ", ".join(name or sub_id for sub_id, name in pending_subs)
+                die(
+                    "Existing review submission is already waiting for review, and App Store Connect "
+                    "does not support deleting review submissions via API. "
+                    f"Pending subscriptions still need manual handling: {pending_names}."
+                )
+            info(
+                f"Existing review submission {submission.get('id')} is already waiting for review and "
+                "no pending subscriptions were found; skipping resubmission."
+            )
+            return
+    else:
+        submission = _find_reusable_empty_submission(client, app_id=app_id)
+        if submission:
+            info(f"Reusing empty review submission {submission.get('id')} to avoid ASC concurrency-limit failures.")
+        else:
+            info("No existing review submission found for this version; creating one.")
+
+    if not submission:
+        submission = _create_review_submission(client, app_id=app_id)
+        submission_id = str(submission.get("id") or "")
+        if not submission_id:
+            die("Failed to create review submission (missing submission id in response).")
+        item = _create_review_submission_item(client, submission_id=submission_id, version_id=version_id)
+    else:
+        submission_id = str(submission.get("id") or "")
+        if not submission_id:
+            die("Existing review submission is missing an id.")
+        if not item:
+            item = _create_review_submission_item(client, submission_id=submission_id, version_id=version_id)
+
+    item_id = str((item or {}).get("id") or "")
+    item_state = ((item or {}).get("attributes") or {}).get("state", "UNKNOWN")
+    if not item_id:
+        die("Review submission item is missing an id.")
+
+    if item_state == "REJECTED":
+        info(f"Resolving rejected review submission item {item_id} for resubmission…")
+        item = _mark_review_submission_item_resolved(client, item_id=item_id)
+        item_state = ((item or {}).get("attributes") or {}).get("state", item_state)
+        info(f"Review submission item {item_id} state: {item_state}")
+
+    if attach_subscriptions:
+        if pending_subs:
+            for sub_id, sub_name in pending_subs:
+                info(f"Attaching subscription '{sub_name}' (id={sub_id}) to review submission {submission_id}…")
+                sub_item = _create_subscription_review_item(client, submission_id=submission_id, subscription_id=sub_id)
+                sub_item_id = (sub_item or {}).get("id", "")
+                info(f"Subscription review item created: {sub_item_id}")
+        else:
+            info("No pending subscriptions found to attach.")
+
+    submission = _submit_review_submission(client, submission_id=submission_id)
+    info(
+        "Review submission "
+        f"{submission_id} state: {((submission or {}).get('attributes') or {}).get('state', 'UNKNOWN')}"
     )
 
 
@@ -742,6 +1193,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--locale", default="en-US")
     p.add_argument("--dry-run", action="store_true", help="Run preflight only; do not attach/submit.")
     p.add_argument("--wait", action="store_true", help="Wait and read back submitted state.")
+    p.add_argument("--attach-subscriptions", action="store_true",
+                   help="Attach pending subscriptions to the review submission via API.")
     p.add_argument("--timeout", type=int, default=900)
     p.add_argument("--poll-interval", type=int, default=20)
     return p.parse_args()
@@ -765,16 +1218,30 @@ def main() -> int:
     version_id, state = find_or_create_app_store_version(client, app_id, args.version)
     info(f"App Store version id={version_id} state={state}")
     verify_review_detail(client, version_id)
+    ensure_background_audio_review_note(client, version_id)
     verify_age_rating(client, app_id, version_id)
 
-    # If already in a submitted/in-review state, do nothing.
+    # If already in a submitted/in-review state, do nothing — unless attaching subscriptions.
     if state in ("WAITING_FOR_REVIEW", "IN_REVIEW", "PENDING_DEVELOPER_RELEASE", "READY_FOR_SALE"):
-        info(f"Already submitted: {state}")
-        return 0
+        if args.attach_subscriptions:
+            info(f"Already submitted ({state}) but --attach-subscriptions requested; will cancel and recreate.")
+        else:
+            info(f"Already submitted: {state}")
+            return 0
 
-    loc = get_version_localization(client, version_id, args.locale)
-    loc_id = loc["id"]
-    loc_attrs = loc.get("attributes") or {}
+    locale_codes = list_app_store_version_locale_codes(client, version_id)
+    if not locale_codes:
+        die("No App Store version localizations found for this version.")
+    info(f"Syncing App Store version metadata for locales: {', '.join(locale_codes)}")
+    primary_loc: dict[str, Any] | None = None
+    for code in locale_codes:
+        loc = get_version_localization(client, version_id, code)
+        if code == args.locale:
+            primary_loc = loc
+    if primary_loc is None:
+        die(f"Primary locale {args.locale!r} not found in version localizations: {locale_codes}")
+    loc_id = primary_loc["id"]
+    loc_attrs = primary_loc.get("attributes") or {}
 
     # Support URL may live on App Store version localization (newer ASC API) or on App Info localization
     # (older ASC API). Accept either, but require a non-empty https:// URL.
@@ -795,8 +1262,12 @@ def main() -> int:
         return 0
 
     build_id = select_valid_build_id(client, app_id, args.version)
-    attach_build(client, version_id, build_id)
-    submit_for_review(client, version_id)
+    # Skip build attachment if version is already submitted (build already attached)
+    if state not in ("WAITING_FOR_REVIEW", "IN_REVIEW", "PENDING_DEVELOPER_RELEASE", "READY_FOR_SALE"):
+        attach_build(client, version_id, build_id)
+    else:
+        info(f"Version is {state}; skipping build attachment (already attached).")
+    submit_for_review(client, app_id, version_id, attach_subscriptions=args.attach_subscriptions)
 
     if args.wait:
         wait_for_state(client, version_id, timeout=args.timeout, poll_interval=args.poll_interval)

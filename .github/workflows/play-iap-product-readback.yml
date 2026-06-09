@@ -1,0 +1,87 @@
+name: Play IAP Product Readback
+
+on:
+  schedule:
+    - cron: "45 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify-play-iap-products:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install google-api-python-client google-auth google-auth-httplib2
+
+      - name: Activate required Play one-time products
+        env:
+          GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+        run: |
+          set -euo pipefail
+          echo "$GOOGLE_PLAY_JSON_KEY" > /tmp/play-service-account.json
+          export GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json
+          python3 scripts/play_activate_iap_products.py --json-out play-iap-activation.json
+
+      - name: Read back Google Play monetization product states
+        env:
+          GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+        run: |
+          set -euo pipefail
+          echo "$GOOGLE_PLAY_JSON_KEY" > /tmp/play-service-account.json
+          export GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json
+          python3 scripts/play_verify_iap_products.py --json-out play-iap-product-readback.json
+
+      - name: Write marketing/data/play_iap_catalog.json (GSD snapshot)
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -f play-iap-product-readback.json ]; then
+            python3 -c "
+          import json
+          from datetime import datetime, timezone
+          report = json.load(open('play-iap-product-readback.json'))
+          report['source'] = 'play_iap_product_readback'
+          report['generated_at'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          json.dump(report, open('marketing/data/play_iap_catalog.json', 'w'), indent=2)
+          print('Wrote marketing/data/play_iap_catalog.json')
+          "
+          fi
+
+      - name: Commit play_iap_catalog.json when changed
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add marketing/data/play_iap_catalog.json
+          if git diff --staged --quiet; then
+            echo "No play_iap_catalog.json changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(play): refresh play_iap_catalog.json from IAP readback"
+          git pull --rebase origin develop
+          git push origin HEAD:develop
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: play-iap-product-readback
+          path: |
+            play-iap-product-readback.json
+            play-iap-activation.json
+            marketing/data/play_iap_catalog.json
+          if-no-files-found: ignore
+          retention-days: 3

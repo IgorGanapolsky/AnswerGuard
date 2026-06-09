@@ -1,0 +1,54 @@
+name: Paywall Analytics
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  paywall-conversion-report:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+      POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+      POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests==2.32.5
+
+      - name: Generate AnswerGuard-scoped paywall conversion report
+        run: python scripts/paywall_conversion_report.py --repo-root . --days 30
+
+      - name: Commit paywall report when changed
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add marketing/data/paywall_conversion_report.json marketing/data/paywall_conversion_report.md
+          if git diff --staged --quiet; then
+            echo "No paywall report changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(analytics): refresh AnswerGuard paywall conversion report"
+          git pull --rebase origin develop
+          git push origin HEAD:develop
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: paywall-conversion-report
+          path: |
+            marketing/data/paywall_conversion_report.json
+            marketing/data/paywall_conversion_report.md
+          if-no-files-found: warn
+          retention-days: 7

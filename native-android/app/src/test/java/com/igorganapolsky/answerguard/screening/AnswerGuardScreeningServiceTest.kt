@@ -5,7 +5,9 @@ import android.telecom.Call
 import android.telecom.CallScreeningService
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
+import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.billing.ProManager
+import com.igorganapolsky.answerguard.crash.CrashReportingService
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -41,6 +43,8 @@ class AnswerGuardScreeningServiceTest {
     private lateinit var context: Application
     private lateinit var service: AnswerGuardScreeningService
     private lateinit var proManager: ProManager
+    private lateinit var analyticsService: AnalyticsService
+    private lateinit var crashReportingService: CrashReportingService
 
     @Before
     fun setUp() {
@@ -54,6 +58,8 @@ class AnswerGuardScreeningServiceTest {
         PauseState.setPaused(context, false)
 
         proManager = mockk(relaxed = true)
+        analyticsService = mockk(relaxed = true)
+        crashReportingService = mockk(relaxed = true)
 
         // Real service instance from Robolectric. We bypass Hilt's onCreate-time
         // injection (which requires a HiltAndroidApp) by flipping the generated
@@ -64,6 +70,8 @@ class AnswerGuardScreeningServiceTest {
         markHiltInjected(realService)
         controller.create()
         realService.proManager = proManager
+        realService.analyticsService = analyticsService
+        realService.crashReportingService = crashReportingService
 
         service = spyk(realService, recordPrivateCalls = true)
         // Stub the final framework method — calling it for real would NPE without an actual Call.

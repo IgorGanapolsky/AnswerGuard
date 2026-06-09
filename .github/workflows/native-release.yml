@@ -315,7 +315,7 @@ jobs:
         env:
           GOOGLE_PLAY_JSON_KEY: /tmp/play-service-account.json
           PLAY_TRACK: ${{ inputs.android_track }}
-          PLAY_FALLBACK_TRACK: alpha
+          PLAY_FALLBACK_TRACK: ""
           PLAY_RELEASE_STATUS: completed
           APP_REVIEW_CONTACT_EMAIL: ${{ secrets.APP_REVIEW_CONTACT_EMAIL }}
           PLAY_UPLOAD_RETRY_WINDOW_SECONDS: "10800"
@@ -570,12 +570,40 @@ jobs:
         if: steps.gate.outputs.enabled == 'true'
         id: versions
         run: |
-          IOS_VERSION=$(grep -m1 'MARKETING_VERSION' native-ios/AnswerGuard.xcodeproj/project.pbxproj | grep -oE '[0-9]+(\.[0-9]+)+' | head -1 || echo "")
+          IOS_VERSION=$(grep -m1 'MARKETING_VERSION' native-ios/AnswerGuard.xcodeproj/project.pbxproj | sed -n 's/.*MARKETING_VERSION *= *\([0-9][0-9.]*\).*/\1/p' || echo "")
           if [ -z "$IOS_VERSION" ]; then
             echo "❌ Could not read iOS version from native-ios/AnswerGuard.xcodeproj/project.pbxproj"
             exit 1
           fi
           echo "ios_version=$IOS_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Remove prior patch from review when shipping newer version
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          PREFERRED_VERSION: ${{ steps.versions.outputs.ios_version }}
+        run: |
+          set -euo pipefail
+          IFS='.' read -r MAJ MIN PATCH <<< "$PREFERRED_VERSION"
+          if [ "${PATCH:-0}" -le 0 ]; then
+            echo "No prior patch to unblock for $PREFERRED_VERSION"
+            exit 0
+          fi
+          PREV="${MAJ}.${MIN}.$((PATCH - 1))"
+          STATE_JSON="$(python scripts/asc_poll_version_state.py --version "$PREV" --json 2>/dev/null)" || true
+          STATE="$(echo "$STATE_JSON" | python -c 'import json,sys; print(json.loads(sys.stdin.read() or "{}").get("state","UNKNOWN"))' 2>/dev/null)" || STATE="UNKNOWN"
+          echo "Prior patch $PREV state=$STATE"
+          case "$STATE" in
+            IN_REVIEW|WAITING_FOR_REVIEW)
+              python scripts/asc_remove_from_review.py --version "$PREV" --wait --json-out /tmp/asc_unblock_prior.json
+              cat /tmp/asc_unblock_prior.json
+              ;;
+            *)
+              echo "Prior patch not blocking review queue; no removal needed."
+              ;;
+          esac
 
       - name: Resolve editable App Store version
         if: steps.gate.outputs.enabled == 'true'
@@ -589,10 +617,25 @@ jobs:
           python scripts/asc_resolve_version.py \
             --preferred-version "$PREFERRED_VERSION" \
             --create-if-needed \
+            --allow-review-locked-preferred \
             --json-out /tmp/asc_version.json
           SELECTED_VERSION=$(python -c 'import json; print(json.load(open("/tmp/asc_version.json"))["selected_version"])')
+          SELECTED_VERSION_ID=$(python -c 'import json; print(json.load(open("/tmp/asc_version.json")).get("selected_id") or "")')
+          SELECTED_STATE=$(python -c 'import json; print(json.load(open("/tmp/asc_version.json")).get("selected_state") or "")')
+          REASON=$(python -c 'import json; print(json.load(open("/tmp/asc_version.json")).get("reason") or "")')
+          APP_ID=$(python -c 'import json; print(json.load(open("/tmp/asc_version.json")).get("app_id") or "")')
           echo "selected_version=$SELECTED_VERSION" >> "$GITHUB_OUTPUT"
-          echo "Using editable App Store version: $SELECTED_VERSION"
+          echo "selected_version_id=$SELECTED_VERSION_ID" >> "$GITHUB_OUTPUT"
+          echo "selected_state=$SELECTED_STATE" >> "$GITHUB_OUTPUT"
+          echo "resolve_reason=$REASON" >> "$GITHUB_OUTPUT"
+          echo "app_id=$APP_ID" >> "$GITHUB_OUTPUT"
+          echo "Using editable App Store version: $SELECTED_VERSION (state=$SELECTED_STATE reason=$REASON)"
+          if [ -z "$SELECTED_VERSION_ID" ] || [ "$SELECTED_STATE" = "UNKNOWN_409_BLOCKED" ]; then
+            echo "❌ App Store version $PREFERRED_VERSION is not editable in ASC (id missing / 409 blocked)."
+            echo "ios_submit_blocked=true" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "ios_submit_blocked=false" >> "$GITHUB_OUTPUT"
 
       - name: Write App Store Connect key (for API)
         if: steps.gate.outputs.enabled == 'true'
@@ -600,6 +643,19 @@ jobs:
           APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
         run: |
           echo "$APPSTORE_PRIVATE_KEY" > /tmp/appstore_key.p8
+
+      - name: Check current App Store version state
+        if: steps.gate.outputs.enabled == 'true'
+        id: asc_state
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: /tmp/appstore_key.p8
+        run: |
+          STATE_JSON="$(python scripts/asc_poll_version_state.py --version "${{ steps.asc_version.outputs.selected_version }}" --json 2>/dev/null)" || true
+          STATE="$(echo "$STATE_JSON" | python -c 'import json,sys; print(json.loads(sys.stdin.read()).get("state","UNKNOWN"))' 2>/dev/null)" || STATE="UNKNOWN"
+          echo "state=$STATE" >> "$GITHUB_OUTPUT"
+          echo "ASC version state before metadata upload: $STATE"
 
       - name: Setup Ruby
         if: steps.gate.outputs.enabled == 'true'
@@ -643,14 +699,60 @@ jobs:
           python scripts/asc_ensure_review_detail.py \
             --version "${{ steps.asc_version.outputs.selected_version }}"
 
-      - name: Upload App Store metadata/screenshots + attach build
+      - name: Check current App Store version state (pre-metadata)
         if: steps.gate.outputs.enabled == 'true'
+        id: asc_state_meta
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: /tmp/appstore_key.p8
+          IOS_VERSION: ${{ steps.asc_version.outputs.selected_version }}
+        run: |
+          STATE_JSON="$(python scripts/asc_poll_version_state.py --version "$IOS_VERSION" --json 2>/dev/null)" || true
+          STATE="$(echo "$STATE_JSON" | python -c 'import json,sys; print(json.loads(sys.stdin.read()).get("state","UNKNOWN"))' 2>/dev/null)" || STATE="UNKNOWN"
+          echo "state=$STATE" >> "$GITHUB_OUTPUT"
+          echo "ASC version state (pre-metadata): $STATE"
+
+      - name: Upload App Store metadata/screenshots
+        if: ${{ steps.gate.outputs.enabled == 'true' && steps.asc_version.outputs.ios_submit_blocked != 'true' && steps.asc_version.outputs.selected_version_id != '' && steps.asc_state_meta.outputs.state != 'READY_FOR_REVIEW' && steps.asc_state_meta.outputs.state != 'WAITING_FOR_REVIEW' && steps.asc_state_meta.outputs.state != 'IN_REVIEW' }}
         env:
           CI: "true"
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
         run: fastlane metadata version:${{ steps.asc_version.outputs.selected_version }}
         working-directory: native-ios
+
+      - name: Attach VALID build to editable App Store version
+        if: ${{ steps.gate.outputs.enabled == 'true' && steps.asc_state.outputs.state != 'WAITING_FOR_REVIEW' && steps.asc_state.outputs.state != 'IN_REVIEW' && steps.asc_state.outputs.state != 'PENDING_DEVELOPER_RELEASE' && steps.asc_state.outputs.state != 'READY_FOR_SALE' }}
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: /tmp/appstore_key.p8
+          APP_ID: ${{ steps.asc_version.outputs.app_id }}
+          APP_STORE_VERSION_ID: ${{ steps.asc_version.outputs.selected_version_id }}
+          IOS_VERSION: ${{ steps.asc_version.outputs.selected_version }}
+        run: |
+          if [ -z "$APP_ID" ]; then
+            echo "❌ Missing App Store Connect app id from asc_resolve_version.py"
+            exit 1
+          fi
+          if [ -z "$APP_STORE_VERSION_ID" ]; then
+            echo "❌ Missing editable App Store version id from asc_resolve_version.py"
+            exit 1
+          fi
+          python - <<'PY'
+          import os
+          from scripts.asc_client import ASCClient
+          from scripts.asc_submit_for_review import attach_build, select_valid_build_id
+
+          client = ASCClient.from_env(timeout=30)
+          app_id = os.environ["APP_ID"]
+          version_id = os.environ["APP_STORE_VERSION_ID"]
+          marketing_version = os.environ["IOS_VERSION"]
+          build_id = select_valid_build_id(client, app_id, marketing_version)
+          attach_build(client, version_id, build_id)
+          print(f"Attached VALID build {build_id} to App Store version {version_id}")
+          PY
 
       - name: Verify App Store submission readiness (hard gate)
         if: steps.gate.outputs.enabled == 'true'
@@ -687,35 +789,16 @@ jobs:
       - name: Submit for App Review (App Store)
         if: steps.gate.outputs.enabled == 'true'
         env:
-          CI: "true"
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          APPSTORE_PRIVATE_KEY: /tmp/appstore_key.p8
+          IOS_VERSION: ${{ steps.asc_version.outputs.selected_version }}
         run: |
-          set +e
-          fastlane submit_review version:${{ steps.asc_version.outputs.selected_version }} 2>&1 | tee /tmp/fastlane-submit-review.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -ne 0 ]; then
-            if grep -Fq "Cannot submit for review - A review submission is already in progress" /tmp/fastlane-submit-review.log; then
-              # Do NOT blanket-treat "already in progress" as success. That masked a
-              # genuine Apple REJECTION (reviewSubmission state UNRESOLVED_ISSUES with a
-              # REJECTED item) for weeks while the pipeline kept reporting green. Only
-              # idempotent-pass when the existing submission is genuinely IN_REVIEW;
-              # otherwise fail loudly with the ground-truth verdict.
-              echo "submit_review reports an existing submission — checking its ACTUAL state..."
-              python "$GITHUB_WORKSPACE/scripts/asc_review_submission_state.py" | tee /tmp/rsstate.txt || true
-              if grep -q "VERDICT: IN_REVIEW" /tmp/rsstate.txt; then
-                echo "::notice::Existing reviewSubmission is genuinely IN_REVIEW — idempotent success."
-              else
-                echo "::error::submit_review is blocked by a non-review submission (see VERDICT above). A prior submission is REJECTED/UNRESOLVED and must be resolved in App Store Connect Resolution Center, then cancelled, before re-submitting. Failing loudly instead of masking."
-                exit 1
-              fi
-            else
-              exit "$status"
-            fi
-          fi
-        working-directory: native-ios
+          python scripts/asc_submit_for_review.py \
+            --version "$IOS_VERSION" \
+            --locale en-US \
+            --attach-subscriptions \
+            --wait
 
       - name: Verify App Store submission state
         if: steps.gate.outputs.enabled == 'true'

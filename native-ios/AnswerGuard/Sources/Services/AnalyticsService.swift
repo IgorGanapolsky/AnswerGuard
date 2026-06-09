@@ -38,12 +38,39 @@ final class AnalyticsService {
     private var analyticsContextProperties: [String: Any] {
         [
             "platform": "ios",
+            "app_name": "answerguard",
             "app_version": appVersion,
             AnalyticsProperties.environment: environment,
             AnalyticsProperties.buildAudience: buildAudience,
             AnalyticsProperties.buildType: buildType,
             AnalyticsProperties.runtimeTarget: runtimeTarget,
+            AnalyticsProperties.distributionChannel: distributionChannelValue,
+            "is_internal": isInternalUser,
         ]
+    }
+
+    private var distributionChannelValue: String {
+#if DEBUG
+        return "dev"
+#else
+        #if targetEnvironment(simulator)
+        return "simulator"
+        #else
+        return "app_store"
+        #endif
+#endif
+    }
+
+    private var isInternalUser: Bool {
+#if DEBUG
+        return true
+#else
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+#endif
     }
 
     private var buildAudience: String {
@@ -285,6 +312,7 @@ enum AnalyticsEvents {
     static let paywallPurchaseSuccess = "paywall_purchase_success"
     static let paywallPurchaseResult = "paywall_purchase_result"
     static let paywallRestoreResult = "paywall_restore_result"
+    static let screeningServiceError = "screening_service_error"
 
     static let deepLinkOpened = "deep_link_opened"
     static let appleAdsAttribution = "apple_ads_attribution"
@@ -300,4 +328,6 @@ enum AnalyticsProperties {
     static let buildAudience = "build_audience"
     static let buildType = "build_type"
     static let runtimeTarget = "runtime_target"
+    static let distributionChannel = "distribution_channel"
+    static let appName = "app_name"
 }

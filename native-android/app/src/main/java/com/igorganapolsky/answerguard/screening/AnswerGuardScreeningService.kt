@@ -7,6 +7,7 @@ import android.util.Log
 import com.igorganapolsky.answerguard.analytics.AnalyticsEvents
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
 import com.igorganapolsky.answerguard.billing.ProManager
+import com.igorganapolsky.answerguard.crash.CrashReportingService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -28,7 +29,29 @@ class AnswerGuardScreeningService : CallScreeningService() {
     @Inject
     lateinit var analyticsService: AnalyticsService
 
+    @Inject
+    lateinit var crashReportingService: CrashReportingService
+
     override fun onScreenCall(callDetails: Call.Details) {
+        try {
+            screenCallInternal(callDetails)
+        } catch (error: Throwable) {
+            Log.e(tag, "Screening failed", error)
+            runCatching {
+                analyticsService.track(
+                    AnalyticsEvents.SCREENING_SERVICE_ERROR,
+                    mapOf(
+                        "error_type" to error.javaClass.simpleName,
+                        "error_message" to (error.message ?: "unknown"),
+                    ),
+                )
+                crashReportingService.recordException(error)
+            }
+            respondToCall(callDetails, CallResponse.Builder().build())
+        }
+    }
+
+    private fun screenCallInternal(callDetails: Call.Details) {
         val handle = callDetails.handle?.schemeSpecificPart ?: ""
         Log.d(tag, "Screening call from: $handle")
 

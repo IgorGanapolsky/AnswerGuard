@@ -26,6 +26,8 @@ class AnalyticsPropertiesTest {
         assertThat(AnalyticsProperties.BUILD_AUDIENCE).isEqualTo("build_audience")
         assertThat(AnalyticsProperties.BUILD_TYPE).isEqualTo("build_type")
         assertThat(AnalyticsProperties.RUNTIME_TARGET).isEqualTo("runtime_target")
+        assertThat(AnalyticsProperties.DISTRIBUTION_CHANNEL).isEqualTo("distribution_channel")
+        assertThat(AnalyticsProperties.APP_NAME).isEqualTo("app_name")
     }
 
     @Test
@@ -43,6 +45,8 @@ class AnalyticsPropertiesTest {
             AnalyticsProperties.BUILD_AUDIENCE,
             AnalyticsProperties.BUILD_TYPE,
             AnalyticsProperties.RUNTIME_TARGET,
+            AnalyticsProperties.DISTRIBUTION_CHANNEL,
+            AnalyticsProperties.APP_NAME,
         )
 
         assertThat(keys.toSet()).hasSize(keys.size)
