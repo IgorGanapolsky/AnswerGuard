@@ -526,6 +526,12 @@ jobs:
     if: ${{ always() && needs.verify-releases.result == 'success' }}
     runs-on: ubuntu-latest
     environment: production
+    # The ASC helper scripts use repo-root-relative imports (`from scripts.X import ...`)
+    # but are invoked as `python scripts/<name>.py`, so the repo root must be on sys.path.
+    # `scripts/` has no __init__.py; with the workspace on PYTHONPATH it resolves as a
+    # Python 3 namespace package. Set once at job level so every python step inherits it.
+    env:
+      PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@v6
 
