@@ -4,10 +4,15 @@ appId: com.igorganapolsky.answerguard
 # (Play Data Safety requirement). Adds a blocklist entry, deletes all data,
 # confirms the entry is gone — covering the round-trip from on-device
 # persistence to user-initiated wipe.
+#
+# Blocklist + Privacy & Data now live in the Settings screen (behind the gear),
+# so this flow opens Settings first and stays there between sub-screens.
 - clearState
 - launchApp
 - waitForAnimationToEnd
 - assertVisible: "AnswerGuard"
+- tapOn: "Settings"
+- assertVisible: "Settings"
 
 # Add a blocklist entry so we have something to verify gets cleared.
 - scrollUntilVisible:
@@ -26,7 +31,7 @@ appId: com.igorganapolsky.answerguard
 - tapOn: "Back"
 - assertNotVisible: "Your Blocklist"
 
-# Scroll to the Privacy & Data card and tap "Delete my data".
+# Back on the Settings screen, scroll to the Privacy & Data card and delete.
 - scrollUntilVisible:
     element:
       text: "Privacy & Data"
@@ -42,7 +47,7 @@ appId: com.igorganapolsky.answerguard
     # confirm button has the same label but lives inside the AlertDialog.
     index: 1
 
-# Reopen blocklist and verify the test entry is gone.
+# Reopen blocklist (still within Settings) and verify the test entry is gone.
 - scrollUntilVisible:
     element:
       text: "Personal Blocklist"

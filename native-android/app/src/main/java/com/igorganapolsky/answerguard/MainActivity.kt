@@ -487,6 +487,17 @@ private fun AnswerGuardHome(
             showSettings -> {
                 SettingsScreen(
                     onBack = { showSettings = false },
+                    callScreeningEnabled = callScreeningEnabled,
+                    screeningPaused = screeningPaused,
+                    onTogglePause = onTogglePause,
+                    onManageBlocklist = { showBlocklist = true },
+                    entitlementLevel = entitlementLevel,
+                    onUpgrade = { showPaywall = true },
+                    onRestore = onRestore,
+                    proActionInProgress = proActionInProgress,
+                    proStatusMessage = proStatusMessage,
+                    onDeleteData = { showDeleteDataConfirm = true },
+                    showSnackbar = showSnackbar,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -545,16 +556,8 @@ private fun AnswerGuardHome(
                                 },
                                 onUnblock = onUnblockNumber
                             )
-                            BlocklistCard(onClick = { showBlocklist = true })
-                            ProCard(
-                                entitlementLevel = entitlementLevel,
-                                onUpgrade = { showPaywall = true },
-                                onRestore = onRestore,
-                                actionInProgress = proActionInProgress,
-                                statusMessage = proStatusMessage,
-                                showSnackbar = showSnackbar,
-                            )
-                            PrivacyAndDataCard(onDeleteData = { showDeleteDataConfirm = true })
+                            // Blocklist, subscription, and Privacy & Data now live behind the
+                            // gear (SettingsScreen) so Home stays focused on protection status.
                         }
                     }
                 }
@@ -1493,6 +1496,17 @@ private fun ActivityRow(
 @Composable
 private fun SettingsScreen(
     onBack: () -> Unit,
+    callScreeningEnabled: Boolean,
+    screeningPaused: Boolean,
+    onTogglePause: () -> Unit,
+    onManageBlocklist: () -> Unit,
+    entitlementLevel: EntitlementLevel,
+    onUpgrade: () -> Unit,
+    onRestore: () -> Unit,
+    proActionInProgress: Boolean,
+    proStatusMessage: String?,
+    onDeleteData: () -> Unit,
+    showSnackbar: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // Intercept Android's back gesture / button so swipe-back returns to the
@@ -1505,8 +1519,9 @@ private fun SettingsScreen(
             .fillMaxSize()
             .background(AnswerGuardColors.Background)
             .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+            .verticalScroll(rememberScrollState())
+            .testTag("settings_screen"),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1517,17 +1532,100 @@ private fun SettingsScreen(
             }
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Settings & Info",
+                text = "Settings",
                 color = AnswerGuardColors.TextPrimary,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
         }
 
+        // Pause/resume the screener — only meaningful once it's the active
+        // call-screening app, so gate the control on that.
+        if (callScreeningEnabled) {
+            SettingsSectionLabel("SCREENING")
+            PauseScreeningCard(
+                screeningPaused = screeningPaused,
+                onTogglePause = onTogglePause,
+            )
+        }
+
+        SettingsSectionLabel("BLOCKLIST")
+        BlocklistCard(onClick = onManageBlocklist)
+
+        SettingsSectionLabel("SUBSCRIPTION")
+        ProCard(
+            entitlementLevel = entitlementLevel,
+            onUpgrade = onUpgrade,
+            onRestore = onRestore,
+            actionInProgress = proActionInProgress,
+            statusMessage = proStatusMessage,
+            showSnackbar = showSnackbar,
+        )
+
+        SettingsSectionLabel("DATA")
+        PrivacyAndDataCard(onDeleteData = onDeleteData)
+
+        SettingsSectionLabel("ABOUT")
         HowItWorks()
         PrivacyCard()
-        
+
         Spacer(modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun SettingsSectionLabel(text: String) {
+    Text(
+        text = text,
+        color = AnswerGuardColors.TextSecondary,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+}
+
+@Composable
+private fun PauseScreeningCard(
+    screeningPaused: Boolean,
+    onTogglePause: () -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = AnswerGuardColors.Surface),
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = if (screeningPaused) "Screening paused" else "Screening active",
+                color = AnswerGuardColors.TextPrimary,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = if (screeningPaused)
+                    "Incoming calls are not being screened. Resume to re-enable on-device protection."
+                else
+                    "Incoming calls are screened on-device against confirmed spam patterns.",
+                color = AnswerGuardColors.TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Button(
+                onClick = onTogglePause,
+                colors = ButtonDefaults.buttonColors(containerColor = AnswerGuardColors.SurfaceMuted),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings_pause_toggle"),
+            ) {
+                Text(
+                    text = if (screeningPaused) "Resume screening" else "Pause screening",
+                    color = AnswerGuardColors.TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
     }
 }
 @Composable
