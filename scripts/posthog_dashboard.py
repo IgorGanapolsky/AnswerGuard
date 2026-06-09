@@ -38,15 +38,11 @@ from repo_dotenv import load_repo_dotenv
 
 POSTHOG_HOST = "https://us.posthog.com"
 
-# Audience filter: non-debug, real device, not internal
-PRAGMATIC_LIVE = """(
-  lower(coalesce(properties.build_type, 'release')) != 'debug'
-  AND lower(coalesce(properties.runtime_target, 'device')) NOT IN ('simulator', 'emulator')
-  AND coalesce(toString(properties.is_internal), 'false') != 'true'
-  AND coalesce(toString(properties.distribution_channel), 'legacy') NOT IN (
-    'testflight', 'non_play_install', 'dev', 'emulator', 'simulator', 'ui_test'
-  )
-)"""
+# Import shared audience filters (AnswerGuard-scoped in shared PostHog project).
+from analytics_scope import ANSWERGUARD_EVENTS_PREDICATE
+
+# Audience filter: non-debug, real device, not internal, AnswerGuard-scoped
+PRAGMATIC_LIVE = ANSWERGUARD_EVENTS_PREDICATE
 
 
 def _posthog_credentials() -> tuple[str, str]:

@@ -1,5 +1,6 @@
 package com.igorganapolsky.answerguard.ui.screens
 
+import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +40,7 @@ import org.robolectric.annotation.GraphicsMode
  *   the modifier in isolation with a short duration to keep the test fast.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33])
+@Config(sdk = [33], application = Application::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class PaywallSheetTest {
 

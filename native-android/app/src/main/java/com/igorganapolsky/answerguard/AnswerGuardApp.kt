@@ -2,6 +2,7 @@ package com.igorganapolsky.answerguard
 
 import android.app.Application
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
+import com.igorganapolsky.answerguard.crash.CrashReportingService
 import com.igorganapolsky.answerguard.screening.UserBlocklist
 import com.google.firebase.analytics.FirebaseAnalytics
 import dagger.hilt.android.HiltAndroidApp
@@ -11,6 +12,7 @@ import javax.inject.Inject
 class AnswerGuardApp : Application() {
 
     @Inject lateinit var analyticsService: AnalyticsService
+    @Inject lateinit var crashReportingService: CrashReportingService
 
     override fun onCreate() {
         super.onCreate()
@@ -23,6 +25,7 @@ class AnswerGuardApp : Application() {
             FirebaseAnalytics.getInstance(this).setAnalyticsCollectionEnabled(false)
         }
 
+        crashReportingService.initialize()
         analyticsService.initialize(this)
     }
 }

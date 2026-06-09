@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -60,6 +61,8 @@ def _bump_patch(value: str) -> str:
 def _is_editable_state(state: Optional[str]) -> bool:
     s = (state or "").strip().upper()
     if not s:
+        return False
+    if s == "UNKNOWN" or "BLOCKED" in s or "409" in s:
         return False
     return s not in NON_EDITABLE_STATES
 
@@ -129,21 +132,24 @@ def _create_ios_version(client: ASCClient, app_id: str, version: str) -> Dict[st
     return data
 
 
-def _update_ios_version_string(client: ASCClient, version_id: str, version: str) -> Dict[str, Any]:
-    payload = client.request(
-        "PATCH",
-        f"/appStoreVersions/{version_id}",
-        payload={
-            "data": {
-                "type": "appStoreVersions",
-                "id": version_id,
-                "attributes": {"versionString": version},
-            }
-        },
-    )
-    data = payload.get("data")
+def _retarget_ios_version(
+    client: ASCClient, version_obj: Dict[str, Any], target_version: str
+) -> Dict[str, Any]:
+    version_id = str(version_obj.get("id") or "")
+    if not version_id:
+        raise RuntimeError("Cannot retarget an App Store version without an id.")
+
+    payload = {
+        "data": {
+            "type": "appStoreVersions",
+            "id": version_id,
+            "attributes": {"versionString": target_version},
+        }
+    }
+    response = client.request("PATCH", f"/appStoreVersions/{version_id}", payload=payload)
+    data = response.get("data")
     if not isinstance(data, dict):
-        die(f"Failed to update App Store version {version_id} to {version}: malformed response", code=2)
+        raise RuntimeError(f"Failed to retarget App Store version {version_id}: malformed response")
     return data
 
 
@@ -164,9 +170,42 @@ def resolve_version(
     preferred_version: str,
     create_if_needed: bool,
     auto_next_patch: bool,
+    allow_review_locked_preferred: bool = False,
 ) -> Resolution:
     versions = _list_ios_versions(client, app_id)
     highest_editable = _pick_highest_editable_version(versions)
+
+    def try_retarget_highest_editable(reason_prefix: str) -> Optional[Resolution]:
+        if not create_if_needed or not highest_editable:
+            return None
+
+        editable_attrs = highest_editable.get("attributes") or {}
+        editable_version = str(editable_attrs.get("versionString") or "")
+        if not editable_version or editable_version == preferred_version:
+            return None
+
+        preferred_semver = _semver_or_none(preferred_version)
+        editable_semver = _semver_or_none(editable_version)
+        if preferred_semver is None or editable_semver is None:
+            return None
+        if preferred_semver < editable_semver:
+            return None
+
+        try:
+            retargeted = _retarget_ios_version(client, highest_editable, preferred_version)
+        except Exception:
+            return None
+
+        retargeted_state = str((retargeted.get("attributes") or {}).get("appStoreState") or "UNKNOWN")
+        return Resolution(
+            selected_version=preferred_version,
+            selected_state=retargeted_state,
+            created=False,
+            reason=f"{reason_prefix}_retargeted_highest_editable",
+            selected_id=str(retargeted.get("id") or ""),
+            preferred_version=preferred_version,
+        )
+
     current = _find_version(versions, preferred_version)
     if current:
         attrs = current.get("attributes") or {}
@@ -177,6 +216,16 @@ def resolve_version(
                 selected_state=state,
                 created=False,
                 reason="preferred_version_editable",
+                selected_id=str(current.get("id") or ""),
+                preferred_version=preferred_version,
+            )
+
+        if allow_review_locked_preferred and state in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+            return Resolution(
+                selected_version=preferred_version,
+                selected_state=state,
+                created=False,
+                reason="preferred_version_review_locked_api_target",
                 selected_id=str(current.get("id") or ""),
                 preferred_version=preferred_version,
             )
@@ -249,28 +298,13 @@ def resolve_version(
             candidate = _bump_patch(candidate)
 
     if auto_next_patch and highest_editable:
+        retargeted = try_retarget_highest_editable("preferred_missing")
+        if retargeted:
+            return retargeted
+
         editable_attrs = highest_editable.get("attributes") or {}
         editable_version = str(editable_attrs.get("versionString") or "")
         editable_state = str(editable_attrs.get("appStoreState") or "UNKNOWN")
-        editable_id = str(highest_editable.get("id") or "")
-        if create_if_needed and editable_id:
-            try:
-                updated = _update_ios_version_string(client, editable_id, preferred_version)
-            except RuntimeError as exc:
-                info(
-                    f"Could not update editable App Store version {editable_version} "
-                    f"to preferred {preferred_version}: {exc}. Reusing existing editable version."
-                )
-            else:
-                updated_attrs = updated.get("attributes") or {}
-                return Resolution(
-                    selected_version=str(updated_attrs.get("versionString") or preferred_version),
-                    selected_state=str(updated_attrs.get("appStoreState") or editable_state),
-                    created=False,
-                    reason="preferred_missing_updated_highest_editable",
-                    selected_id=str(updated.get("id") or editable_id),
-                    preferred_version=preferred_version,
-                )
         return Resolution(
             selected_version=editable_version,
             selected_state=editable_state,
@@ -283,7 +317,51 @@ def resolve_version(
     if not create_if_needed:
         die(f"Preferred App Store version {preferred_version} does not exist and create_if_needed is disabled.", code=1)
 
-    created = _create_ios_version(client, app_id, preferred_version)
+    try:
+        created = _create_ios_version(client, app_id, preferred_version)
+    except Exception as exc:
+        if "HTTP 409" in str(exc):
+            retargeted = try_retarget_highest_editable("preferred_missing_create_blocked_409")
+            if retargeted:
+                return retargeted
+            # If retarget failed but highest_editable matches preferred, use it directly
+            if highest_editable:
+                he_attrs = highest_editable.get("attributes") or {}
+                he_version = str(he_attrs.get("versionString") or "")
+                he_state = str(he_attrs.get("appStoreState") or "UNKNOWN")
+                if he_version == preferred_version:
+                    return Resolution(
+                        selected_version=preferred_version,
+                        selected_state=he_state,
+                        created=False,
+                        reason="preferred_missing_create_blocked_409_reused_matching_editable",
+                        selected_id=str(highest_editable.get("id") or ""),
+                        preferred_version=preferred_version,
+                    )
+            # Refetch versions — the version may exist now in a non-editable state
+            refreshed = _list_ios_versions(client, app_id)
+            found = _find_version(refreshed, preferred_version)
+            if found:
+                f_state = str((found.get("attributes") or {}).get("appStoreState") or "UNKNOWN")
+                return Resolution(
+                    selected_version=preferred_version,
+                    selected_state=f_state,
+                    created=False,
+                    reason="preferred_found_after_409_refetch",
+                    selected_id=str(found.get("id") or ""),
+                    preferred_version=preferred_version,
+                )
+            # All recovery paths exhausted — return preferred as non-editable
+            # so downstream can decide (e.g. use live version for metadata-only sync)
+            return Resolution(
+                selected_version=preferred_version,
+                selected_state="UNKNOWN_409_BLOCKED",
+                created=False,
+                reason="preferred_missing_create_blocked_409_all_recovery_exhausted",
+                selected_id="",
+                preferred_version=preferred_version,
+            )
+        raise
     created_state = str((created.get("attributes") or {}).get("appStoreState") or "UNKNOWN")
     return Resolution(
         selected_version=preferred_version,
@@ -301,6 +379,14 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--preferred-version", required=True, help="Preferred marketing version (X.Y.Z).")
     p.add_argument("--create-if-needed", action="store_true", help="Create target version when missing.")
     p.add_argument("--auto-next-patch", action="store_true", help="If preferred version is not editable, target next patch.")
+    p.add_argument(
+        "--allow-review-locked-preferred",
+        action="store_true",
+        help=(
+            "If the preferred version exists in WAITING_FOR_REVIEW or IN_REVIEW, still return it for "
+            "API-only steps (e.g. localization / What's New patches). Unsafe for naive Fastlane storefront uploads."
+        ),
+    )
     p.add_argument("--json-out", help="Write JSON resolution payload to this path.")
     return p.parse_args()
 
@@ -327,6 +413,7 @@ def main() -> int:
         preferred_version=args.preferred_version,
         create_if_needed=args.create_if_needed,
         auto_next_patch=args.auto_next_patch,
+        allow_review_locked_preferred=args.allow_review_locked_preferred,
     )
     payload = {
         "bundle_id": args.bundle_id,

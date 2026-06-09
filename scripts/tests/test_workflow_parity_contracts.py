@@ -140,23 +140,26 @@ def test_ios_submit_review_can_skip_metadata_upload_for_fast_resubmission():
     assert "inputs.skip_metadata_upload == false" in metadata_step.group("body")
 
 
-def test_ios_submit_review_fails_loud_unless_in_review():
-    """submit_review must NOT mask a blocking non-review submission.
+def test_native_release_ios_submit_uses_asc_api():
+    """native-release must submit via ASC API (not fastlane submit_review).
 
-    A reviewSubmission stuck in UNRESOLVED_ISSUES (e.g. a REJECTED item) was
-    swallowed for weeks because the shim treated Apple's "already in progress"
-    error as blanket idempotent success. The contract now: on that error, query
-    the real reviewSubmission state and only idempotent-pass when IN_REVIEW;
-    otherwise fail loudly with the ground-truth verdict.
+    Random-Timer migrated away from fastlane submit_review because it masked
+    blocking reviewSubmission states. AnswerGuard mirrors that API-first path.
     """
     native_release = _workflow("native-release.yml")
 
-    expected = "Cannot submit for review - A review submission is already in progress"
-    assert expected in native_release
-    # Ground-truth state check, not a blanket pass.
-    assert "asc_review_submission_state.py" in native_release
-    assert "VERDICT: IN_REVIEW" in native_release
-    # Idempotent success is now conditional on a genuinely in-review submission...
-    assert "idempotent success" in native_release
-    # ...and any other (blocking) state fails the job loudly.
-    assert "Failing loudly instead of masking" in native_release
+    submit_step = re.search(
+        r"name: Submit for App Review \(App Store\)(?P<body>.*?)\n      - name:",
+        native_release,
+        re.S,
+    )
+    assert submit_step is not None
+    body = submit_step.group("body")
+    assert "asc_submit_for_review.py" in body
+    assert "--attach-subscriptions" in body
+    assert "--wait" in body
+    assert "fastlane submit_review" not in body
+
+    assert "asc_remove_from_review.py" in native_release
+    assert "allow-review-locked-preferred" in native_release
+    assert "Attach VALID build to editable App Store version" in native_release

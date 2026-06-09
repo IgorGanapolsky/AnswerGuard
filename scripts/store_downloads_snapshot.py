@@ -12,19 +12,15 @@ import argparse
 import datetime as dt
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-LIVE_EVENTS_PREDICATE = """
-(
-  (
-    lower(coalesce(properties.environment, '')) IN ('production', 'live')
-    OR lower(coalesce(properties.build_audience, '')) = 'live'
-  )
-  AND lower(coalesce(properties.build_type, 'release')) != 'debug'
-  AND lower(coalesce(properties.runtime_target, 'device')) NOT IN ('simulator', 'emulator')
-)
-"""
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
+from analytics_scope import ANSWERGUARD_EVENTS_PREDICATE
 
 
 def _requests_module():
@@ -132,7 +128,7 @@ def run(repo_root: Path, days: int = 30) -> Dict[str, Any]:
         FROM events
         WHERE event = 'Application Installed'
           AND timestamp > now() - interval {days} day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {ANSWERGUARD_EVENTS_PREDICATE}
         GROUP BY os
         ORDER BY users DESC
         """,
@@ -158,7 +154,7 @@ def run(repo_root: Path, days: int = 30) -> Dict[str, Any]:
         WHERE event = 'Application Opened'
           AND (properties.$os = 'Android' OR properties.$os_name = 'Android')
           AND timestamp > now() - interval {days} day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {ANSWERGUARD_EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -171,7 +167,7 @@ def run(repo_root: Path, days: int = 30) -> Dict[str, Any]:
         FROM events
         WHERE event = 'Application Opened'
           AND timestamp > now() - interval 1 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {ANSWERGUARD_EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -183,7 +179,7 @@ def run(repo_root: Path, days: int = 30) -> Dict[str, Any]:
         FROM events
         WHERE event = 'Application Opened'
           AND timestamp > now() - interval 7 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {ANSWERGUARD_EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -195,7 +191,7 @@ def run(repo_root: Path, days: int = 30) -> Dict[str, Any]:
         FROM events
         WHERE event = 'Application Opened'
           AND timestamp > now() - interval {days} day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {ANSWERGUARD_EVENTS_PREDICATE}
         """,
         key,
         project_id,

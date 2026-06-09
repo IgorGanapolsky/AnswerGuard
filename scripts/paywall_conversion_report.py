@@ -21,6 +21,10 @@ if str(_SCRIPTS) not in sys.path:
 
 from repo_dotenv import load_repo_dotenv
 from store_downloads_snapshot import LIVE_EVENTS_PREDICATE, posthog_query
+from analytics_scope import ANSWERGUARD_EVENTS_PREDICATE
+
+# Scope paywall/revenue reports to AnswerGuard (shared PostHog project with Random Timer).
+EVENTS_PREDICATE = ANSWERGUARD_EVENTS_PREDICATE
 
 PLAY_STORE_CATALOG_FILTER = (
     "AND coalesce(toString(properties.distribution_channel), 'legacy') IN ('play_store', 'legacy') "
@@ -72,7 +76,7 @@ def _funnel_counts(api_key: str, project_id: str, days: int, errors: List[str]) 
         FROM events
         WHERE event IN ('paywall_view', 'paywall_viewed')
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         api_key,
         project_id,
@@ -84,7 +88,7 @@ def _funnel_counts(api_key: str, project_id: str, days: int, errors: List[str]) 
         FROM events
         WHERE event = 'paywall_offer_select'
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         api_key,
         project_id,
@@ -96,7 +100,7 @@ def _funnel_counts(api_key: str, project_id: str, days: int, errors: List[str]) 
         FROM events
         WHERE event = 'paywall_purchase_attempt'
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         api_key,
         project_id,
@@ -108,7 +112,7 @@ def _funnel_counts(api_key: str, project_id: str, days: int, errors: List[str]) 
         FROM events
         WHERE event = 'paywall_purchase_success'
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         api_key,
         project_id,
@@ -135,7 +139,7 @@ def _failure_reasons(api_key: str, project_id: str, days: int, errors: List[str]
         FROM events
         WHERE event IN ('paywall_purchase_fail_reason', 'purchase_failed')
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         GROUP BY reason
         ORDER BY failures DESC
         LIMIT 12
@@ -161,7 +165,7 @@ def _failure_breakdown(api_key: str, project_id: str, days: int, errors: List[st
         FROM events
         WHERE event IN ('paywall_purchase_fail_reason', 'purchase_failed')
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         GROUP BY platform, product_id, reason
         ORDER BY failures DESC
         LIMIT 25
@@ -196,7 +200,7 @@ def _product_funnel(api_key: str, project_id: str, days: int, errors: List[str])
         FROM events
         WHERE event IN ('paywall_offer_select', 'paywall_purchase_attempt', 'paywall_purchase_success')
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         GROUP BY platform, product_id
         ORDER BY attempts DESC, offer_selects DESC
         LIMIT 25
@@ -246,7 +250,7 @@ def _product_catalog_failures(
         FROM events
         WHERE event = 'billing_product_not_found'
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
           {channel_filter}
         GROUP BY platform, product_id
         ORDER BY failures DESC
@@ -280,7 +284,7 @@ def _entry_point_funnel(api_key: str, project_id: str, days: int, errors: List[s
         FROM events
         WHERE event IN ('paywall_view', 'paywall_viewed', 'paywall_purchase_attempt', 'paywall_purchase_success')
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         GROUP BY entry_point
         ORDER BY views DESC
         LIMIT 15
@@ -319,7 +323,7 @@ def _settings_hotspots(api_key: str, project_id: str, days: int, errors: List[st
         FROM events
         WHERE event = 'settings_changed'
           AND timestamp > now() - interval {win}
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         GROUP BY setting_name
         ORDER BY changes DESC
         LIMIT 15
