@@ -4,23 +4,13 @@ appId: com.igorganapolsky.answerguard
 # Back (mirrors user cancelling the Play purchase sheet). Verify the home
 # screen is intact, both Upgrade and Restore buttons remain available, and
 # entitlement was NOT silently promoted (no "Pro purchase restored" message).
-# Independent of the success-path test because the cancel branch was previously
-# uncovered.
-# TODO: needs testTag("pro_upgrade_button") and testTag("pro_status_message").
 - launchApp:
     clearState: true
 - runFlow: dismiss-popups.yaml
-# Card title is "AnswerGuard Free" pre-purchase (CI default); scroll it into
-# view since it sits below the activity list. Match any tier name so the test
-# works at any entitlement level.
 - extendedWaitUntil:
     visible: 'AnswerGuard'
     timeout: 30000
-- scrollUntilVisible:
-    element:
-      text: 'Upgrade'
-    direction: DOWN
-    timeout: 30000
+- runFlow: open-settings-subscription.yaml
 
 - tapOn: 'Upgrade'
 - waitForAnimationToEnd

@@ -14,11 +14,5 @@ appId: com.igorganapolsky.answerguard
 
 - assertVisible: 'AnswerGuard'
 - assertVisible: 'Call Screening'
-# "Enable Call Screening" renders only before the call-screening role is
-# held; asserting it fails on any device that already has screening enabled.
-# The Pro card sits below the fold once screening is active — scroll to it.
-- scrollUntilVisible:
-    element:
-      text: '.*Pro.*'
-    direction: DOWN
-    timeout: 20000
+# Subscription tier card lives in Settings (not Home).
+- runFlow: open-settings-subscription.yaml

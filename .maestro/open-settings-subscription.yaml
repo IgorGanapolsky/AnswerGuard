@@ -1,0 +1,13 @@
+appId: com.igorganapolsky.answerguard
+---
+# Subscription tier card lives in Settings (not Home) since the settings-screen refactor.
+- tapOn: 'Settings'
+- extendedWaitUntil:
+    visible: 'Settings'
+    timeout: 10000
+- assertVisible: 'Settings'
+- scrollUntilVisible:
+    element:
+      text: 'AnswerGuard (Free|Pro|Family|Business)'
+    direction: DOWN
+    timeout: 30000

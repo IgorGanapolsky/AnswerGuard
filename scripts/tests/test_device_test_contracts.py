@@ -18,7 +18,7 @@ def test_ci_maestro_flow_targets_answerguard_home_screen():
     assert f"appId: {ANDROID_PACKAGE}" in source
     assert "AnswerGuard" in source
     assert "Call Screening" in source
-    assert "Enable Call Screening" in source
+    assert "open-settings-subscription.yaml" in source
     assert "Start Timer" not in source
     assert "randomtimer" not in source.lower()
 

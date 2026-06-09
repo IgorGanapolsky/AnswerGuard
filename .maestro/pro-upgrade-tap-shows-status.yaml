@@ -5,29 +5,19 @@ appId: com.igorganapolsky.answerguard
 # on CI emulators, so we accept either the "connecting" success path message
 # or the "could not open" failure message — both prove the click handler ran
 # and updated UI state. Test fails only if NO status text appears.
-# TODO: needs testTag("pro_upgrade_button") and testTag("pro_status_message") for stable matching.
 - launchApp:
     clearState: true
 - runFlow: dismiss-popups.yaml
-# Card title varies by tier (Free pre-purchase, Pro/Family/Business after);
-# scroll into view since it sits below the activity list.
 - extendedWaitUntil:
     visible: 'AnswerGuard'
     timeout: 30000
-- scrollUntilVisible:
-    element:
-      text: 'Upgrade'
-    direction: DOWN
-    timeout: 30000
+- runFlow: open-settings-subscription.yaml
 
 - assertVisible: 'Upgrade'
 - tapOn: 'Upgrade'
 - waitForAnimationToEnd
 
-# Now the Paywall Sheet is visible. Tap the Business Shield plan CTA on the
-# sheet to trigger the real billing attempt. The button label was renamed
-# from "Start Business Plan" to "Business Shield Plan • $price" in the May
-# 2026 paywall redesign — match the new label with a permissive regex.
+# Paywall sheet: tap Business Shield plan CTA to trigger billing attempt.
 - extendedWaitUntil:
     visible: '.*Business Shield Plan.*'
     timeout: 10000
