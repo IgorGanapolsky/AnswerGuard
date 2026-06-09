@@ -91,6 +91,31 @@ def main() -> int:
         state = a.get("state")
         rec = {"id": s["id"], "state": state, "submittedDate": a.get("submittedDate")}
         print(f"  reviewSubmission {json.dumps(rec)}")
+        # For any non-terminal submission, enumerate its items so we can see WHAT
+        # is unresolved (which version/build, item state) before deciding whether
+        # to cancel-and-resubmit or surface a genuine rejection.
+        if state not in DONE_STATES:
+            items = _safe_get(
+                client,
+                f"/reviewSubmissions/{s['id']}/items",
+                {"include": "appStoreVersion,appCustomProductPageVersion", "limit": "50"},
+            )
+            included = {(i.get("type"), i.get("id")): i for i in items.get("included", [])}
+            for it in items.get("data", []):
+                ia = it.get("attributes", {})
+                rels = it.get("relationships", {}) or {}
+                ref = None
+                for rkey in ("appStoreVersion", "appCustomProductPageVersion"):
+                    rdata = (rels.get(rkey) or {}).get("data")
+                    if rdata:
+                        inc = included.get((rdata.get("type"), rdata.get("id")), {})
+                        iattrs = inc.get("attributes", {})
+                        ref = f"{rkey}={iattrs.get('versionString', rdata.get('id'))} state={iattrs.get('appStoreState','?')}"
+                        break
+                print(
+                    f"      item id={it['id']} state={ia.get('state')} "
+                    f"removed={ia.get('removed')} {ref or ''}".rstrip()
+                )
         if state in IN_REVIEW_STATES:
             in_review.append(rec)
         elif state in STUCK_STATES:
