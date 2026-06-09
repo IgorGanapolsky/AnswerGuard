@@ -61,7 +61,7 @@ object SpamVerdictEngine {
         }
 
         // 1. User contacts (Requires READ_CONTACTS)
-        if (ContactsAllowlist.isContact(context, digits)) {
+        if (PauseState.isContactIdentificationEnabled(context) && ContactsAllowlist.isContact(context, digits)) {
             Log.d(tag, "$digits found in contacts — allowing")
             return SpamVerdict.ALLOW
         }
