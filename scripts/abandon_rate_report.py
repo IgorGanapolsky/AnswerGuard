@@ -8,10 +8,13 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.resolve()))
 
 try:
-    from store_downloads_snapshot import LIVE_EVENTS_PREDICATE, query_rows, query_scalar
+    from analytics_scope import ANSWERGUARD_EVENTS_PREDICATE
+    from store_downloads_snapshot import query_rows, query_scalar
 except ImportError:
     print("Error: Could not import PostHog query helpers from store_downloads_snapshot.py")
     sys.exit(1)
+
+EVENTS_PREDICATE = ANSWERGUARD_EVENTS_PREDICATE
 
 def run():
     key = (
@@ -34,7 +37,7 @@ def run():
         FROM events
         WHERE event = 'call_screened'
           AND timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -46,7 +49,7 @@ def run():
         FROM events
         WHERE event = 'spam_call_blocked'
           AND timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -58,7 +61,7 @@ def run():
         FROM events
         WHERE event = 'call_screened'
           AND timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -75,7 +78,7 @@ def run():
         FROM events
         WHERE event = '$screenview'
           AND timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         GROUP BY screen
         ORDER BY count DESC
     """, key, project_id, errors)
@@ -85,7 +88,7 @@ def run():
         SELECT event, count() as count
         FROM events
         WHERE timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
           AND event NOT IN ('$feature_flag_called', '$groupidentify', '$identify', '$screenview', '$pageview')
         GROUP BY event
         ORDER BY count DESC
@@ -99,7 +102,7 @@ def run():
         FROM events
         WHERE event = 'paywall_viewed'
           AND timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -111,7 +114,7 @@ def run():
         FROM events
         WHERE event = 'paywall_purchase_attempt'
           AND timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -123,7 +126,7 @@ def run():
         FROM events
         WHERE event = 'paywall_purchase_success'
           AND timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         key,
         project_id,
@@ -140,7 +143,7 @@ def run():
             FROM events
             WHERE event = 'paywall_purchase_result'
               AND timestamp > now() - interval 30 day
-              AND {LIVE_EVENTS_PREDICATE}
+              AND {EVENTS_PREDICATE}
             """,
             key,
             project_id,
@@ -156,7 +159,7 @@ def run():
                 OR lower(toString(properties.success)) = 'true'
               )
               AND timestamp > now() - interval 30 day
-              AND {LIVE_EVENTS_PREDICATE}
+              AND {EVENTS_PREDICATE}
             """,
             key,
             project_id,
@@ -168,7 +171,7 @@ def run():
         FROM events
         WHERE event = 'paywall_restore_result'
           AND timestamp > now() - interval 30 day
-          AND {LIVE_EVENTS_PREDICATE}
+          AND {EVENTS_PREDICATE}
         """,
         key,
         project_id,

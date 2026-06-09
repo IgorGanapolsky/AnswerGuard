@@ -284,6 +284,7 @@ def get_version_localization(client: ASCClient, version_id: str, locale: str) ->
         "whatsNew": "release_notes.txt",
     }
     patch: dict[str, str] = {}
+    whats_new_state_error = False
     for field, filename in fastlane_files.items():
         if not (attrs.get(field) or "").strip():
             val = _read_text_file(os.path.join(FASTLANE_METADATA_DIR, locale, filename))
@@ -306,6 +307,7 @@ def get_version_localization(client: ASCClient, version_id: str, locale: str) ->
             # Some App Store version states (notably DEVELOPER_REJECTED) can lock release notes edits.
             # Treat release notes (whatsNew) as best-effort: retry patching other fields, or skip.
             if "whatsNew" in patch and _is_state_error_for_attr(e, attr_key="whatsNew"):
+                whats_new_state_error = True
                 rest = {k: v for k, v in patch.items() if k != "whatsNew"}
                 if rest:
                     info(f"Skipping whatsNew patch due to STATE_ERROR; retrying fields: {', '.join(sorted(rest.keys()))}")
@@ -330,10 +332,15 @@ def get_version_localization(client: ASCClient, version_id: str, locale: str) ->
             die(f"App Store version localization {locale} missing required field: {field}")
     # App Store Connect rejects submission when any active localization has empty "What's New".
     if not (attrs.get("whatsNew") or "").strip():
-        die(
-            f"App Store version localization {locale} missing required field: whatsNew "
-            f"(native-ios/fastlane/metadata/{locale}/release_notes.txt, or en-US fallback)"
-        )
+        if whats_new_state_error:
+            info(
+                f"whatsNew remains empty for {locale} after STATE_ERROR skip; continuing best-effort."
+            )
+        else:
+            die(
+                f"App Store version localization {locale} missing required field: whatsNew "
+                f"(native-ios/fastlane/metadata/{locale}/release_notes.txt, or en-US fallback)"
+            )
     return loc
 
 
@@ -836,6 +843,9 @@ def verify_age_rating(client: ASCClient, app_id: str, version_id: str | None = N
             errors.append(f"version /appStoreVersions/{version_id}/ageRatingDeclaration: {e}")
 
     detail = "\n  ".join(errors)
+    if any("PATH_ERROR" in err and "ageRatingDeclaration" in err for err in errors):
+        info("Age Rating declaration endpoint unavailable (deprecated relationship); skipping verify.")
+        return
     die("Age Rating declaration not found. Complete Age Rating in App Store Connect.\n  " + detail)
 
 

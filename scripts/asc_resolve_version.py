@@ -186,9 +186,9 @@ def resolve_version(
 
         preferred_semver = _semver_or_none(preferred_version)
         editable_semver = _semver_or_none(editable_version)
-        if preferred_semver is None or editable_semver is None:
+        if preferred_semver is None:
             return None
-        if preferred_semver < editable_semver:
+        if editable_semver is not None and preferred_semver < editable_semver:
             return None
 
         try:

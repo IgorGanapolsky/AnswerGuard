@@ -20,7 +20,7 @@ _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
-from analytics_scope import ANSWERGUARD_EVENTS_PREDICATE
+from analytics_scope import ANSWERGUARD_EVENTS_PREDICATE, LIVE_EVENTS_PREDICATE
 
 
 def _requests_module():

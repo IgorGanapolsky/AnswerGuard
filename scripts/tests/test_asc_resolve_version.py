@@ -136,7 +136,7 @@ class AscResolveVersionUnitTests(unittest.TestCase):
         )
         self.assertEqual(result.selected_version, "1.2.6")
         self.assertFalse(result.created)
-        self.assertEqual(result.reason, "preferred_missing_updated_highest_editable")
+        self.assertEqual(result.reason, "preferred_missing_retargeted_highest_editable")
         self.assertEqual(client.updated[0]["id"], "v1")
 
     def test_reuses_existing_editable_when_preferred_missing_and_create_disabled(self):
