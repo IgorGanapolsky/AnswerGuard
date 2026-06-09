@@ -1,7 +1,8 @@
 appId: com.igorganapolsky.answerguard
 ---
-# Verify the full settings surface renders.
-# Covers HowItWorks steps and PrivacyCard, which are in the Settings screen.
+# Verify the full Settings surface renders.
+# Blocklist, Subscription, Privacy & Data, and the About sections (HowItWorks +
+# PrivacyCard) all now live in the Settings screen behind the gear.
 - launchApp:
     clearState: true
 - runFlow: dismiss-popups.yaml
@@ -10,27 +11,43 @@ appId: com.igorganapolsky.answerguard
     timeout: 30000
 - assertVisible: 'AnswerGuard'
 - assertVisible: 'Call Screening'
-# Subscription tier card title varies by entitlement (Free/Pro/Family/Business).
-# Match any tier name and scroll into view since it sits below the activity list.
+
+# Navigate to the Settings screen.
+- tapOn: 'Settings'
+- extendedWaitUntil:
+    visible: 'Settings'
+    timeout: 10000
+- assertVisible: 'Settings'
+
+# BLOCKLIST section
+- scrollUntilVisible:
+    element:
+      text: 'Personal Blocklist'
+    direction: DOWN
+    timeout: 20000
+- assertVisible: 'Personal Blocklist'
+
+# SUBSCRIPTION section — tier card title varies by entitlement.
 - scrollUntilVisible:
     element:
       text: 'AnswerGuard (Free|Pro|Family|Business)'
     direction: DOWN
     timeout: 20000
 
-# Navigate to Settings screen
-- tapOn: 'Settings'
-- extendedWaitUntil:
-    visible: 'Settings & Info'
-    timeout: 10000
-- assertVisible: 'Settings & Info'
+# DATA section
+- scrollUntilVisible:
+    element:
+      text: 'Privacy & Data'
+    direction: DOWN
+    timeout: 20000
+- assertVisible: 'Privacy & Data'
 
+# ABOUT section — HowItWorks steps.
 - scrollUntilVisible:
     element:
       text: 'How it works'
     direction: DOWN
     timeout: 20000
-
 - assertVisible: 'How it works'
 - assertVisible:
     text: '.*Enable AnswerGuard as your call screening app.*'
@@ -39,12 +56,12 @@ appId: com.igorganapolsky.answerguard
 - assertVisible:
     text: '.*Unknown calls are allowed by default.*'
 
+# ABOUT section — PrivacyCard.
 - scrollUntilVisible:
     element:
       text: 'Privacy first'
     direction: DOWN
     timeout: 20000
-
 - assertVisible: 'Privacy first'
 - assertVisible:
     text: '.*does not upload your call history.*'
@@ -57,4 +74,3 @@ appId: com.igorganapolsky.answerguard
     visible: 'AnswerGuard'
     timeout: 10000
 - assertVisible: 'AnswerGuard'
-

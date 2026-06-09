@@ -15,12 +15,20 @@ object PauseState {
 
     private const val PREFS_NAME = "answerguard_state"
     private const val KEY_PAUSED = "screening_paused"
+    private const val KEY_CONTACTS_ENABLED = "contact_identification_enabled"
 
     fun isPaused(context: Context): Boolean =
         prefs(context).getBoolean(KEY_PAUSED, false)
 
     fun setPaused(context: Context, paused: Boolean) {
         prefs(context).edit { putBoolean(KEY_PAUSED, paused) }
+    }
+
+    fun isContactIdentificationEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_CONTACTS_ENABLED, true)
+
+    fun setContactIdentificationEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit { putBoolean(KEY_CONTACTS_ENABLED, enabled) }
     }
 
     private fun prefs(context: Context) =

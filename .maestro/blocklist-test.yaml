@@ -1,10 +1,12 @@
 appId: com.igorganapolsky.answerguard
 ---
 # Target: AnswerGuard
+# The Personal Blocklist now lives in the Settings screen (behind the gear),
+# not on Home — open Settings first, then manage the blocklist there.
 - launchApp
 - waitForAnimationToEnd
-# The Personal Blocklist card sits below the fold on the home screen — scroll
-# to it rather than asserting it is visible on the initial viewport.
+- tapOn: "Settings"
+- assertVisible: "Settings"
 - scrollUntilVisible:
     element:
       text: "Personal Blocklist"
@@ -28,7 +30,7 @@ appId: com.igorganapolsky.answerguard
 - hideKeyboard
 - waitForAnimationToEnd
 - tapOn: "Back"
-# Confirm we left the blocklist screen. The home surface can be left
-# mid-scroll, so assert the blocklist screen is gone rather than asserting
-# a specific home header that may be scrolled out of view.
+# Back from the blocklist returns to Settings (its parent), not Home.
+# Assert the blocklist screen is gone rather than a specific header that
+# may be scrolled out of view.
 - assertNotVisible: "Your Blocklist"
