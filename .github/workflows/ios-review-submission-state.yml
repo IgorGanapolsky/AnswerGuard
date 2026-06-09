@@ -1,0 +1,35 @@
+name: iOS Review Submission State (read-only)
+
+# Ground-truth diagnostic: is AnswerGuard genuinely in App Review, or stuck on a
+# dangling reviewSubmission that the release pipeline's idempotency shim masks?
+# Read-only — mutates nothing in App Store Connect.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  state:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pyjwt==2.11.0 cryptography==46.0.5 requests==2.32.5
+
+      - name: Read review submission state
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: python scripts/asc_review_submission_state.py
