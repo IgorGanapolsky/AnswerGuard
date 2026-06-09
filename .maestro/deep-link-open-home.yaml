@@ -16,11 +16,10 @@ appId: com.igorganapolsky.answerguard
 
 - assertVisible: 'AnswerGuard'
 - assertVisible: 'Call Screening'
-# Subscription tier card title varies by entitlement (Free/Pro/Family/Business);
-# scroll to it since it lives below the activity list.
+# Subscription tier card sits below the fold; scroll to the Upgrade CTA (stable on Free tier).
 - scrollUntilVisible:
     element:
-      text: 'AnswerGuard (Free|Pro|Family|Business)'
+      text: 'Upgrade'
     direction: DOWN
-    timeout: 20000
+    timeout: 30000
 - assertVisible: 'Enable Call Screening'

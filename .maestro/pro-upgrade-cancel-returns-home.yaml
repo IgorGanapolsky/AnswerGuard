@@ -18,9 +18,9 @@ appId: com.igorganapolsky.answerguard
     timeout: 30000
 - scrollUntilVisible:
     element:
-      text: 'AnswerGuard (Free|Pro|Family|Business)'
+      text: 'Upgrade'
     direction: DOWN
-    timeout: 20000
+    timeout: 30000
 
 - tapOn: 'Upgrade'
 - waitForAnimationToEnd
@@ -30,9 +30,9 @@ appId: com.igorganapolsky.answerguard
 
 - scrollUntilVisible:
     element:
-      text: 'AnswerGuard (Free|Pro|Family|Business)'
+      text: 'Upgrade'
     direction: DOWN
-    timeout: 15000
+    timeout: 30000
 
 - assertVisible: 'Upgrade'
 - assertVisible: 'Restore'

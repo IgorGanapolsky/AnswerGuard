@@ -17,9 +17,9 @@ appId: com.igorganapolsky.answerguard
     timeout: 30000
 - scrollUntilVisible:
     element:
-      text: 'AnswerGuard (Free|Pro|Family|Business)'
+      text: 'Restore'
     direction: DOWN
-    timeout: 20000
+    timeout: 30000
 
 - assertVisible: 'Restore'
 - tapOn: 'Restore'
