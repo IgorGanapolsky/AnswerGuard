@@ -517,8 +517,13 @@ jobs:
 
   ios-submit-review:
     needs: [verify-releases]
-    # Run after verification. Gate privileged steps at runtime by reading the dispatch payload,
-    # because job-level `if:` on workflow_dispatch inputs has been brittle in practice.
+    # Run whenever verification succeeded. The explicit `always()` guard is REQUIRED: on a
+    # `platform: ios` dispatch, `android-release` is skipped, and without this guard that skip
+    # propagates transitively to this job (it inherits the implicit `success()` condition), so the
+    # job is skipped before the gate step can run. We intentionally key only on the upstream job
+    # RESULT — not on `workflow_dispatch` inputs, which have been brittle in practice — and keep the
+    # privileged steps gated at runtime via the `gate` step below (which reads submit_review).
+    if: ${{ always() && needs.verify-releases.result == 'success' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
