@@ -84,7 +84,10 @@ jobs:
           fi
           git commit -m "chore(play): refresh play_iap_catalog.json from IAP readback"
           git pull --rebase origin develop
-          git push origin HEAD:develop
+          if ! git push origin HEAD:develop; then
+            echo "::warning::Could not push play_iap_catalog.json to protected develop; download the workflow artifact instead."
+            exit 0
+          fi
 
       - uses: actions/upload-artifact@v7
         if: always()

@@ -1,0 +1,42 @@
+{
+  "one_time_products": [
+    {
+      "kind": "one_time",
+      "product_id": "answerguard_pro",
+      "state": "unknown"
+    }
+  ],
+  "package": "com.igorganapolsky.answerguard",
+  "required_business_annual_base_plan_id": "annual",
+  "required_family_annual_base_plan_id": "annual",
+  "required_missing": [],
+  "status": "ok",
+  "subscription_purchase_blockers": [],
+  "subscription_purchase_warnings": [],
+  "subscriptions": [
+    {
+      "base_plans": [
+        {
+          "base_plan_id": "annual",
+          "state": "ACTIVE"
+        }
+      ],
+      "kind": "subscription",
+      "product_id": "answerguard_business",
+      "state": "unknown"
+    },
+    {
+      "base_plans": [
+        {
+          "base_plan_id": "annual",
+          "state": "ACTIVE"
+        }
+      ],
+      "kind": "subscription",
+      "product_id": "answerguard_family",
+      "state": "unknown"
+    }
+  ],
+  "source": "play_iap_product_readback",
+  "generated_at": "2026-06-10T19:51:27Z"
+}
