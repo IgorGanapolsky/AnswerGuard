@@ -109,14 +109,23 @@ def list_subscription_products(service: Any) -> list[dict[str, Any]]:
     return products
 
 
-def money_usd(amount: str) -> dict[str, int | str]:
+def _money(amount: str, currency_code: str) -> dict[str, int | str]:
     units, _, frac = amount.partition(".")
     nanos = int(frac.ljust(9, "0")[:9]) if frac else 0
-    return {"currencyCode": "USD", "units": units, "nanos": nanos}
+    return {"currencyCode": currency_code, "units": units, "nanos": nanos}
+
+
+def money_usd(amount: str) -> dict[str, int | str]:
+    return _money(amount, "USD")
+
+
+def money_eur(amount: str) -> dict[str, int | str]:
+    return _money(amount, "EUR")
 
 
 def _one_time_product_payload(product_id: str, spec: dict[str, str]) -> dict[str, Any]:
-    price = money_usd(spec["price_usd"])
+    price_usd = money_usd(spec["price_usd"])
+    price_eur = money_eur(spec["price_usd"])
     return {
         "packageName": PACKAGE,
         "productId": product_id,
@@ -134,13 +143,13 @@ def _one_time_product_payload(product_id: str, spec: dict[str, str]) -> dict[str
                 "regionalPricingAndAvailabilityConfigs": [
                     {
                         "regionCode": "US",
-                        "price": price,
+                        "price": price_usd,
                         "availability": "AVAILABLE",
                     }
                 ],
                 "newRegionsConfig": {
-                    "usdPrice": price,
-                    "eurPrice": price,
+                    "usdPrice": price_usd,
+                    "eurPrice": price_eur,
                     "availability": "AVAILABLE",
                 },
             }
@@ -149,7 +158,8 @@ def _one_time_product_payload(product_id: str, spec: dict[str, str]) -> dict[str
 
 
 def _subscription_product_payload(product_id: str, spec: dict[str, str]) -> dict[str, Any]:
-    price = money_usd(spec["price_usd"])
+    price_usd = money_usd(spec["price_usd"])
+    price_eur = money_eur(spec["price_usd"])
     return {
         "packageName": PACKAGE,
         "productId": product_id,
@@ -170,13 +180,13 @@ def _subscription_product_payload(product_id: str, spec: dict[str, str]) -> dict
                 "regionalConfigs": [
                     {
                         "regionCode": "US",
-                        "price": price,
+                        "price": price_usd,
                         "newSubscriberAvailability": True,
                     }
                 ],
                 "otherRegionsConfig": {
-                    "usdPrice": price,
-                    "eurPrice": price,
+                    "usdPrice": price_usd,
+                    "eurPrice": price_eur,
                     "newSubscriberAvailability": True,
                 },
             }
@@ -315,8 +325,11 @@ def activate_one_time_product(service: Any, product_id: str) -> dict[str, Any]:
             body={
                 "requests": [
                     {
-                        "purchaseOptionId": purchase_option_id,
-                        "state": "ACTIVE",
+                        "activatePurchaseOptionRequest": {
+                            "packageName": PACKAGE,
+                            "productId": product_id,
+                            "purchaseOptionId": purchase_option_id,
+                        }
                     }
                 ]
             },

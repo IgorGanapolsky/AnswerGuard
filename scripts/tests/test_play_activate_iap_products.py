@@ -11,6 +11,7 @@ class PlayActivateIapProductsTests(unittest.TestCase):
         one_time = MagicMock()
         purchase_options = MagicMock()
         service.monetization.return_value = one_time
+        one_time.onetimeproducts.return_value.purchaseOptions.return_value = purchase_options
         one_time.onetimeproducts.return_value.get.return_value.execute.return_value = {
             "purchaseOptions": [
                 {"purchaseOptionId": "default-buy", "state": "ACTIVE"},
@@ -20,6 +21,36 @@ class PlayActivateIapProductsTests(unittest.TestCase):
         report = activate_one_time_product(service, "answerguard_pro")
         self.assertEqual(report["actions"][0]["action"], "skip")
         purchase_options.batchUpdateStates.assert_not_called()
+
+    def test_activate_one_time_uses_activate_purchase_option_request(self):
+        service = MagicMock()
+        one_time = MagicMock()
+        purchase_options = MagicMock()
+        service.monetization.return_value = one_time
+        one_time.onetimeproducts.return_value.purchaseOptions.return_value = purchase_options
+        one_time.onetimeproducts.return_value.get.return_value.execute.return_value = {
+            "purchaseOptions": [
+                {"purchaseOptionId": "default-buy", "state": "DRAFT"},
+            ]
+        }
+
+        report = activate_one_time_product(service, "answerguard_pro")
+        self.assertEqual(report["actions"][0]["action"], "activated")
+        purchase_options.batchUpdateStates.assert_called_once_with(
+            packageName="com.igorganapolsky.answerguard",
+            productId="answerguard_pro",
+            body={
+                "requests": [
+                    {
+                        "activatePurchaseOptionRequest": {
+                            "packageName": "com.igorganapolsky.answerguard",
+                            "productId": "answerguard_pro",
+                            "purchaseOptionId": "default-buy",
+                        }
+                    }
+                ]
+            },
+        )
 
     def test_activate_one_time_returns_error_when_missing(self):
         service = MagicMock()
