@@ -157,7 +157,11 @@ async def run_autonomous_loop():
     try:
         async with async_playwright() as p:
             log("Connecting Playwright to the active browser instance...")
-            browser = await p.chromium.connect_over_cdp("http://localhost:9222")
+            # no_defaults avoids Browser.setDownloadBehavior, which Chrome rejects on
+            # externally launched instances ("Browser context management is not supported").
+            browser = await p.chromium.connect_over_cdp(
+                "http://localhost:9222", no_defaults=True
+            )
             context = browser.contexts[0]
             page = await context.new_page()
 
