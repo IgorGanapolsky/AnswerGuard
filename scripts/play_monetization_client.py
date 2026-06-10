@@ -325,8 +325,11 @@ def activate_one_time_product(service: Any, product_id: str) -> dict[str, Any]:
             body={
                 "requests": [
                     {
-                        "purchaseOptionId": purchase_option_id,
-                        "state": "ACTIVE",
+                        "activatePurchaseOptionRequest": {
+                            "packageName": PACKAGE,
+                            "productId": product_id,
+                            "purchaseOptionId": purchase_option_id,
+                        }
                     }
                 ]
             },
