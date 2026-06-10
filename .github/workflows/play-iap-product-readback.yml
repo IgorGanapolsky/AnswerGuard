@@ -26,6 +26,17 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install google-api-python-client google-auth google-auth-httplib2
 
+      - name: Ensure required Play monetization products exist
+        env:
+          GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+        run: |
+          set -euo pipefail
+          echo "$GOOGLE_PLAY_JSON_KEY" > /tmp/play-service-account.json
+          export GOOGLE_PLAY_JSON_KEY_PATH=/tmp/play-service-account.json
+          python3 scripts/play_ensure_iap_products.py \
+            --activate-subscriptions \
+            --json-out play-iap-ensure.json
+
       - name: Activate required Play one-time products
         env:
           GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
@@ -82,6 +93,7 @@ jobs:
           path: |
             play-iap-product-readback.json
             play-iap-activation.json
+            play-iap-ensure.json
             marketing/data/play_iap_catalog.json
           if-no-files-found: ignore
           retention-days: 3

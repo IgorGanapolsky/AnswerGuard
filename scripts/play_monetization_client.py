@@ -12,6 +12,30 @@ REQUIRED_SUBSCRIPTIONS = ("answerguard_family", "answerguard_business")
 REQUIRED_FAMILY_ANNUAL_BASE_PLAN_ID = "annual"
 REQUIRED_BUSINESS_ANNUAL_BASE_PLAN_ID = "annual"
 TARGET_ONE_TIME = "answerguard_pro"
+REGIONS_VERSION = {"version": "2022/02"}
+LATENCY_TOLERANT = "PRODUCT_UPDATE_LATENCY_TOLERANCE_LATENCY_TOLERANT"
+DEFAULT_PURCHASE_OPTION_ID = "default-buy"
+
+ONE_TIME_CATALOG: dict[str, dict[str, str]] = {
+    "answerguard_pro": {
+        "title": "AnswerGuard Pro",
+        "description": "Unlock AI call screening and premium protection features.",
+        "price_usd": "4.99",
+    },
+}
+
+SUBSCRIPTION_CATALOG: dict[str, dict[str, str]] = {
+    "answerguard_family": {
+        "title": "Family Protection",
+        "description": "Protect your whole family with AnswerGuard Elite.",
+        "price_usd": "29.99",
+    },
+    "answerguard_business": {
+        "title": "Business Shield",
+        "description": "Business-grade call screening for teams.",
+        "price_usd": "49.99",
+    },
+}
 
 
 def resolve_play_credentials() -> str:
@@ -85,13 +109,191 @@ def list_subscription_products(service: Any) -> list[dict[str, Any]]:
     return products
 
 
-def activate_one_time_product(service: Any, product_id: str) -> dict[str, Any]:
+def money_usd(amount: str) -> dict[str, int | str]:
+    units, _, frac = amount.partition(".")
+    nanos = int(frac.ljust(9, "0")[:9]) if frac else 0
+    return {"currencyCode": "USD", "units": units, "nanos": nanos}
+
+
+def _one_time_product_payload(product_id: str, spec: dict[str, str]) -> dict[str, Any]:
+    price = money_usd(spec["price_usd"])
+    return {
+        "packageName": PACKAGE,
+        "productId": product_id,
+        "listings": [
+            {
+                "languageCode": "en-US",
+                "title": spec["title"],
+                "description": spec["description"],
+            }
+        ],
+        "purchaseOptions": [
+            {
+                "purchaseOptionId": DEFAULT_PURCHASE_OPTION_ID,
+                "buyOption": {"legacyCompatible": True},
+                "regionalPricingAndAvailabilityConfigs": [
+                    {
+                        "regionCode": "US",
+                        "price": price,
+                        "availability": "AVAILABLE",
+                    }
+                ],
+                "newRegionsConfig": {
+                    "usdPrice": price,
+                    "eurPrice": price,
+                    "availability": "AVAILABLE",
+                },
+            }
+        ],
+    }
+
+
+def _subscription_product_payload(product_id: str, spec: dict[str, str]) -> dict[str, Any]:
+    price = money_usd(spec["price_usd"])
+    return {
+        "packageName": PACKAGE,
+        "productId": product_id,
+        "listings": [
+            {
+                "languageCode": "en-US",
+                "title": spec["title"],
+                "description": spec["description"],
+            }
+        ],
+        "basePlans": [
+            {
+                "basePlanId": REQUIRED_FAMILY_ANNUAL_BASE_PLAN_ID,
+                "autoRenewingBasePlanType": {
+                    "billingPeriodDuration": "P1Y",
+                    "legacyCompatible": True,
+                },
+                "regionalConfigs": [
+                    {
+                        "regionCode": "US",
+                        "price": price,
+                        "newSubscriberAvailability": True,
+                    }
+                ],
+                "otherRegionsConfig": {
+                    "usdPrice": price,
+                    "eurPrice": price,
+                    "newSubscriberAvailability": True,
+                },
+            }
+        ],
+    }
+
+
+def ensure_one_time_products(service: Any) -> dict[str, Any]:
     monetization = service.monetization()
-    product = (
+    requests: list[dict[str, Any]] = []
+    for product_id in REQUIRED_ONE_TIME:
+        spec = ONE_TIME_CATALOG[product_id]
+        requests.append(
+            {
+                "oneTimeProduct": _one_time_product_payload(product_id, spec),
+                "updateMask": "listings,purchaseOptions",
+                "regionsVersion": REGIONS_VERSION,
+                "allowMissing": True,
+                "latencyTolerance": LATENCY_TOLERANT,
+            }
+        )
+    response = (
         monetization.onetimeproducts()
-        .get(packageName=PACKAGE, productId=product_id)
+        .batchUpdate(packageName=PACKAGE, body={"requests": requests})
         .execute()
     )
+    return {
+        "action": "ensure_one_time",
+        "product_ids": list(REQUIRED_ONE_TIME),
+        "updated": [
+            item.get("productId") or item.get("sku")
+            for item in response.get("oneTimeProducts") or []
+        ],
+    }
+
+
+def ensure_subscription_products(service: Any) -> dict[str, Any]:
+    monetization = service.monetization()
+    requests: list[dict[str, Any]] = []
+    for product_id in REQUIRED_SUBSCRIPTIONS:
+        spec = SUBSCRIPTION_CATALOG[product_id]
+        requests.append(
+            {
+                "subscription": _subscription_product_payload(product_id, spec),
+                "updateMask": "listings,basePlans",
+                "regionsVersion": REGIONS_VERSION,
+                "allowMissing": True,
+                "latencyTolerance": LATENCY_TOLERANT,
+            }
+        )
+    response = (
+        monetization.subscriptions()
+        .batchUpdate(packageName=PACKAGE, body={"requests": requests})
+        .execute()
+    )
+    return {
+        "action": "ensure_subscriptions",
+        "product_ids": list(REQUIRED_SUBSCRIPTIONS),
+        "updated": [
+            item.get("productId")
+            for item in response.get("subscriptions") or []
+        ],
+    }
+
+
+def activate_subscription_base_plans(service: Any) -> dict[str, Any]:
+    monetization = service.monetization()
+    requests: list[dict[str, Any]] = []
+    for product_id in REQUIRED_SUBSCRIPTIONS:
+        requests.append(
+            {
+                "activateBasePlanRequest": {
+                    "packageName": PACKAGE,
+                    "productId": product_id,
+                    "basePlanId": REQUIRED_FAMILY_ANNUAL_BASE_PLAN_ID,
+                    "latencyTolerance": LATENCY_TOLERANT,
+                }
+            }
+        )
+    monetization.subscriptions().basePlans().batchUpdateStates(
+        packageName=PACKAGE,
+        productId="-",
+        body={"requests": requests},
+    ).execute()
+    return {
+        "action": "activate_subscription_base_plans",
+        "product_ids": list(REQUIRED_SUBSCRIPTIONS),
+        "base_plan_id": REQUIRED_FAMILY_ANNUAL_BASE_PLAN_ID,
+    }
+
+
+def ensure_required_iap_catalog(service: Any) -> list[dict[str, Any]]:
+    return [
+        ensure_one_time_products(service),
+        ensure_subscription_products(service),
+    ]
+
+
+def activate_one_time_product(service: Any, product_id: str) -> dict[str, Any]:
+    monetization = service.monetization()
+    try:
+        product = (
+            monetization.onetimeproducts()
+            .get(packageName=PACKAGE, productId=product_id)
+            .execute()
+        )
+    except Exception as exc:  # googleapiclient.errors.HttpError
+        return {
+            "product_id": product_id,
+            "actions": [
+                {
+                    "action": "error",
+                    "reason": "product_not_found",
+                    "message": str(exc),
+                }
+            ],
+        }
     actions: list[dict[str, Any]] = []
     for option in product.get("purchaseOptions") or []:
         purchase_option_id = option.get("purchaseOptionId") or option.get("id") or ""

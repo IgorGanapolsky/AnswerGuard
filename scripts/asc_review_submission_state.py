@@ -116,6 +116,11 @@ def main() -> int:
                     f"      item id={it['id']} state={ia.get('state')} "
                     f"removed={ia.get('removed')} {ref or ''}".rstrip()
                 )
+                if ia.get("state") == "REJECTED" and ref:
+                    print(
+                        "      ⚠ REJECTED item — resolve in App Store Connect Resolution Center, "
+                        "then re-run ios-submit-review (asc_submit marks resolved + resubmits)."
+                    )
         if state in IN_REVIEW_STATES:
             in_review.append(rec)
         elif state in STUCK_STATES:

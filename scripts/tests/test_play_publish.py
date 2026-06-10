@@ -10,6 +10,7 @@ from scripts.play_publish import (
     _is_edit_expired,
     _is_failed_precondition,
     _release_payload,
+    _requires_manual_review_submission,
     _validate_play_image_dimensions,
 )
 
@@ -144,6 +145,24 @@ class PlayPublishTests(unittest.TestCase):
 
         self.assertEqual(len(errors), 1)
         self.assertIn("expected 512x512, got 1024x1024", errors[0])
+
+    def test_detects_manual_review_required_marker(self):
+        self.assertTrue(
+            _requires_manual_review_submission(
+                "HttpError 400",
+                "Changes cannot be sent for review automatically.",
+                400,
+            )
+        )
+
+    def test_does_not_false_positive_manual_review_on_other_400(self):
+        self.assertFalse(
+            _requires_manual_review_submission(
+                "HttpError 400",
+                "Invalid request",
+                400,
+            )
+        )
 
 
 if __name__ == "__main__":
