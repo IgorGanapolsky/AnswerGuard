@@ -31,6 +31,10 @@ FAILED_PRECONDITION_MARKERS = (
     "failed_precondition",
     "precondition check failed",
 )
+MANUAL_REVIEW_REQUIRED_MARKERS = (
+    "changes cannot be sent for review automatically",
+    "changesnotsentforreview",
+)
 DRAFT_APP_STATUS_MARKERS = (
     "only releases with status draft may be created on draft app",
 )
@@ -110,6 +114,46 @@ def _is_failed_precondition(message: str, response_text: str, http_status: int |
     if any(marker in combined for marker in FAILED_PRECONDITION_MARKERS):
         return True
     return http_status == 400 and "precondition" in combined
+
+
+def _requires_manual_review_submission(message: str, response_text: str, http_status: int | None) -> bool:
+    combined = f"{message}\n{response_text}".lower()
+    return http_status == 400 and any(marker in combined for marker in MANUAL_REVIEW_REQUIRED_MARKERS)
+
+
+def _commit_edit(edits_service: Any, package: str, edit_id: str) -> bool:
+    """Commit a Play edit.
+
+    Returns True when Google requires ``changesNotSentForReview=true``, meaning
+    the edit was committed but still needs manual "Send for review" in Console.
+    """
+    try:
+        edits_service.commit(packageName=package, editId=edit_id).execute()
+        return False
+    except Exception as error:
+        response_text = _extract_response_text(error)
+        status = getattr(getattr(error, "resp", None), "status", None)
+        if _requires_manual_review_submission(str(error), response_text, status):
+            try:
+                edits_service.commit(
+                    packageName=package,
+                    editId=edit_id,
+                    changesNotSentForReview=True,
+                ).execute()
+                return True
+            except Exception:
+                return False
+
+        error_text = f"{error}\n{response_text}".lower()
+        if (
+            "changesnotsentforreview must not be set" in error_text
+            or (
+                "sent for review automatically" in error_text
+                and "cannot be sent for review automatically" not in error_text
+            )
+        ):
+            return False
+        raise
 
 
 def _is_draft_app_status_error(message: str, response_text: str, http_status: int | None) -> bool:
@@ -353,11 +397,12 @@ def _publish_to_track(
                 track=track,
                 body={"releases": [release]},
             ).execute()
-            service.edits().commit(packageName=package, editId=edit_id).execute()
+            changes_not_sent_for_review = _commit_edit(service.edits(), package, edit_id)
 
             return {
                 "version_code": str(version_code),
                 "attempt": attempt,
+                "changes_not_sent_for_review": changes_not_sent_for_review,
             }
         except HttpError as error:
             message = str(error)
@@ -509,12 +554,21 @@ def main() -> int:
                     "draft_release_used": draft_release_used,
                     "version_code": outcome["version_code"],
                     "attempt": outcome["attempt"],
+                    "changes_not_sent_for_review": bool(outcome.get("changes_not_sent_for_review")),
                     "fallback_reason": "FAILED_PRECONDITION" if fallback_used else "",
                 }
                 if precondition_error_payload:
                     result_payload["production_precondition_error"] = precondition_error_payload
                 if draft_status_error_payload:
                     result_payload["draft_app_status_error"] = draft_status_error_payload
+                if outcome.get("changes_not_sent_for_review"):
+                    _write_json(result_json_path, result_payload)
+                    print(
+                        "❌ Google Play committed the edit with changesNotSentForReview=true. "
+                        "This release is not publicly live until Play Console 'Send for review' is completed.",
+                        file=sys.stderr,
+                    )
+                    return 1
                 _write_json(result_json_path, result_payload)
                 print(
                     f"✅ Uploaded version code {outcome['version_code']} to '{track}' track "

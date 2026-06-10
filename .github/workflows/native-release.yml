@@ -40,14 +40,102 @@ on:
           - 'true'
         required: false
         default: 'false'
+      confirm_ios_only_release:
+        description: 'Set true only if you intentionally skip Android on a release/v* branch (platform=ios)'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        required: false
+        default: 'false'
+      skip_internal_signoff:
+        description: 'Deprecated/disabled. Releases must have TestFlight/Firebase internal proof on the exact SHA.'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        required: false
+        default: 'false'
+      skip_production_signoff:
+        description: 'Waive production-signoff environment (scheduled monthly release only)'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        required: false
+        default: 'false'
 
 concurrency:
   group: mobile-release-pipeline-${{ github.ref_name }}-${{ inputs.platform || 'both' }}
   cancel-in-progress: false
 
 jobs:
+  release-intent-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Enforce release-branch intent (avoid accidental Android skip)
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          RELEASE_INTENT_PLATFORM: ${{ inputs.platform }}
+          RELEASE_INTENT_CONFIRM_IOS_ONLY: ${{ inputs.confirm_ios_only_release }}
+        run: python3 scripts/release_intent_gate.py
+
+  internal-proof-or-waive:
+    needs: [release-intent-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Require internal signoff statuses (unless waived)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SKIP_INTERNAL: ${{ inputs.skip_internal_signoff }}
+          RELEASE_PLATFORM: ${{ inputs.platform }}
+        run: |
+          set -euo pipefail
+          if [[ "${SKIP_INTERNAL}" == "true" ]]; then
+            echo "❌ Internal artifact proof cannot be waived for production release."
+            echo "Every release must have current internal-signoff/testflight and/or internal-signoff/firebase statuses on the exact release SHA."
+            exit 1
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/status" > /tmp/internal-signoff-status.json
+          python3 scripts/internal_signoff_gate.py \
+            --platform "$RELEASE_PLATFORM" \
+            --statuses-json /tmp/internal-signoff-status.json
+
+  require-production-signoff:
+    needs: [release-intent-gate, internal-proof-or-waive]
+    if: ${{ inputs.skip_production_signoff != 'true' }}
+    runs-on: ubuntu-latest
+    environment: production-signoff
+    steps:
+      - name: Await fresh CEO production release approval
+        run: echo "Fresh production signoff approved for ${GITHUB_SHA}"
+
+  production-signoff-waive:
+    needs: [release-intent-gate, internal-proof-or-waive]
+    if: ${{ inputs.skip_production_signoff == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Waive production-signoff (automated monthly path)
+        run: echo "::notice::production-signoff waived (skip_production_signoff=true)"
+
   ios-testflight:
-    if: ${{ inputs.platform == 'ios' || inputs.platform == 'both' }}
+    needs:
+      - release-intent-gate
+      - internal-proof-or-waive
+      - require-production-signoff
+      - production-signoff-waive
+    if: >-
+      (inputs.platform == 'ios' || inputs.platform == 'both') &&
+      always() && !cancelled() &&
+      needs.release-intent-gate.result == 'success' &&
+      needs.internal-proof-or-waive.result == 'success' &&
+      (needs.require-production-signoff.result == 'success' || needs.production-signoff-waive.result == 'success')
     runs-on: macos-26
     environment: production
     steps:
@@ -205,7 +293,17 @@ jobs:
           retention-days: 5
 
   android-release:
-    if: ${{ inputs.platform == 'android' || inputs.platform == 'both' }}
+    needs:
+      - release-intent-gate
+      - internal-proof-or-waive
+      - require-production-signoff
+      - production-signoff-waive
+    if: >-
+      (inputs.platform == 'android' || inputs.platform == 'both') &&
+      always() && !cancelled() &&
+      needs.release-intent-gate.result == 'success' &&
+      needs.internal-proof-or-waive.result == 'success' &&
+      (needs.require-production-signoff.result == 'success' || needs.production-signoff-waive.result == 'success')
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -424,6 +522,9 @@ jobs:
           VERSION_CODE=$(sed -nE 's/.*versionCode[[:space:]]*=[^0-9]*([0-9]+).*/\1/p' native-android/app/build.gradle.kts | head -1 || echo "")
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
+          ANDROID_VERSION=$(python3 scripts/source_versions.py --format value --key ANDROID_VERSION_NAME)
+          echo "android_version=$ANDROID_VERSION" >> "$GITHUB_OUTPUT"
+
           # iOS version from project.pbxproj
           IOS_VERSION=$(grep -m1 'MARKETING_VERSION' native-ios/AnswerGuard.xcodeproj/project.pbxproj | grep -oP '[\d.]+' || echo "")
           echo "ios_version=$IOS_VERSION" >> "$GITHUB_OUTPUT"
@@ -509,6 +610,33 @@ jobs:
             ARGS="$ARGS --ios-scope testflight"
           fi
           python scripts/verify_release.py $ARGS
+
+      - name: Verify public Google Play listing (production only)
+        id: play_public_listing
+        if: needs.android-release.result == 'success' && steps.android_track.outputs.track == 'production'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python scripts/verify_play_public_listing.py \
+            --package com.igorganapolsky.answerguard \
+            --country US \
+            --expected-version "${{ steps.versions.outputs.android_version }}" \
+            --timeout 900 \
+            --poll-interval 60 | tee /tmp/play-public-listing.txt
+
+      - name: Warn when Play storefront propagation lags production
+        if: always() && steps.play_public_listing.outcome == 'failure'
+        run: |
+          echo "::warning::Google Play production verified via Android Publisher API, but the public storefront has not yet shown version ${{ steps.versions.outputs.android_version }}. Inspect the play-public-listing-report artifact."
+
+      - name: Upload Play storefront verification report
+        if: always() && needs.android-release.result == 'success' && steps.android_track.outputs.track == 'production'
+        uses: actions/upload-artifact@v7
+        with:
+          name: play-public-listing-report
+          path: /tmp/play-public-listing.txt
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Cleanup secrets
         if: always()
