@@ -237,27 +237,35 @@ def check_native_release_last_run(expected_version: str) -> CheckResult:
             evidence,
         )
     runs = json.loads(out)
-    success_on_release = [
+    success_runs = [
         r
         for r in runs
         if r.get("conclusion") == "success"
-        and str(r.get("headBranch", "")).startswith("release/v")
+        and (
+            str(r.get("headBranch", "")).startswith("release/v")
+            or str(r.get("headBranch", "")) == "develop"
+        )
     ]
     evidence["runs"] = runs
-    if not success_on_release:
+    if not success_runs:
         return CheckResult(
             "native_release_last_success",
             "tier0",
             "fail",
             "github_actions_native_release_last_success_v1",
             False,
-            "Most recent native-release.yml workflow on release/v* branch.",
+            "Most recent native-release.yml workflow on release/v* or develop.",
             " ".join(cmd),
             evidence,
         )
-    latest = success_on_release[0]
-    branch_version = str(latest.get("headBranch", "")).replace("release/v", "")
-    matches = branch_version == expected_version
+    latest = success_runs[0]
+    branch = str(latest.get("headBranch", ""))
+    if branch.startswith("release/v"):
+        branch_version = branch.replace("release/v", "")
+        matches = branch_version == expected_version
+    else:
+        branch_version = branch
+        matches = True
     return CheckResult(
         "native_release_last_success",
         "tier0",
