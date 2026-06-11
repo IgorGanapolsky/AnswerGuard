@@ -14,8 +14,12 @@ EXPECTED_WORKFLOWS = {
     "asc-ground-truth.yml",
     "autonomous-release-automerge.yml",
     "firebase-app-testing-agent.yml",
+    "ios-apple-id-release.yml",
     "ios-internal-retry.yml",
     "ios-reviews-ops.yml",
+    "operational-verification-bundle.yml",
+    "play-mirror-production-to-internal.yml",
+    "play-production-countries.yml",
     "play-promote-to-production.yml",
     "store-release-watcher.yml",
 }
