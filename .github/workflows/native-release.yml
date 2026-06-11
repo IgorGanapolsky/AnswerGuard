@@ -292,17 +292,75 @@ jobs:
           path: native-ios/AnswerGuard.ipa
           retention-days: 5
 
+  android-device-test-gate:
+    name: Android connectedDebugAndroidTest (all classes)
+    needs: [release-intent-gate]
+    if: >-
+      (inputs.platform == 'android' || inputs.platform == 'both') &&
+      needs.release-intent-gate.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Create dummy google-services.json for CI
+        working-directory: native-android
+        run: |
+          cat > app/google-services.json << 'GSEOF'
+          {
+            "project_info": { "project_number": "000000000000", "project_id": "answerguard-ci", "storage_bucket": "answerguard-ci.appspot.com" },
+            "client": [{ "client_info": { "mobilesdk_app_id": "1:000000000000:android:0000000000000000", "android_client_info": { "package_name": "com.igorganapolsky.answerguard" } }, "api_key": [{ "current_key": "CI_PLACEHOLDER" }] }],
+            "configuration_version": "1"
+          }
+          GSEOF
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run full connectedDebugAndroidTest suite on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -skin 1080x2340
+          disable-animations: false
+          emulator-boot-timeout: 300
+          script: sh scripts/device-tests/ci-connected-all.sh
+
+      - name: Upload Android release device test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-release-device-test-reports
+          path: |
+            native-android/app/build/reports/androidTests/connected
+            native-android/app/build/outputs/androidTest-results/connected
+          retention-days: 1
+
   android-release:
     needs:
       - release-intent-gate
       - internal-proof-or-waive
       - require-production-signoff
       - production-signoff-waive
+      - android-device-test-gate
     if: >-
       (inputs.platform == 'android' || inputs.platform == 'both') &&
       always() && !cancelled() &&
       needs.release-intent-gate.result == 'success' &&
       needs.internal-proof-or-waive.result == 'success' &&
+      needs.android-device-test-gate.result == 'success' &&
       (needs.require-production-signoff.result == 'success' || needs.production-signoff-waive.result == 'success')
     runs-on: ubuntu-latest
     environment: production
@@ -400,13 +458,23 @@ jobs:
             -alias "$KEY_ALIAS" | grep -E "Alias name:|Valid from:|SHA1:|SHA-256:"
 
       - name: Build release AAB
+        id: build_meta
         env:
+          GOOGLE_PLAY_JSON_KEY: /tmp/play-service-account.json
           KEYSTORE_PATH: /tmp/release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
-        run: ./gradlew bundleRelease
+        run: |
+          set -euo pipefail
+          VERSION_CODE="$(python ../scripts/compute_android_release_version_code.py \
+            --service-account-json "$GOOGLE_PLAY_JSON_KEY" \
+            --gradle-file app/build.gradle.kts \
+            --timeout-seconds 180 \
+            --request-retries 3)"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          ./gradlew -PciVersionCode="$VERSION_CODE" bundleRelease
         working-directory: native-android
 
       - name: Upload to Google Play (track)
@@ -1071,3 +1139,75 @@ jobs:
             --body "Auto-generated PR to sync develop after release" \
             || echo "PR already exists or branch is up to date"
         continue-on-error: true
+
+  bump-develop-version:
+    needs: [tag-release]
+    if: always() && needs.tag-release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ secrets.ADMIN_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Bump patch version on develop
+        id: bump
+        run: |
+          TAG="${{ needs.tag-release.outputs.tag || '' }}"
+          python3 scripts/bump_patch_version.py \
+            --changelog-message "Bump version after $TAG release" \
+            --skip-changelog
+          NEW_VERSION=$(python3 scripts/source_versions.py --repo-root . --format json \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["android"]["version_name"])')
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Bumped working tree to v${NEW_VERSION} (will open PR — develop is protected)"
+
+      - name: Open pull request for develop version bump
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "❌ ADMIN_TOKEN is required to open the post-release bump PR (direct push to develop is blocked by branch protection)."
+            exit 1
+          fi
+          TAG="${{ needs.tag-release.outputs.tag || 'unknown' }}"
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          BRANCH="chore/bump-develop-post-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add native-android/app/build.gradle.kts \
+                  native-ios/AnswerGuard.xcodeproj/project.pbxproj \
+                  native-android/fastlane/metadata/android/en-US/changelogs/ \
+                  native-ios/fastlane/metadata/en-US/release_notes.txt
+          if git diff --cached --quiet; then
+            echo "Nothing to commit — skipping PR."
+            exit 0
+          fi
+          git commit -m "chore: bump develop to v${NEW_VERSION} after ${TAG} release [skip ci]"
+          git push -u origin "$BRANCH"
+          BODY_FILE="$(mktemp)"
+          {
+            echo "Automated post-release version bump after tag \`${TAG}\`."
+            echo ""
+            echo "develop rejects direct pushes; merge this PR to align develop with the next patch train."
+            echo ""
+            echo "Workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > "$BODY_FILE"
+          gh pr create --repo "${{ github.repository }}" --base develop --head "$BRANCH" \
+            --title "chore: bump develop to v${NEW_VERSION} after ${TAG}" \
+            --body-file "$BODY_FILE"
+          rm -f "$BODY_FILE"
+          echo "✅ Opened PR for develop version bump (branch ${BRANCH})"
