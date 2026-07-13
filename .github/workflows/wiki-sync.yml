@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -69,7 +69,7 @@ jobs:
         run: python scripts/wiki_sync.py
 
       - name: Publish wiki pages
-        uses: Andrew-Chen-Wang/github-wiki-action@64efa0a9436db17670a2259e0ac249d6f08bb352 # v5.0.4
+        uses: Andrew-Chen-Wang/github-wiki-action@1bbb4280446f9630e8e21a18012cbacf3b0f992e # v5.0.6
         with:
           strategy: init
           path: wiki/
