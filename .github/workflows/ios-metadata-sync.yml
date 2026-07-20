@@ -37,7 +37,7 @@ jobs:
       IOS_METADATA_ONLY: ${{ inputs.metadata_only }}
       IOS_STRICT_RETRY_ON_EDITABLE: ${{ inputs.strict_retry_on_editable }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Fail fast on required App Store secrets
         env:
@@ -57,7 +57,7 @@ jobs:
         run: bash scripts/preflight-release.sh --platform ios --layer 1
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@12fd324f1d0b43274fdc8130f6980590a667c455 # v1
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600 # v1
         with:
           ruby-version: "3.2"
           bundler-cache: true
@@ -70,7 +70,7 @@ jobs:
           fastlane --version
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
