@@ -64,7 +64,7 @@ jobs:
           echo "Claude Review runs the real review on pull_request events."
           echo "Push events get this green noop so required checks do not block PR heads."
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: github.event_name == 'pull_request'
 
       - name: Claude Code Review
@@ -167,7 +167,7 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Claude Code Assist
         if: ${{ env.ANTHROPIC_API_KEY != '' }}
