@@ -30,7 +30,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # Essential for accurate blame and AI context (Gitar)
 
@@ -38,7 +38,7 @@ jobs:
         id: sonar-scan
         # continue-on-error until secrets are configured by user
         continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v8.2.0
+        uses: SonarSource/sonarqube-scan-action@v8.2.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: "https://sonarcloud.io"

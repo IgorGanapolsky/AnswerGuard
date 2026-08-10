@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
 
@@ -118,7 +118,7 @@ jobs:
           ./gradlew -PciVersionCode="${{ github.run_number }}" assembleRelease --no-daemon
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
 
