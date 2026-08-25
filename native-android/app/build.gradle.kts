@@ -41,7 +41,7 @@ val ciVersionCode = providers.gradleProperty("ciVersionCode").orNull?.toIntOrNul
 
 android {
     namespace = "com.igorganapolsky.answerguard"
-    compileSdk = ciCompileSdk ?: 35
+    compileSdk = ciCompileSdk ?: 37
 
     defaultConfig {
         applicationId = "com.igorganapolsky.answerguard"
