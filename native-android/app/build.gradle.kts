@@ -7,7 +7,6 @@ import org.gradle.testing.jacoco.tasks.JacocoReport
 
 plugins {
     alias(libs.plugins.androidApplication)
-    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
@@ -42,7 +41,7 @@ val ciVersionCode = providers.gradleProperty("ciVersionCode").orNull?.toIntOrNul
 
 android {
     namespace = "com.igorganapolsky.answerguard"
-    compileSdk = ciCompileSdk ?: 35
+    compileSdk = ciCompileSdk ?: 37
 
     defaultConfig {
         applicationId = "com.igorganapolsky.answerguard"
@@ -110,9 +109,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
     buildFeatures {
         compose = true

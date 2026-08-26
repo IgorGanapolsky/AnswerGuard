@@ -14,6 +14,7 @@ import com.android.billingclient.api.ProductDetailsResponseListener
 import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesResponseListener
 import com.android.billingclient.api.QueryProductDetailsParams
+import com.android.billingclient.api.QueryProductDetailsResult
 import com.android.billingclient.api.QueryPurchasesParams
 import com.google.common.truth.Truth.assertThat
 import com.igorganapolsky.answerguard.analytics.AnalyticsService
@@ -551,7 +552,10 @@ class ProManagerTest {
         every {
             billingClient.queryProductDetailsAsync(any<QueryProductDetailsParams>(), capture(listenerSlot))
         } answers {
-            listenerSlot.captured.onProductDetailsResponse(billingResult, details)
+            listenerSlot.captured.onProductDetailsResponse(
+                billingResult,
+                QueryProductDetailsResult.create(details, emptyList()),
+            )
         }
     }
 
