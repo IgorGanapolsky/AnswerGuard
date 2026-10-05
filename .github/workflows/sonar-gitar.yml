@@ -38,7 +38,7 @@ jobs:
         id: sonar-scan
         # continue-on-error until secrets are configured by user
         continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v8.2.1
+        uses: SonarSource/sonarqube-scan-action@v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: "https://sonarcloud.io"
